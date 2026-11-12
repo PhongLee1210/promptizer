@@ -1,0 +1,8 @@
+bin/
+*.log
+*.csv
+.env
+.env.*
+!.env.example
+.DS_Store
+

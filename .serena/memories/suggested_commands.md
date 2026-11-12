@@ -1,0 +1,7 @@
+- Phase 0 fixture validation: `jq -e -s 'length >= 50' testdata/golden-prompts.jsonl`.
+- Mock smoke test: `./scripts/test-mock.sh` (binds loopback 127.0.0.1:18765; test-only credential `mock-key`).
+- Mock compile check before module exists: `go test ./scripts/mock-groq/main.go` and `go vet ./scripts/mock-groq/main.go`.
+- Complete verification/build: `make verify`.
+- CLI: source ignored `.env`, then pipe prompt to `./bin/promptrefine refine`; optional `--json` and `--context-file`.
+- Browser service: `./bin/promptrefine pair`, configure exact extension origin, then `./bin/promptrefine serve`; check with `./bin/promptrefine health`.
+- Local performance: `./scripts/bench-local.sh`.

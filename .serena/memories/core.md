@@ -1,0 +1,5 @@
+- Product: local-first prompt refiner; whole-prompt rewrite/keep, preview-only, never auto-submit.
+- Approved roadmap and phase gates: `PLAN.md`; do not advance past an incomplete gate or check unverified work.
+- Current state: v0.1.0 release candidate implemented for manual acceptance: CLI, paired loopback service, ChatGPT/Claude MV3 extension, bounded context/live mode, docs and benchmarks. Automated normal/race/security/fixture tests pass. Open gates: real-site/manual browser matrix, 100-case human quality review, Chrome resource measurement, and final 8 GB Mac reproduction (current host is 16 GB M2).
+- Stable privacy invariant: only explicitly selected bounded prompt/context may leave host; never scan terminal/page/thread/files implicitly; never log prompt content or expose provider key to extension.
+- Architecture/stack details: `mem:tech_stack`. Completion proof: `mem:task_completion`.

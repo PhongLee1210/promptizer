@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "Promptizer",
+  "version": "0.1.0",
+  "minimum_chrome_version": "138",
+  "description": "Preview a clearer version of the current ChatGPT or Claude prompt before replacing it.",
+  "permissions": ["storage", "activeTab"],
+  "host_permissions": ["http://127.0.0.1:8765/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "options_page": "options.html",
+  "action": {
+    "default_title": "Promptizer settings"
+  },
+  "commands": {
+    "refine-prompt": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Y",
+        "mac": "Command+Shift+Y"
+      },
+      "description": "Refine the active prompt"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://chatgpt.com/*", "https://claude.ai/*"],
+      "js": ["core.js", "nano.js", "provider-router.js", "adapters/chatgpt.js", "adapters/claude.js", "content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}
+

@@ -1,0 +1,5 @@
+- Go standard library, planned single `promptrefine` binary; no third-party Go modules unless acceptance requires one.
+- Chrome Manifest V3 extension in plain JavaScript/CSS; no framework or bundler.
+- Groq Chat Completions via `net/http`; provisional default `openai/gpt-oss-120b`, configurable with `openai/gpt-oss-20b` as lower-cost alternative; local deterministic mock at `scripts/mock-groq/main.go`.
+- In-memory bounded cache only; no database, container, local LLM, or always-on daemon.
+- Current development host: Apple M2 arm64, macOS 27.2.1, Go 1.26.3, Chrome 157; installed RAM 16 GB, while release gate targets 8 GB.

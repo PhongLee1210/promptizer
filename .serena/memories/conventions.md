@@ -1,0 +1,6 @@
+- Scope follows `PLAN.md`; record evidence and outstanding issues adjacent to phase gate.
+- Prefer standard library Go and narrow ownership seams; provider interface exists only to isolate hosted inference.
+- Inputs/caches/concurrency are bounded: explicit prompt minimum 8 trimmed Unicode characters, live trigger minimum 20 characters plus 3 words, prompt maximum 4,000 bytes, intended model input about 1,024 tokens, provider completion cap 192 tokens, decoded output maximum 4,000 bytes; optional context is trimmed before the current prompt.
+- Errors/logs must not echo credentials, raw prompts, context, or completions.
+- Browser integrations isolate site adapters from shared preview/state logic; unsupported editor states fail closed and preserve original text.
+- Default interaction is manual, preview-only, no automatic submit; live mode is separate opt-in.

@@ -1,0 +1,6 @@
+- Never mark a checklist item complete without direct evidence.
+- For Go phases: run `go test ./...` after changes and `go test -race ./...` at each phase gate; run focused security/cancellation tests required by `PLAN.md`.
+- For extension phases: `make verify` covers syntax/core/manifest checks; then run `docs/manual-test.md` on current ChatGPT and Claude and record unsupported states instead of claiming success.
+- Record measured CPU/RSS/latency methods and results; distinguish local overhead from provider/network time.
+- Live provider quality/model/latency checks require configured credentials; final resource gate requires reproduction on target 8 GB Mac.
+- Update `PLAN.md` checkboxes, test results, performance measurements, and outstanding issues before advancing.
