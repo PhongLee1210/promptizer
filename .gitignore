@@ -10,3 +10,5 @@ node_modules/
 .superpowers/
 .output/
 .wxt/
+
+src/utils/icons.ts

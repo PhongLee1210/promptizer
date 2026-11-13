@@ -77,8 +77,9 @@ src/
     adapters/chatgpt.ts, claude.ts, registry.ts
   styles/
     tokens.css                    D2 tokens as custom properties
-    base.css                      reset, type scale, focus ring, reduced motion
-  assets/fonts/inter-latin.woff2
+    base.css                      imports tokens.css; reset, type scale, focus ring, reduced motion
+  assets/fonts/inter-latin.woff2        weight 400
+  assets/fonts/inter-latin-600.woff2    weight 600
 public/icon/{16,32,48,128}.png    exported from assets/toolbar/toolbar-on.svg
 ```
 
@@ -211,14 +212,14 @@ Expected: FAIL — file not found.
 - Generated: `src/utils/icons.ts`
 
 **Interfaces:**
-- Produces: `export const icons: Record<IconName, string>` where each value is the SVG markup with `width`/`height` stripped and `aria-hidden="true"` added, and `IconName` is a union of the 24 basenames in `docs/design/promptizer-package/assets/icons/`.
+- Produces: `export const icons: Record<IconName, string>` where each value is the SVG markup with `width`/`height` stripped and `aria-hidden="true"` added, and `IconName` is a union of the 23 basenames in `docs/design/promptizer-package/assets/icons/`.
 - Produces: `export function icon(name: IconName, size?: number): string`.
 
 - [ ] **Step 1: Write the failing test**
 
 ```ts
 it("inlines every shipped icon with currentColor preserved", () => {
-  expect(Object.keys(icons)).toHaveLength(24);
+  expect(Object.keys(icons)).toHaveLength(23);
   expect(icons.power).toContain('stroke="currentColor"');
   expect(icons.power).not.toMatch(/\swidth="24"/);
   expect(icon("power", 30)).toContain('width="30"');

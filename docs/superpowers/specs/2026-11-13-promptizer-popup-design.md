@@ -77,7 +77,7 @@ chain: [ModelRef, ...ModelRef[]]   // non-empty tuple; index 0 is the primary
 
 ### D4 Icons: inline the shipped SVGs, no library
 
-The design package ships all 24 icons the asset manifest calls for, at 24×24 / 2px stroke /
+The design package ships all 23 icons the asset manifest calls for, at 24×24 / 2px stroke /
 `currentColor`. A library would be a runtime dependency for icons already owned, and the spec
 requires inlining so they inherit text colour. A build-time inlining helper reads
 `assets/icons/*.svg` and emits a typed icon map. `animations/*.svg` already handle
