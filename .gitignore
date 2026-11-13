@@ -8,3 +8,5 @@ bin/
 
 node_modules/
 .superpowers/
+.output/
+.wxt/

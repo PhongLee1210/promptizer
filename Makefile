@@ -1,6 +1,6 @@
 GOCACHE ?= $(TMPDIR)/promptizer-go-cache
 
-.PHONY: build test test-race test-js verify clean
+.PHONY: build test test-race test-js lint verify clean
 
 build:
 	mkdir -p bin
@@ -24,7 +24,10 @@ test-js:
 	node --test extension/tests/*.test.js
 	jq -e '.manifest_version == 3 and (.minimum_chrome_version | tonumber) >= 138 and (.host_permissions == ["http://127.0.0.1:8765/*"]) and (.permissions | index("offscreen") | not)' extension/manifest.json
 
-verify: test test-race test-js build
+lint:
+	./node_modules/.bin/eslint extension
+
+verify: test test-race test-js lint build
 
 clean:
 	rm -f ./bin/promptrefine
