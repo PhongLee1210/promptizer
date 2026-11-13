@@ -1,0 +1,27 @@
+:root {
+  --pz-bg: #14161A;
+  --pz-surface: #1B1E24;
+  --pz-surface-inset: #101216;
+  --pz-divider: #23262D;
+  --pz-border-control: #6E7582;
+  --pz-track-off: #3A3F48;
+  --pz-text: #E8EAED;
+  --pz-text-2: #B4BAC4;
+  --pz-text-3: #9AA0AA;
+  --pz-accent: #4C8DFF;
+  --pz-on-accent: #0B1220;
+  --pz-accent-tint: #1B2233;
+  --pz-success: #3FCF8E;
+  --pz-success-text: #7FE0B3;
+  --pz-success-bg: #16291F;
+  --pz-warning: #F5C469;
+  --pz-warning-bg: #2A2415;
+  --pz-danger: #FF8A80;
+  --pz-danger-bg: #2E1A1A;
+
+  --pz-duration-knob: 120ms;
+  --pz-duration-screen: 160ms;
+  --pz-easing: ease-out;
+
+  color-scheme: dark;
+}

@@ -1,0 +1,185 @@
+@import "./tokens.css";
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../assets/fonts/inter-latin.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("../assets/fonts/inter-latin-600.woff2") format("woff2");
+}
+
+:root {
+  --pz-space-4: 4px;
+  --pz-space-8: 8px;
+  --pz-space-12: 12px;
+  --pz-space-16: 16px;
+  --pz-space-24: 24px;
+
+  --pz-radius-8: 8px;
+  --pz-radius-10: 10px;
+  --pz-radius-14: 14px;
+  --pz-radius-full: 9999px;
+
+  --pz-row-48: 48px;
+  --pz-row-52: 52px;
+  --pz-row-56: 56px;
+  --pz-hit: 44px;
+
+  font-size: 16px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--pz-bg);
+  color: var(--pz-text);
+  font-family: "Inter", system-ui, sans-serif;
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+p,
+figure,
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+}
+
+ul,
+ol {
+  list-style: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+  margin: 0;
+}
+
+button {
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+a {
+  color: var(--pz-accent);
+}
+
+svg {
+  display: block;
+  flex: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--pz-accent);
+  outline-offset: 2px;
+  border-radius: var(--pz-radius-8);
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.pz-title {
+  font-size: 1rem;
+  line-height: 1.375rem;
+  font-weight: 600;
+}
+
+.pz-header {
+  font-size: 0.9375rem;
+  line-height: 1.25rem;
+  font-weight: 600;
+}
+
+.pz-body-strong {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 600;
+}
+
+.pz-body {
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
+  font-weight: 400;
+}
+
+.pz-caption {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 400;
+}
+
+.pz-overline {
+  font-size: 0.6875rem;
+  line-height: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.pz-micro {
+  font-size: 0.6875rem;
+  line-height: 0.9375rem;
+  font-weight: 400;
+}
+
+.pz-num {
+  font-variant-numeric: tabular-nums;
+}
+
+.pz-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+
+  :root {
+    --pz-duration-knob: 0s;
+    --pz-duration-screen: 0s;
+  }
+}
