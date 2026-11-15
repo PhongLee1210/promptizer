@@ -1,10 +1,13 @@
 GOCACHE ?= $(TMPDIR)/promptizer-go-cache
 
-.PHONY: build build-ext test test-race test-js test-ext typecheck lint verify clean
+.PHONY: build build-ext icons test test-race test-js test-ext typecheck lint format format-check verify clean
 
 build:
 	mkdir -p bin
 	GOCACHE="$(GOCACHE)" go build -trimpath -ldflags='-s -w' -o ./bin/promptrefine ./cmd/promptrefine
+
+icons:
+	bash scripts/generate-icons.sh
 
 test:
 	GOCACHE="$(GOCACHE)" go test ./...
@@ -25,20 +28,26 @@ test-js:
 	jq -e '.manifest_version == 3 and (.minimum_chrome_version | tonumber) >= 138 and (.host_permissions == ["http://127.0.0.1:8765/*"]) and (.permissions | index("offscreen") | not)' extension/manifest.json
 
 typecheck:
-	npx wxt prepare
-	./node_modules/.bin/tsc --noEmit
+	pnpm exec wxt prepare
+	pnpm exec tsc --noEmit
 
 test-ext:
-	npx vitest run
+	pnpm exec vitest run
 
 build-ext:
-	npx wxt build
+	pnpm exec wxt build
 	bash scripts/assert-manifest.sh
 
-lint:
-	./node_modules/.bin/eslint extension
+format:
+	pnpm exec prettier --write .
 
-verify: test test-race test-js typecheck test-ext lint build build-ext
+format-check:
+	pnpm exec prettier --check .
+
+lint:
+	pnpm exec eslint extension
+
+verify: test test-race test-js typecheck test-ext format-check lint build build-ext
 
 clean:
 	rm -f ./bin/promptrefine

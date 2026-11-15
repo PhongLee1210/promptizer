@@ -179,7 +179,9 @@ svg {
   }
 
   :root {
-    --pz-duration-knob: 0s;
-    --pz-duration-screen: 0s;
+    --pz-dur-fast: 0s;
+    --pz-dur-knob: 0s;
+    --pz-dur-base: 0s;
+    --pz-dur-slow: 0s;
   }
 }

@@ -1,6 +1,13 @@
 "use strict";
 
-const defaults = { enabled: true, mode: "manual", taskSummary: "", pairingToken: "", providerMode: "nano-first", allowGroqFallback: true };
+const defaults = {
+  enabled: true,
+  mode: "manual",
+  taskSummary: "",
+  pairingToken: "",
+  providerMode: "nano-first",
+  allowGroqFallback: true,
+};
 const fields = {
   enabled: document.querySelector("#enabled"),
   mode: document.querySelector("#mode"),
@@ -11,7 +18,7 @@ const fields = {
   origin: document.querySelector("#extension-origin"),
   status: document.querySelector("#status"),
   nanoStatus: document.querySelector("#nano-status"),
-  setupNano: document.querySelector("#setup-nano")
+  setupNano: document.querySelector("#setup-nano"),
 };
 
 async function load() {
@@ -32,10 +39,12 @@ document.querySelector("#save").addEventListener("click", async () => {
     taskSummary: fields.taskSummary.value.trim(),
     pairingToken: fields.pairingToken.value.trim(),
     providerMode: fields.providerMode.value === "groq-only" ? "groq-only" : "nano-first",
-    allowGroqFallback: fields.groqFallback.checked
+    allowGroqFallback: fields.groqFallback.checked,
   });
   fields.status.textContent = "Saved locally.";
-  setTimeout(() => { fields.status.textContent = ""; }, 2500);
+  setTimeout(() => {
+    fields.status.textContent = "";
+  }, 2500);
 });
 
 fields.setupNano.addEventListener("click", async () => {
@@ -67,4 +76,3 @@ document.querySelector("#copy-origin").addEventListener("click", async () => {
 });
 
 load();
-

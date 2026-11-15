@@ -10,11 +10,11 @@ const noComments = {
             for (const comment of context.sourceCode.getAllComments()) {
               context.report({ node: comment, message: "Comments are not allowed; write self-explanatory code." });
             }
-          }
+          },
         };
-      }
-    }
-  }
+      },
+    },
+  },
 };
 
 export default [
@@ -63,8 +63,8 @@ export default [
         require: "readonly",
         process: "readonly",
         Buffer: "readonly",
-        __dirname: "readonly"
-      }
+        __dirname: "readonly",
+      },
     },
     plugins: { local: noComments },
     rules: {
@@ -72,12 +72,12 @@ export default [
       "max-lines": "off",
       "max-lines-per-function": "off",
       "max-statements": "off",
-      "complexity": "off",
-      "eqeqeq": "error",
+      complexity: "off",
+      eqeqeq: "error",
       "no-var": "error",
       "prefer-const": "error",
       "no-misleading-character-class": "off",
-      "no-unused-vars": ["error", { argsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" }]
-    }
-  }
+      "no-unused-vars": ["error", { argsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" }],
+    },
+  },
 ];

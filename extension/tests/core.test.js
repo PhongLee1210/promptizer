@@ -33,7 +33,7 @@ test("Tab accepts only an active suggestion at the end of the focused composer",
     suggestionActive: true,
     composerFocused: true,
     caretAtEnd: true,
-    composing: false
+    composing: false,
   };
   assert.equal(core.canAcceptSuggestion(eligible), true);
   assert.equal(core.canAcceptSuggestion({ ...eligible, caretAtEnd: false }), false);
@@ -51,9 +51,15 @@ test("UTF-8 context trimming preserves valid text", () => {
 });
 
 test("response validation rejects stale and multiline output", () => {
-  assert.equal(core.validResponse({ request_id: "old", decision: "refine", refined_prompt: "Valid output." }, "new"), false);
+  assert.equal(
+    core.validResponse({ request_id: "old", decision: "refine", refined_prompt: "Valid output." }, "new"),
+    false,
+  );
   assert.equal(core.validResponse({ request_id: "new", decision: "refine", refined_prompt: "One\nTwo" }, "new"), false);
-  assert.equal(core.validResponse({ request_id: "new", decision: "refine", refined_prompt: "Valid output." }, "new"), true);
+  assert.equal(
+    core.validResponse({ request_id: "new", decision: "refine", refined_prompt: "Valid output." }, "new"),
+    true,
+  );
 });
 
 test("context priority is bounded", () => {
@@ -62,4 +68,3 @@ test("context priority is bounded", () => {
   assert.match(result, /Explicitly selected recent turns:/);
   assert.ok(new TextEncoder().encode(result).length <= 2000);
 });
-

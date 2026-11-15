@@ -6,7 +6,7 @@
     const candidates = [
       document.querySelector("[contenteditable='true'][data-testid*='chat-input']"),
       document.querySelector("div.ProseMirror[contenteditable='true']"),
-      document.querySelector("fieldset [contenteditable='true'][role='textbox']")
+      document.querySelector("fieldset [contenteditable='true'][role='textbox']"),
     ];
     return candidates.find((element) => element && element.getClientRects().length > 0) || null;
   }
@@ -15,9 +15,17 @@
     const selection = global.getSelection && global.getSelection();
     if (!selection || selection.isCollapsed || !selection.toString().trim()) return "";
     const range = selection.rangeCount ? selection.getRangeAt(0) : null;
-    const turns = Array.from(document.querySelectorAll("[data-testid*='conversation-turn'], [data-testid*='user-message'], [data-testid*='assistant-message']"))
+    const turns = Array.from(
+      document.querySelectorAll(
+        "[data-testid*='conversation-turn'], [data-testid*='user-message'], [data-testid*='assistant-message']",
+      ),
+    )
       .filter((element) => {
-        try { return range && range.intersectsNode(element) && element.getClientRects().length > 0; } catch (_) { return false; }
+        try {
+          return range && range.intersectsNode(element) && element.getClientRects().length > 0;
+        } catch (_) {
+          return false;
+        }
       })
       .slice(-2)
       .map((element) => element.innerText.trim())
@@ -29,7 +37,6 @@
     id: "claude",
     matches: () => global.location.hostname === "claude.ai",
     findComposer,
-    selectedTurns
+    selectedTurns,
   });
 })(globalThis);
-

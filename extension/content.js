@@ -21,7 +21,7 @@
     lastLiveText: "",
     selectedContext: "",
     previewLive: false,
-    nanoController: null
+    nanoController: null,
   };
 
   function activeAdapter() {
@@ -37,12 +37,15 @@
   function writeEditor(element, value) {
     if (!element) return false;
     const originalValue = readEditor(element);
-    const originalHTML = !(element instanceof HTMLTextAreaElement || element instanceof HTMLInputElement) ? element.innerHTML : "";
+    const originalHTML = !(element instanceof HTMLTextAreaElement || element instanceof HTMLInputElement)
+      ? element.innerHTML
+      : "";
     state.selfChange = true;
     try {
       element.focus();
       if (element instanceof HTMLTextAreaElement || element instanceof HTMLInputElement) {
-        const prototype = element instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+        const prototype =
+          element instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
         const setter = Object.getOwnPropertyDescriptor(prototype, "value").set;
         setter.call(element, value);
         element.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: value }));
@@ -62,16 +65,21 @@
       const verified = core.normalizeText(readEditor(element)) === core.normalizeText(value);
       if (!verified) {
         if (element instanceof HTMLTextAreaElement || element instanceof HTMLInputElement) {
-          const prototype = element instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+          const prototype =
+            element instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
           Object.getOwnPropertyDescriptor(prototype, "value").set.call(element, originalValue);
         } else {
           element.innerHTML = originalHTML;
         }
-        element.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertReplacementText", data: originalValue }));
+        element.dispatchEvent(
+          new InputEvent("input", { bubbles: true, inputType: "insertReplacementText", data: originalValue }),
+        );
       }
       return verified;
     } finally {
-      setTimeout(() => { state.selfChange = false; }, 0);
+      setTimeout(() => {
+        state.selfChange = false;
+      }, 0);
     }
   }
 
@@ -143,7 +151,10 @@
   }
 
   function showError(message, retry) {
-    const panel = showPanel(`<h2 class="title">Promptizer</h2><p class="status error"></p><div class="actions">${retry ? '<button class="primary" data-retry type="button">Retry</button>' : ""}<button data-dismiss type="button">Dismiss</button></div>`, retry ? "[data-retry]" : "[data-dismiss]");
+    const panel = showPanel(
+      `<h2 class="title">Promptizer</h2><p class="status error"></p><div class="actions">${retry ? '<button class="primary" data-retry type="button">Retry</button>' : ""}<button data-dismiss type="button">Dismiss</button></div>`,
+      retry ? "[data-retry]" : "[data-dismiss]",
+    );
     panel.querySelector(".status").textContent = message;
     const retryButton = panel.querySelector("[data-retry]");
     if (retryButton) retryButton.addEventListener("click", () => trigger(false));
@@ -161,17 +172,38 @@
       if (!live) showError("Enter at least 8 characters before refining.", false);
       return;
     }
-    const settings = await chrome.storage.local.get({ enabled: true, mode: "manual", taskSummary: "", providerMode: "nano-first", allowGroqFallback: true });
+    const settings = await chrome.storage.local.get({
+      enabled: true,
+      mode: "manual",
+      taskSummary: "",
+      providerMode: "nano-first",
+      allowGroqFallback: true,
+    });
     if (!settings.enabled || (live && settings.mode !== "live")) return;
-    if (live && (!core.liveEligible(original) || document.hidden || document.activeElement !== state.composer || state.composing)) return;
+    if (
+      live &&
+      (!core.liveEligible(original) || document.hidden || document.activeElement !== state.composer || state.composing)
+    )
+      return;
 
     let selected = "";
     if (!live && state.adapter.selectedTurns) selected = core.trimUTF8(state.adapter.selectedTurns(), 1800);
     if (selected) {
-      const destination = settings.providerMode === "groq-only" ? "Groq" : "Gemini Nano on-device (or Groq only if fallback is enabled and needed)";
-      const panel = showPanel(`<h2 class="title">Use selected context?</h2><p class="help" data-context-help></p><label class="check"><input type="checkbox" data-context checked><span>Include up to two selected visible turns</span></label><div class="actions"><button class="primary" data-continue type="button">Continue</button><button data-dismiss type="button">Cancel</button></div>`, "[data-continue]");
-      panel.querySelector("[data-context-help]").textContent = `Only the selected visible text and current draft will be processed by ${destination}.`;
-      panel.querySelector("[data-continue]").addEventListener("click", () => performRequest(original, settings, panel.querySelector("[data-context]").checked ? selected : "", false));
+      const destination =
+        settings.providerMode === "groq-only"
+          ? "Groq"
+          : "Gemini Nano on-device (or Groq only if fallback is enabled and needed)";
+      const panel = showPanel(
+        `<h2 class="title">Use selected context?</h2><p class="help" data-context-help></p><label class="check"><input type="checkbox" data-context checked><span>Include up to two selected visible turns</span></label><div class="actions"><button class="primary" data-continue type="button">Continue</button><button data-dismiss type="button">Cancel</button></div>`,
+        "[data-continue]",
+      );
+      panel.querySelector("[data-context-help]").textContent =
+        `Only the selected visible text and current draft will be processed by ${destination}.`;
+      panel
+        .querySelector("[data-continue]")
+        .addEventListener("click", () =>
+          performRequest(original, settings, panel.querySelector("[data-context]").checked ? selected : "", false),
+        );
       return;
     }
     await performRequest(original, settings, "", live);
@@ -187,7 +219,11 @@
     state.requestFingerprint = core.fingerprint(original);
     state.lastLiveCall = Date.now();
     state.lastLiveText = original;
-    if (!live) showPanel(`<h2 class="title">Refining draft</h2><p class="status">Your original text remains unchanged.</p><div class="actions"><button data-cancel type="button">Cancel</button></div>`, "[data-cancel]");
+    if (!live)
+      showPanel(
+        `<h2 class="title">Refining draft</h2><p class="status">Your original text remains unchanged.</p><div class="actions"><button data-cancel type="button">Cancel</button></div>`,
+        "[data-cancel]",
+      );
     const cancelButton = state.shadow && state.shadow.querySelector("[data-cancel]");
     if (cancelButton) cancelButton.addEventListener("click", cancelRequest);
 
@@ -198,14 +234,17 @@
       constraints: [],
       mode: "rewrite",
       source: "browser",
-      trigger: live ? "live" : "manual"
+      trigger: live ? "live" : "manual",
     };
     const requestId = state.requestId;
     state.nanoController = new AbortController();
     const response = await providerRouter.refine(payload, settings, {
       nano,
       signal: state.nanoController.signal,
-      groq: () => chrome.runtime.sendMessage({ type: "PROMPTIZER_REFINE", payload }).catch(() => ({ ok: false, error: { message: "Promptizer extension messaging failed." } }))
+      groq: () =>
+        chrome.runtime
+          .sendMessage({ type: "PROMPTIZER_REFINE", payload })
+          .catch(() => ({ ok: false, error: { message: "Promptizer extension messaging failed." } })),
     });
     state.nanoController = null;
     state.inFlight = false;
@@ -216,7 +255,11 @@
       return;
     }
     if (!response || !response.ok) {
-      if (!live) showError(response && response.error ? response.error.message : "Refinement failed. Your draft was not changed.", true);
+      if (!live)
+        showError(
+          response && response.error ? response.error.message : "Refinement failed. Your draft was not changed.",
+          true,
+        );
       return;
     }
     if (!core.validResponse(response.data, requestId)) {
@@ -230,8 +273,15 @@
     state.previewLive = Boolean(live);
     const providerLabel = provider === "gemini-nano" ? "Gemini Nano · on-device" : "Groq · cloud fallback";
     const panel = live
-      ? showPanel(`<p class="eyebrow">Live suggestion</p><h2 class="title">A clearer prompt is ready</h2><p class="help" data-provider></p><p class="help shortcut">Press <kbd>Tab</kbd> to replace, or <kbd>Esc</kbd> to dismiss.</p><div class="suggestion-copy" data-suggestion aria-label="Suggested prompt"></div><p class="status" aria-live="polite"></p><div class="actions"><button class="primary" data-replace type="button">Accept suggestion</button><button data-copy type="button">Copy</button><button data-dismiss type="button">Dismiss</button></div>`, null, "region")
-      : showPanel(`<h2 class="title">Review refinement</h2><p class="help">Nothing changes until you choose Replace.</p><p class="help" data-provider></p><label for="promptizer-original">Original</label><textarea id="promptizer-original" readonly></textarea><label for="promptizer-refined">Refined prompt</label><textarea id="promptizer-refined"></textarea><p class="status" aria-live="polite"></p><div class="actions"><button class="primary" data-replace type="button">Replace</button><button data-copy type="button">Copy</button><button data-dismiss type="button">Dismiss</button></div>`, "#promptizer-refined");
+      ? showPanel(
+          `<p class="eyebrow">Live suggestion</p><h2 class="title">A clearer prompt is ready</h2><p class="help" data-provider></p><p class="help shortcut">Press <kbd>Tab</kbd> to replace, or <kbd>Esc</kbd> to dismiss.</p><div class="suggestion-copy" data-suggestion aria-label="Suggested prompt"></div><p class="status" aria-live="polite"></p><div class="actions"><button class="primary" data-replace type="button">Accept suggestion</button><button data-copy type="button">Copy</button><button data-dismiss type="button">Dismiss</button></div>`,
+          null,
+          "region",
+        )
+      : showPanel(
+          `<h2 class="title">Review refinement</h2><p class="help">Nothing changes until you choose Replace.</p><p class="help" data-provider></p><label for="promptizer-original">Original</label><textarea id="promptizer-original" readonly></textarea><label for="promptizer-refined">Refined prompt</label><textarea id="promptizer-refined"></textarea><p class="status" aria-live="polite"></p><div class="actions"><button class="primary" data-replace type="button">Replace</button><button data-copy type="button">Copy</button><button data-dismiss type="button">Dismiss</button></div>`,
+          "#promptizer-refined",
+        );
     panel.querySelector("[data-provider]").textContent = providerLabel;
     if (live) {
       panel.setAttribute("aria-label", "Promptizer suggestion");
@@ -253,7 +303,8 @@
       }
       const replaced = writeEditor(state.composer, value);
       if (!replaced) {
-        panel.querySelector(".status").textContent = "The editor rejected insertion. Use Copy instead; your original draft is unchanged.";
+        panel.querySelector(".status").textContent =
+          "The editor rejected insertion. Use Copy instead; your original draft is unchanged.";
         return;
       }
       closePanel();
@@ -312,7 +363,7 @@
       composing: state.composing,
       suggestionActive: state.previewLive,
       composerFocused: composerHasFocus(),
-      caretAtEnd: caretAtEnd(state.composer)
+      caretAtEnd: caretAtEnd(state.composer),
     });
     if (!accept) return;
     const replaceButton = panel.querySelector("[data-replace]");
@@ -334,7 +385,7 @@
     if (state.selfChange) return;
     state.adapter = activeAdapter();
     const composer = state.adapter && state.adapter.findComposer();
-    if (!composer || !composer.contains(event.target) && composer !== event.target) return;
+    if (!composer || (!composer.contains(event.target) && composer !== event.target)) return;
     state.composer = composer;
     if (state.previewLive) closePanel();
     if (state.inFlight && core.fingerprint(readEditor(composer)) !== state.requestFingerprint) cancelRequest();
@@ -359,12 +410,27 @@
   }
 
   document.addEventListener("input", onInput, true);
-  document.addEventListener("compositionstart", () => { state.composing = true; }, true);
-  document.addEventListener("compositionend", () => { state.composing = false; }, true);
+  document.addEventListener(
+    "compositionstart",
+    () => {
+      state.composing = true;
+    },
+    true,
+  );
+  document.addEventListener(
+    "compositionend",
+    () => {
+      state.composing = false;
+    },
+    true,
+  );
   document.addEventListener("keydown", onKeydown, true);
-  document.addEventListener("visibilitychange", () => { if (document.hidden && state.inFlight) cancelRequest(); });
-  chrome.runtime.onMessage.addListener((message) => { if (message && message.type === "PROMPTIZER_TRIGGER") trigger(false); });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden && state.inFlight) cancelRequest();
+  });
+  chrome.runtime.onMessage.addListener((message) => {
+    if (message && message.type === "PROMPTIZER_TRIGGER") trigger(false);
+  });
   new MutationObserver(refresh).observe(document.documentElement, { childList: true, subtree: true });
   refresh();
 })(globalThis);
-

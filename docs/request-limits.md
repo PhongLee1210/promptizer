@@ -29,7 +29,10 @@ The 192-token field is a generation ceiling, not a guarantee that every token be
 - Require `LanguageModel.availability()` to return `available`; background refinement never starts a model download.
 - Start the first download only from the explicit settings button and report progress.
 - Use the approved refinement instruction as the system prompt and a strict JSON response constraint.
-- Use one fresh session per request and always call `destroy()` afterward.
+- Use one fresh session per request and always call `destroy()` afterward. The request session is a `clone()` of a warm template session created once per action and target language, so the system-instruction prefill is paid once instead of on every request. The clone carries no conversation history, and only the clone is destroyed.
+- Build the warm template lazily: on editor focus when `availability()` already reports `available`, never from a path that could start a download.
+- Destroy an idle template after three minutes, and on content-script teardown, so the idle memory footprint stays flat.
+- Cache the `available` verdict rather than calling `availability()` per request; discard the cache and the template on any session failure.
 - Cancel after 20 seconds or when the draft changes.
 - Check `measureContextUsage()` against the session context window when available.
 - The Prompt API does not expose a completion-token ceiling equivalent to Groq's `max_completion_tokens`. The JSON schema caps `refined_prompt` at 4,000 characters, and post-validation separately caps it at 4,000 UTF-8 bytes and one paragraph. Invalid output is discarded or routed to the consented Groq fallback.

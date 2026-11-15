@@ -1,63 +1,89 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Promptizer settings</title>
-  <link rel="stylesheet" href="options.css">
-</head>
-<body>
-  <main>
-    <header>
-      <p class="eyebrow">Local-first prompt refinement</p>
-      <h1>Promptizer settings</h1>
-      <p>Use Gemini Nano on-device first, with your existing Groq service as a configurable fallback.</p>
-    </header>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Promptizer settings</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">Local-first prompt refinement</p>
+        <h1>Promptizer settings</h1>
+        <p>Use Gemini Nano on-device first, with your existing Groq service as a configurable fallback.</p>
+      </header>
 
-    <section aria-labelledby="provider-title">
-      <h2 id="provider-title">AI provider</h2>
-      <label for="provider-mode">Provider order</label>
-      <select id="provider-mode">
-        <option value="nano-first">Gemini Nano first — recommended</option>
-        <option value="groq-only">Groq only — compatibility mode</option>
-      </select>
-      <label class="check"><input id="groq-fallback" type="checkbox"><span>Allow Groq fallback when Gemini Nano is unavailable, not ready, unsupported, or fails</span></label>
-      <div class="status-row"><button id="setup-nano" type="button">Check or download Gemini Nano</button><span id="nano-status" role="status" aria-live="polite">Not checked</span></div>
-      <p class="help">The first download requires your click, an unmetered connection, supported hardware, and about 22 GB of free disk. Inference then runs inside Chrome. Supported prompt languages currently include English, Spanish, Japanese, German, and French.</p>
-    </section>
+      <section aria-labelledby="provider-title">
+        <h2 id="provider-title">AI provider</h2>
+        <label for="provider-mode">Provider order</label>
+        <select id="provider-mode">
+          <option value="nano-first">Gemini Nano first — recommended</option>
+          <option value="groq-only">Groq only — compatibility mode</option>
+        </select>
+        <label class="check"
+          ><input id="groq-fallback" type="checkbox" /><span
+            >Allow Groq fallback when Gemini Nano is unavailable, not ready, unsupported, or fails</span
+          ></label
+        >
+        <div class="status-row">
+          <button id="setup-nano" type="button">Check or download Gemini Nano</button
+          ><span id="nano-status" role="status" aria-live="polite">Not checked</span>
+        </div>
+        <p class="help">
+          The first download requires your click, an unmetered connection, supported hardware, and about 22 GB of free
+          disk. Inference then runs inside Chrome. Supported prompt languages currently include English, Spanish,
+          Japanese, German, and French.
+        </p>
+      </section>
 
-    <section aria-labelledby="pairing-title">
-      <h2 id="pairing-title">Groq fallback pairing</h2>
-      <label for="pairing-token">Pairing token</label>
-      <input id="pairing-token" type="password" autocomplete="off" spellcheck="false" aria-describedby="token-help">
-      <p id="token-help" class="help">Optional when Gemini Nano works. Run <code>./bin/promptrefine pair</code>, then paste the revocable local token here to enable fallback.</p>
-      <label for="extension-origin">Extension origin for the local service</label>
-      <div class="copy-row"><input id="extension-origin" readonly><button id="copy-origin" type="button">Copy</button></div>
-      <p class="help">Start the service with <code>PROMPTREFINE_EXTENSION_ORIGIN</code> set to this exact value.</p>
-    </section>
+      <section aria-labelledby="pairing-title">
+        <h2 id="pairing-title">Groq fallback pairing</h2>
+        <label for="pairing-token">Pairing token</label>
+        <input id="pairing-token" type="password" autocomplete="off" spellcheck="false" aria-describedby="token-help" />
+        <p id="token-help" class="help">
+          Optional when Gemini Nano works. Run <code>./bin/promptrefine pair</code>, then paste the revocable local
+          token here to enable fallback.
+        </p>
+        <label for="extension-origin">Extension origin for the local service</label>
+        <div class="copy-row">
+          <input id="extension-origin" readonly /><button id="copy-origin" type="button">Copy</button>
+        </div>
+        <p class="help">Start the service with <code>PROMPTREFINE_EXTENSION_ORIGIN</code> set to this exact value.</p>
+      </section>
 
-    <section aria-labelledby="behavior-title">
-      <h2 id="behavior-title">Behavior</h2>
-      <label class="check"><input id="enabled" type="checkbox"><span>Enable Promptizer on ChatGPT and Claude</span></label>
-      <label for="mode">Refinement mode</label>
-      <select id="mode">
-        <option value="manual">Manual — recommended</option>
-        <option value="live">Inline suggestions — opt in</option>
-      </select>
-      <p class="help">Inline suggestions wait for a meaningful pause and never submit. Press Tab to accept when the caret is at the end, or Esc to dismiss.</p>
-      <label for="task-summary">Optional task summary</label>
-      <textarea id="task-summary" maxlength="1200" placeholder="Short context for the current task"></textarea>
-    </section>
+      <section aria-labelledby="behavior-title">
+        <h2 id="behavior-title">Behavior</h2>
+        <label class="check"
+          ><input id="enabled" type="checkbox" /><span>Enable Promptizer on ChatGPT and Claude</span></label
+        >
+        <label for="mode">Refinement mode</label>
+        <select id="mode">
+          <option value="manual">Manual — recommended</option>
+          <option value="live">Inline suggestions — opt in</option>
+        </select>
+        <p class="help">
+          Inline suggestions wait for a meaningful pause and never submit. Press Tab to accept when the caret is at the
+          end, or Esc to dismiss.
+        </p>
+        <label for="task-summary">Optional task summary</label>
+        <textarea id="task-summary" maxlength="1200" placeholder="Short context for the current task"></textarea>
+      </section>
 
-    <aside>
-      <strong>Local-first privacy boundary</strong>
-      <p>Gemini Nano processes the current draft and selected context on-device. If Groq fallback is enabled and used, that same bounded input is sent to Groq. Promptizer does not collect the whole page or thread.</p>
-    </aside>
+      <aside>
+        <strong>Local-first privacy boundary</strong>
+        <p>
+          Gemini Nano processes the current draft and selected context on-device. If Groq fallback is enabled and used,
+          that same bounded input is sent to Groq. Promptizer does not collect the whole page or thread.
+        </p>
+      </aside>
 
-    <div class="actions"><button class="primary" id="save" type="button">Save settings</button><span id="status" role="status" aria-live="polite"></span></div>
-  </main>
-  <script src="nano.js"></script>
-  <script src="options.js"></script>
-</body>
+      <div class="actions">
+        <button class="primary" id="save" type="button">Save settings</button
+        ><span id="status" role="status" aria-live="polite"></span>
+      </div>
+    </main>
+    <script src="nano.js"></script>
+    <script src="options.js"></script>
+  </body>
 </html>
-

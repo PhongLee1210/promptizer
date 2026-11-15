@@ -5,7 +5,9 @@
   const decoder = new TextDecoder("utf-8", { fatal: false });
 
   function normalizeText(value) {
-    return String(value || "").replace(/\r\n?/g, "\n").trim();
+    return String(value || "")
+      .replace(/\r\n?/g, "\n")
+      .trim();
   }
 
   function unicodeLength(value) {
@@ -36,14 +38,21 @@
 
   function liveEligible(value) {
     const normalized = normalizeText(value);
-    return unicodeLength(normalized) >= 20 && normalized.split(/\s+/u).filter(Boolean).length >= 3 && encoder.encode(normalized).length <= 4000;
+    return (
+      unicodeLength(normalized) >= 20 &&
+      normalized.split(/\s+/u).filter(Boolean).length >= 3 &&
+      encoder.encode(normalized).length <= 4000
+    );
   }
 
   function meaningfulChange(previous, current) {
     const before = normalizeText(previous);
     const after = normalizeText(current);
     if (before === after) return false;
-    return Math.abs(Array.from(after).length - Array.from(before).length) >= 5 || before.split(/\s+/u).length !== after.split(/\s+/u).length;
+    return (
+      Math.abs(Array.from(after).length - Array.from(before).length) >= 5 ||
+      before.split(/\s+/u).length !== after.split(/\s+/u).length
+    );
   }
 
   function liveDelay(lastCall, now) {
@@ -52,15 +61,17 @@
 
   function canAcceptSuggestion(options) {
     const value = options || {};
-    return value.key === "Tab"
-      && !value.altKey
-      && !value.ctrlKey
-      && !value.metaKey
-      && !value.shiftKey
-      && !value.composing
-      && value.suggestionActive === true
-      && value.composerFocused === true
-      && value.caretAtEnd === true;
+    return (
+      value.key === "Tab" &&
+      !value.altKey &&
+      !value.ctrlKey &&
+      !value.metaKey &&
+      !value.shiftKey &&
+      !value.composing &&
+      value.suggestionActive === true &&
+      value.composerFocused === true &&
+      value.caretAtEnd === true
+    );
   }
 
   function buildContext(summary, selectedTurns) {
@@ -92,7 +103,6 @@
     liveDelay,
     canAcceptSuggestion,
     buildContext,
-    validResponse
+    validResponse,
   });
 })(globalThis);
-

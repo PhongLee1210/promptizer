@@ -7,7 +7,7 @@
       document.querySelector("#prompt-textarea[contenteditable='true']"),
       document.querySelector("textarea[data-testid='prompt-textarea']"),
       document.querySelector("[contenteditable='true'][data-testid*='composer']"),
-      document.querySelector("div.ProseMirror[contenteditable='true'][role='textbox']")
+      document.querySelector("div.ProseMirror[contenteditable='true'][role='textbox']"),
     ];
     return candidates.find((element) => element && element.getClientRects().length > 0) || null;
   }
@@ -16,9 +16,17 @@
     const selection = global.getSelection && global.getSelection();
     if (!selection || selection.isCollapsed || !selection.toString().trim()) return "";
     const range = selection.rangeCount ? selection.getRangeAt(0) : null;
-    const turns = Array.from(document.querySelectorAll("[data-message-author-role], [data-testid^='conversation-turn'], article[data-testid*='conversation-turn']"))
+    const turns = Array.from(
+      document.querySelectorAll(
+        "[data-message-author-role], [data-testid^='conversation-turn'], article[data-testid*='conversation-turn']",
+      ),
+    )
       .filter((element) => {
-        try { return range && range.intersectsNode(element) && element.getClientRects().length > 0; } catch (_) { return false; }
+        try {
+          return range && range.intersectsNode(element) && element.getClientRects().length > 0;
+        } catch (_) {
+          return false;
+        }
       })
       .slice(-2)
       .map((element) => element.innerText.trim())
@@ -30,7 +38,6 @@
     id: "chatgpt",
     matches: () => global.location.hostname === "chatgpt.com",
     findComposer,
-    selectedTurns
+    selectedTurns,
   });
 })(globalThis);
-

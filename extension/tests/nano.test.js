@@ -15,24 +15,41 @@ function model(options = {}) {
   const calls = { availabilityOptions: null, createOptions: null, promptOptions: null, destroyed: 0 };
   const session = {
     contextWindow: 8192,
-    async measureContextUsage() { return options.usage || 100; },
+    async measureContextUsage() {
+      return options.usage || 100;
+    },
     async prompt(_input, promptOptions) {
       calls.promptOptions = promptOptions;
       if (options.promptError) throw options.promptError;
-      return options.output || '{"decision":"refine","refined_prompt":"Write a clear and professional project summary."}';
+      return (
+        options.output || '{"decision":"refine","refined_prompt":"Write a clear and professional project summary."}'
+      );
     },
-    destroy() { calls.destroyed += 1; }
+    destroy() {
+      calls.destroyed += 1;
+    },
   };
   return {
     calls,
     api: {
-      async availability(value) { calls.availabilityOptions = value; return options.availability || "available"; },
-      async create(value) { calls.createOptions = value; return session; }
-    }
+      async availability(value) {
+        calls.availabilityOptions = value;
+        return options.availability || "available";
+      },
+      async create(value) {
+        calls.createOptions = value;
+        return session;
+      },
+    },
   };
 }
 
-const payload = { request_id: "request-1", prompt: "write project summary", task_context: "Keep it concise", constraints: [] };
+const payload = {
+  request_id: "request-1",
+  prompt: "write project summary",
+  task_context: "Keep it concise",
+  constraints: [],
+};
 
 test("uses the approved instruction, structured output, and destroys the session", async () => {
   const fake = model();
@@ -40,7 +57,10 @@ test("uses the approved instruction, structured output, and destroys the session
   assert.equal(result.ok, true);
   assert.equal(result.data.provider, "gemini-nano");
   assert.equal(result.data.refined_prompt, "Write a clear and professional project summary.");
-  assert.match(fake.calls.createOptions.initialPrompts[0].content, /^Refine the following prompt into a clean and well-structured format\./);
+  assert.match(
+    fake.calls.createOptions.initialPrompts[0].content,
+    /^Refine the following prompt into a clean and well-structured format\./,
+  );
   assert.deepEqual(Array.from(fake.calls.createOptions.expectedInputs[0].languages), ["en", "es", "ja", "de", "fr"]);
   assert.equal(fake.calls.promptOptions.responseConstraint.properties.refined_prompt.maxLength, 4000);
   assert.equal(fake.calls.destroyed, 1);
@@ -57,7 +77,10 @@ test("does not start a session until the model is available", async () => {
 
 test("routes known unsupported language to fallback before inference", async () => {
   const fake = model();
-  const result = await nano.refine({ ...payload, prompt: "Hãy viết lại yêu cầu này rõ ràng hơn" }, { languageModel: fake.api });
+  const result = await nano.refine(
+    { ...payload, prompt: "Hãy viết lại yêu cầu này rõ ràng hơn" },
+    { languageModel: fake.api },
+  );
   assert.equal(result.error.code, "NANO_LANGUAGE_UNSUPPORTED");
   assert.equal(fake.calls.availabilityOptions, null);
 });

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { icon, icons } from "../icons";
 
-const shippedIconCount = 23;
+const shippedIconCount = 39;
 
 describe("icons", () => {
   it("inlines every shipped icon with currentColor preserved", () => {
@@ -16,6 +16,13 @@ describe("icons", () => {
   it("exposes every name the asset manifest lists", () => {
     expect(icons).toHaveProperty("drag-handle");
     expect(icons).toHaveProperty("eye-off");
+    expect(icons).toHaveProperty("sliders");
+    expect(icons).toHaveProperty("wand");
+    expect(icons).toHaveProperty("chip-gap");
+  });
+
+  it("leaves the fixed-colour in-page badge out of the inline map", () => {
+    expect(icons).not.toHaveProperty("badge");
   });
 
   it("keeps the 24x24 viewBox on every icon", () => {

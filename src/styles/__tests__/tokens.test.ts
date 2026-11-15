@@ -25,7 +25,7 @@ const tokens: [string, string][] = [
   ["--pz-warning", "#F5C469"],
   ["--pz-warning-bg", "#2A2415"],
   ["--pz-danger", "#FF8A80"],
-  ["--pz-danger-bg", "#2E1A1A"]
+  ["--pz-danger-bg", "#2E1A1A"],
 ];
 
 const typeClasses = [
@@ -35,12 +35,12 @@ const typeClasses = [
   ".pz-body",
   ".pz-caption",
   ".pz-overline",
-  ".pz-micro"
+  ".pz-micro",
 ];
 
 describe("tokens.css", () => {
   it.each(tokens)("declares %s as %s", (name, value) => {
-    expect(tokensCss).toContain(`${name}: ${value};`);
+    expect(tokensCss.toLowerCase()).toContain(`${name}: ${value.toLowerCase()};`);
   });
 
   it("declares all nineteen tokens", () => {
@@ -84,9 +84,7 @@ describe("base.css", () => {
   });
 
   it("never declares a font size below 11px", () => {
-    const remSizes = [...baseCss.matchAll(/font-size:\s*([\d.]+)rem/g)].map((m) =>
-      Number(m[1]) * 16
-    );
+    const remSizes = [...baseCss.matchAll(/font-size:\s*([\d.]+)rem/g)].map((m) => Number(m[1]) * 16);
     for (const px of remSizes) {
       expect(px).toBeGreaterThanOrEqual(11);
     }

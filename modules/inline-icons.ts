@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 
 import { dirname, join, resolve } from "node:path";
 import { defineWxtModule } from "wxt/modules";
 
-const sourceDir = "docs/design/promptizer-package/assets/icons";
+const sourceDir = "docs/promptizer-package-v2/assets/icons";
 const outputPath = "src/utils/icons.ts";
 
 function inlineSvg(markup: string): string {
@@ -11,27 +11,23 @@ function inlineSvg(markup: string): string {
   if (openTag === null) {
     throw new Error("inline-icons: markup does not start with an <svg> element");
   }
-  const cleaned = openTag[0]
-    .replace(/\s+(?:width|height)="[^"]*"/g, "")
-    .replace(/^<svg/, '<svg aria-hidden="true"');
+  const cleaned = openTag[0].replace(/\s+(?:width|height)="[^"]*"/g, "").replace(/^<svg/, '<svg aria-hidden="true"');
   return cleaned + source.slice(openTag[0].length);
 }
 
 function render(root: string): string {
   const dir = resolve(root, sourceDir);
-  const names = readdirSync(dir)
+  const inlinable = readdirSync(dir)
     .filter((file) => file.endsWith(".svg"))
-    .map((file) => file.slice(0, -".svg".length))
-    .sort();
-  if (names.length === 0) {
-    throw new Error(`inline-icons: no svg files found in ${dir}`);
+    .sort()
+    .map((file) => ({ name: file.slice(0, -".svg".length), source: readFileSync(join(dir, file), "utf8") }))
+    .filter(({ source }) => source.includes("currentColor"));
+  if (inlinable.length === 0) {
+    throw new Error(`inline-icons: no svg files using currentColor found in ${dir}`);
   }
-  const union = names.map((name) => `  | ${JSON.stringify(name)}`).join("\n");
-  const entries = names
-    .map((name) => {
-      const markup = inlineSvg(readFileSync(join(dir, `${name}.svg`), "utf8"));
-      return `  ${JSON.stringify(name)}: ${JSON.stringify(markup)}`;
-    })
+  const union = inlinable.map(({ name }) => `  | ${JSON.stringify(name)}`).join("\n");
+  const entries = inlinable
+    .map(({ name, source }) => `  ${JSON.stringify(name)}: ${JSON.stringify(inlineSvg(source))}`)
     .join(",\n");
   return [
     `export type IconName =`,
@@ -44,7 +40,7 @@ function render(root: string): string {
     `export function icon(name: IconName, size = 24): string {`,
     `  return icons[name].replace("<svg", \`<svg width="\${size}" height="\${size}"\`);`,
     `}`,
-    ``
+    ``,
   ].join("\n");
 }
 
@@ -68,5 +64,5 @@ export default defineWxtModule({
     wxt.hooks.hook("build:before", () => {
       generate(wxt.config.root);
     });
-  }
+  },
 });

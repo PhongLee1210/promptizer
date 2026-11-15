@@ -12,10 +12,10 @@ export default defineConfig({
       "refine-prompt": {
         suggested_key: {
           default: "Ctrl+Shift+Y",
-          mac: "Command+Shift+Y"
+          mac: "Command+Shift+Y",
         },
-        description: "Refine the active prompt"
-      }
-    }
-  }
+        description: "Refine the active prompt",
+      },
+    },
+  },
 });

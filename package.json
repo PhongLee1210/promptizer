@@ -3,14 +3,28 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "lint": "eslint extension"
+    "lint": "eslint extension",
+    "dev": "wxt",
+    "build": "wxt build",
+    "test": "vitest run",
+    "typecheck": "wxt prepare && tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "eslint": "^10.14.0",
     "happy-dom": "^20.14.6",
+    "prettier": "^3.10.1",
     "typescript": "^5.9.3",
+    "vite": "^7.3.8",
     "vitest": "^3.2.7",
     "wxt": "^0.21.5"
+  },
+  "packageManager": "pnpm@10.34.9",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   }
 }
