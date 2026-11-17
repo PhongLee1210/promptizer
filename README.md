@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/assets/logo.png" alt="Promptizer" width="96" height="96">
+<img src="public/icon/128.png" alt="Promptizer" width="96" height="96">
 
 # Promptizer
 
