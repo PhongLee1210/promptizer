@@ -50,6 +50,12 @@ body {
   flex: 1;
 }
 
+.pz-brand-logo {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--pz-radius-8);
+}
+
 .pz-drawer-root {
   position: fixed;
   inset: 0;
@@ -530,8 +536,4 @@ body {
   display: flex;
   justify-content: flex-end;
   gap: var(--pz-space-8);
-}
-
-.pz-ineligible-note {
-  text-align: center;
 }

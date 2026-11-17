@@ -1,29 +1,82 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { fakeBrowser } from "wxt/testing/fake-browser";
 import { startChipController } from "../controller";
 import type { RefineResult } from "../action-types";
 
 const LONG_DRAFT = "this is a draft";
 const REFINED_DRAFT = "This is a draft, refined.";
 
-function pillHost(): HTMLElement | null {
+function chipHost(): HTMLElement | null {
   return document.querySelector("[data-promptizer-pill]");
 }
 
-function pillShadow(): ShadowRoot {
-  return pillHost()!.shadowRoot!;
+function chipShadow(): ShadowRoot {
+  return chipHost()!.shadowRoot!;
 }
 
-function pillButton(): HTMLButtonElement {
-  return pillShadow().querySelector(".pz-pill") as HTMLButtonElement;
+function trigger(): HTMLButtonElement {
+  return chipShadow().querySelector('[aria-label="Promptizer actions"]') as HTMLButtonElement;
 }
 
-function menuItems(): HTMLButtonElement[] {
-  return [...pillShadow().querySelectorAll(".pz-menu__item")] as HTMLButtonElement[];
+function railNode(): HTMLElement {
+  return chipShadow().querySelector(".pz-rail") as HTMLElement;
 }
 
-function clickMenuItem(label: string): void {
-  const item = menuItems().find((b) => b.textContent === label)!;
-  item.click();
+function isRailOpen(): boolean {
+  return railNode().dataset.open === "true";
+}
+
+function winNode(): HTMLElement {
+  return chipShadow().querySelector(".pz-win") as HTMLElement;
+}
+
+function isWindowOpen(): boolean {
+  return winNode().dataset.open === "true";
+}
+
+function railItems(): HTMLButtonElement[] {
+  return [...railNode().querySelectorAll('[role="menuitem"]')].filter(
+    (node) => node.closest(".pz-rail__strip") === null,
+  ) as HTMLButtonElement[];
+}
+
+function clickRailItem(label: string): void {
+  (railNode().querySelector(`[aria-label="${label}"]`) as HTMLButtonElement | null)?.click();
+}
+
+function winButtonLabels(): string[] {
+  return [...winNode().querySelectorAll("button")].map((b) => b.getAttribute("aria-label") ?? "");
+}
+
+function clickWinButton(label: string): void {
+  (winNode().querySelector(`[aria-label="${label}"]`) as HTMLButtonElement | null)?.click();
+}
+
+function winBodyText(): string {
+  return chipShadow().querySelector(".pz-win__body")?.textContent ?? "";
+}
+
+function winCounter(): string {
+  return chipShadow().querySelector(".pz-win__counter")?.textContent ?? "";
+}
+
+function refineResult(refinedText = REFINED_DRAFT): ReturnType<typeof vi.fn> {
+  return vi.fn<(...args: unknown[]) => Promise<RefineResult>>().mockResolvedValue({ decision: "refine", refinedText });
+}
+
+function focusedTextarea(value = ""): HTMLTextAreaElement {
+  const textarea = document.createElement("textarea");
+  textarea.value = value;
+  document.body.append(textarea);
+  return textarea;
+}
+
+function focusedComposer(value = ""): HTMLDivElement {
+  const div = document.createElement("div");
+  div.contentEditable = "true";
+  div.textContent = value;
+  document.body.append(div);
+  return div;
 }
 
 const realAttachShadow = Element.prototype.attachShadow;
@@ -36,7 +89,6 @@ describe("startChipController", () => {
     vi.spyOn(Element.prototype, "attachShadow").mockImplementation(function (this: Element, init: ShadowRootInit) {
       return realAttachShadow.call(this, { ...init, mode: "open" });
     });
-    vi.stubGlobal("navigator", { ...navigator, languages: ["en-US", "es-ES"], language: "en-US" });
   });
 
   afterEach(() => {
@@ -44,11 +96,11 @@ describe("startChipController", () => {
     document.body.innerHTML = "";
     vi.useRealTimers();
     vi.unstubAllGlobals();
+    fakeBrowser.reset();
   });
 
-  it("creates exactly one pill host even if focus fires repeatedly", () => {
-    const textarea = document.createElement("textarea");
-    document.body.append(textarea);
+  it("creates exactly one chip host even if focus fires repeatedly", () => {
+    const textarea = focusedTextarea();
     stop = startChipController();
 
     textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
@@ -57,195 +109,413 @@ describe("startChipController", () => {
     expect(document.querySelectorAll("[data-promptizer-pill]")).toHaveLength(1);
   });
 
-  it("shows a collapsed dot as soon as the editor is focused, even with no text", () => {
-    const textarea = document.createElement("textarea");
-    document.body.append(textarea);
+  it("shows a closed chip as soon as the editor is focused", () => {
+    const textarea = focusedTextarea();
     stop = startChipController();
 
     textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
 
-    expect(pillHost()!.style.display).toBe("block");
-    expect(pillButton().dataset.mode).toBe("dot");
+    expect(chipHost()!.style.display).toBe("block");
+    expect(trigger().getAttribute("aria-expanded")).toBe("false");
+    expect(isRailOpen()).toBe(false);
+    expect(isWindowOpen()).toBe(false);
   });
 
-  it("shows the dot for an editor that is already focused when the controller starts, with no focusin event", () => {
-    const textarea = document.createElement("textarea");
-    document.body.append(textarea);
+  it("shows the chip for an editor that is already focused when the controller starts", () => {
+    const textarea = focusedTextarea();
     textarea.focus();
-    expect(document.activeElement).toBe(textarea);
 
     stop = startChipController();
 
-    expect(pillHost()!.style.display).toBe("block");
-    expect(pillButton().dataset.mode).toBe("dot");
+    expect(chipHost()!.style.display).toBe("block");
   });
 
-  it("opens a menu with Refine prompt, Translate to <language>, and Improve on click", () => {
-    const textarea = document.createElement("textarea");
-    document.body.append(textarea);
+  it("opens the rail on click, leading with Improve writing for a plain text field", () => {
+    const textarea = focusedTextarea();
     stop = startChipController();
 
     textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
-    pillButton().click();
+    trigger().click();
 
-    expect(pillButton().dataset.mode).toBe("menu");
-    const labels = menuItems().map((b) => b.textContent);
-    expect(labels).toEqual(["Refine prompt", "Translate to Spanish", "Improve"]);
+    expect(isRailOpen()).toBe(true);
+    expect(trigger().getAttribute("aria-expanded")).toBe("true");
+    expect(railItems().map((item) => item.getAttribute("aria-label"))).toEqual([
+      "Improve writing",
+      "Fix grammar",
+      "Shorten",
+      "Translate",
+      "Change tone",
+      "Turn off",
+    ]);
   });
 
-  it("runs the refine action and shows the result with a Replace button", async () => {
-    const textarea = document.createElement("textarea");
-    textarea.value = LONG_DRAFT;
-    document.body.append(textarea);
-    const performAction = vi.fn<(...args: unknown[]) => Promise<RefineResult>>().mockResolvedValue({
-      decision: "refine",
-      refinedText: REFINED_DRAFT,
-    });
+  it("leads with Refine prompt for a contenteditable composer", () => {
+    const composer = focusedComposer();
+    stop = startChipController();
+
+    composer.dispatchEvent(new FocusEvent("focusin", { bubbles: true, composed: true }));
+    trigger().click();
+
+    expect(railItems()[0]?.getAttribute("aria-label")).toBe("Refine prompt");
+  });
+
+  it("runs an action and shows the result window", async () => {
+    const textarea = focusedTextarea(LONG_DRAFT);
+    const performAction = refineResult();
     stop = startChipController({ performAction });
 
     textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
-    pillButton().click();
-    clickMenuItem("Refine prompt");
+    trigger().click();
+    clickRailItem("Fix grammar");
 
-    expect(pillButton().dataset.mode).toBe("loading");
+    expect(trigger().dataset.loading).toBe("true");
     await vi.advanceTimersByTimeAsync(1);
 
-    expect(performAction).toHaveBeenCalledWith("refine", LONG_DRAFT, undefined);
-    expect(pillButton().dataset.mode).toBe("result");
-    expect(pillButton().dataset.result).toBe("refine");
-    expect(pillShadow().querySelector(".pz-pill__label")!.textContent).toBe(REFINED_DRAFT);
-
-    const replaceButton = [...pillShadow().querySelectorAll("button")].find((b) => b.textContent === "Replace")!;
-    replaceButton.click();
-    expect(textarea.value).toBe(REFINED_DRAFT);
-    expect(pillButton().dataset.mode).toBe("dot");
+    expect(performAction).toHaveBeenCalledWith("grammar", LONG_DRAFT);
+    expect(trigger().dataset.loading).toBe("false");
+    expect(isWindowOpen()).toBe(true);
+    expect(winBodyText()).toBe(REFINED_DRAFT);
+    expect(winButtonLabels()).toEqual([
+      "Previous result",
+      "Next result",
+      "Delete result",
+      "Close",
+      "Edit",
+      "Tweak",
+      "Regenerate",
+      "Copy",
+      "Replace text",
+    ]);
   });
 
-  it("shows the full refined text with no truncation, even when it is long", async () => {
-    const longRefinedText =
-      "This is a much longer refined draft than sixty characters, written out in full so it is " +
-      "easy to read and debug without guessing what got cut off at the end.";
-    const textarea = document.createElement("textarea");
-    textarea.value = LONG_DRAFT;
-    document.body.append(textarea);
-    const performAction = vi.fn<(...args: unknown[]) => Promise<RefineResult>>().mockResolvedValue({
-      decision: "refine",
-      refinedText: longRefinedText,
-    });
-    stop = startChipController({ performAction });
+  it("keeps the draft untouched until Replace text is clicked", async () => {
+    const textarea = focusedTextarea(LONG_DRAFT);
+    stop = startChipController({ performAction: refineResult() });
 
     textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
-    pillButton().click();
-    clickMenuItem("Refine prompt");
+    trigger().click();
+    clickRailItem("Fix grammar");
     await vi.advanceTimersByTimeAsync(1);
-
-    expect(pillShadow().querySelector(".pz-pill__label")!.textContent).toBe(longRefinedText);
-  });
-
-  it("passes the detected target language to the translate action", async () => {
-    const textarea = document.createElement("textarea");
-    textarea.value = LONG_DRAFT;
-    document.body.append(textarea);
-    const performAction = vi.fn<(...args: unknown[]) => Promise<RefineResult>>().mockResolvedValue({
-      decision: "refine",
-      refinedText: "[Spanish] this is a draft",
-    });
-    stop = startChipController({ performAction });
-
-    textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
-    pillButton().click();
-    clickMenuItem("Translate to Spanish");
-    await vi.advanceTimersByTimeAsync(1);
-
-    expect(performAction).toHaveBeenCalledWith("translate", LONG_DRAFT, "Spanish");
-  });
-
-  it("dismisses a result back to the idle dot without touching the draft", async () => {
-    const textarea = document.createElement("textarea");
-    textarea.value = LONG_DRAFT;
-    document.body.append(textarea);
-    const performAction = vi.fn<(...args: unknown[]) => Promise<RefineResult>>().mockResolvedValue({
-      decision: "refine",
-      refinedText: REFINED_DRAFT,
-    });
-    stop = startChipController({ performAction });
-
-    textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
-    pillButton().click();
-    clickMenuItem("Improve");
-    await vi.advanceTimersByTimeAsync(1);
-
-    const dismissButton = pillShadow().querySelector('button[aria-label="Dismiss"]') as HTMLButtonElement;
-    dismissButton.click();
-
     expect(textarea.value).toBe(LONG_DRAFT);
-    expect(pillButton().dataset.mode).toBe("dot");
-    expect(pillHost()!.style.display).toBe("block");
+
+    clickWinButton("Replace text");
+    expect(textarea.value).toBe(REFINED_DRAFT);
+    expect(isWindowOpen()).toBe(false);
   });
 
-  it("shows a keep result with no Replace action when the draft is already clear", async () => {
-    const textarea = document.createElement("textarea");
-    textarea.value = "Already clear.";
-    document.body.append(textarea);
+  it("offers an undo chip for six seconds after a replace, then withdraws it", async () => {
+    const textarea = focusedTextarea(LONG_DRAFT);
+    stop = startChipController({ performAction: refineResult() });
+
+    textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    trigger().click();
+    clickRailItem("Fix grammar");
+    await vi.advanceTimersByTimeAsync(1);
+    clickWinButton("Replace text");
+
+    const undo = chipShadow().querySelector('[aria-label="Undo replace"]') as HTMLButtonElement;
+    expect(undo.hidden).toBe(false);
+    undo.click();
+    expect(textarea.value).toBe(LONG_DRAFT);
+    expect(undo.hidden).toBe(true);
+
+    trigger().click();
+    clickRailItem("Recent results");
+    clickWinButton("Replace text");
+    expect((chipShadow().querySelector('[aria-label="Undo replace"]') as HTMLButtonElement).hidden).toBe(false);
+    await vi.advanceTimersByTimeAsync(6000);
+    expect((chipShadow().querySelector('[aria-label="Undo replace"]') as HTMLButtonElement).hidden).toBe(true);
+    expect(textarea.value).toBe(REFINED_DRAFT);
+  });
+
+  it("edits a result in place and saves it", async () => {
+    const textarea = focusedTextarea(LONG_DRAFT);
+    stop = startChipController({ performAction: refineResult() });
+
+    textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    trigger().click();
+    clickRailItem("Fix grammar");
+    await vi.advanceTimersByTimeAsync(1);
+
+    clickWinButton("Edit");
+    const textareaField = chipShadow().querySelector("textarea.pz-win__body") as HTMLTextAreaElement;
+    expect(textareaField.value).toBe(REFINED_DRAFT);
+    textareaField.value = "Hand-edited result.";
+    clickWinButton("Save edit");
+
+    expect(winBodyText()).toBe("Hand-edited result.");
+    clickWinButton("Replace text");
+    expect(textarea.value).toBe("Hand-edited result.");
+  });
+
+  it("discards an edit without changing the result", async () => {
+    const textarea = focusedTextarea(LONG_DRAFT);
+    stop = startChipController({ performAction: refineResult() });
+
+    textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    trigger().click();
+    clickRailItem("Fix grammar");
+    await vi.advanceTimersByTimeAsync(1);
+
+    clickWinButton("Edit");
+    clickWinButton("Discard edit");
+    expect(winBodyText()).toBe(REFINED_DRAFT);
+  });
+
+  it("tweaks a result, pushing a new history entry", async () => {
+    const textarea = focusedTextarea(LONG_DRAFT);
     const performAction = vi
       .fn<(...args: unknown[]) => Promise<RefineResult>>()
-      .mockResolvedValue({ decision: "keep" });
+      .mockResolvedValueOnce({ decision: "refine", refinedText: REFINED_DRAFT })
+      .mockResolvedValue({ decision: "refine", refinedText: "Shortened." });
     stop = startChipController({ performAction });
 
     textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
-    pillButton().click();
-    clickMenuItem("Refine prompt");
+    trigger().click();
+    clickRailItem("Fix grammar");
     await vi.advanceTimersByTimeAsync(1);
 
-    expect(pillButton().dataset.result).toBe("keep");
-    const replaceButton = [...pillShadow().querySelectorAll("button")].find(
-      (b) => b.textContent === "Replace",
-    ) as HTMLButtonElement;
-    expect(replaceButton.hidden).toBe(true);
+    clickWinButton("Tweak");
+    expect(winButtonLabels()).toEqual([
+      "Previous result",
+      "Next result",
+      "Delete result",
+      "Close",
+      "Back",
+      "Shorten",
+      "Fix grammar",
+      "Professional",
+      "Friendly",
+      "Direct",
+      "Vietnamese",
+      "English",
+    ]);
+    clickWinButton("Shorten");
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(performAction).toHaveBeenLastCalledWith("shorten", REFINED_DRAFT);
+    expect(winCounter()).toBe("2/2");
+    expect(winBodyText()).toBe("Shortened.");
   });
 
-  it("does not open a result for an empty editor", () => {
-    const textarea = document.createElement("textarea");
-    document.body.append(textarea);
+  it("regenerates by rerunning the same action on the current editor text", async () => {
+    const textarea = focusedTextarea(LONG_DRAFT);
+    const performAction = vi
+      .fn<(...args: unknown[]) => Promise<RefineResult>>()
+      .mockResolvedValueOnce({ decision: "refine", refinedText: REFINED_DRAFT })
+      .mockResolvedValue({ decision: "refine", refinedText: "Second pass." });
+    stop = startChipController({ performAction });
+
+    textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    trigger().click();
+    clickRailItem("Fix grammar");
+    await vi.advanceTimersByTimeAsync(1);
+
+    clickWinButton("Regenerate");
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(performAction).toHaveBeenLastCalledWith("grammar", LONG_DRAFT);
+    expect(winCounter()).toBe("2/2");
+  });
+
+  it("steps through history and caps it at 10 results", async () => {
+    const textarea = focusedTextarea(LONG_DRAFT);
+    const performAction = vi.fn<(...args: unknown[]) => Promise<RefineResult>>().mockImplementation(async () => ({
+      decision: "refine",
+      refinedText: `result ${performAction.mock.calls.length}`,
+    }));
+    stop = startChipController({ performAction });
+
+    textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    for (let i = 0; i < 11; i += 1) {
+      trigger().click();
+      clickRailItem("Fix grammar");
+      await vi.advanceTimersByTimeAsync(1);
+      if (i < 10) {
+        trigger().click();
+      }
+    }
+
+    expect(winCounter()).toBe("10/10");
+    clickWinButton("Previous result");
+    expect(winCounter()).toBe("9/10");
+  });
+
+  it("deletes the current result and closes the window once empty", async () => {
+    const textarea = focusedTextarea(LONG_DRAFT);
+    stop = startChipController({ performAction: refineResult() });
+
+    textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    trigger().click();
+    clickRailItem("Fix grammar");
+    await vi.advanceTimersByTimeAsync(1);
+
+    clickWinButton("Delete result");
+    expect(isWindowOpen()).toBe(false);
+  });
+
+  it("shows an error with Try again, and retries the same action", async () => {
+    const textarea = focusedTextarea(LONG_DRAFT);
+    const performAction = vi
+      .fn<(...args: unknown[]) => Promise<RefineResult>>()
+      .mockResolvedValueOnce({ decision: "error" })
+      .mockResolvedValue({ decision: "refine", refinedText: REFINED_DRAFT });
+    stop = startChipController({ performAction });
+
+    textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    trigger().click();
+    clickRailItem("Shorten");
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(chipShadow().querySelector('[role="alert"]')?.textContent).toBe(
+      "Couldn't get a result. Your text is unchanged.",
+    );
+    expect(winButtonLabels()).toEqual(["Close", "Try again"]);
+
+    clickWinButton("Try again");
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(performAction).toHaveBeenNthCalledWith(2, "shorten", LONG_DRAFT);
+    expect(winBodyText()).toBe(REFINED_DRAFT);
+  });
+
+  it("shows recent results only once history exists, and reopens at the newest", async () => {
+    const textarea = focusedTextarea(LONG_DRAFT);
+    stop = startChipController({ performAction: refineResult() });
+
+    textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    trigger().click();
+    expect(railItems().map((item) => item.getAttribute("aria-label"))).not.toContain("Recent results");
+
+    clickRailItem("Fix grammar");
+    await vi.advanceTimersByTimeAsync(1);
+    clickWinButton("Close");
+
+    trigger().click();
+    expect(railItems().map((item) => item.getAttribute("aria-label"))).toContain("Recent results");
+    clickRailItem("Recent results");
+    expect(isWindowOpen()).toBe(true);
+    expect(winBodyText()).toBe(REFINED_DRAFT);
+  });
+
+  it("shows an error instead of running the action when the editor is empty", () => {
+    const textarea = focusedTextarea();
     const performAction = vi.fn<(...args: unknown[]) => Promise<RefineResult>>();
     stop = startChipController({ performAction });
 
     textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
-    pillButton().click();
-    clickMenuItem("Refine prompt");
+    trigger().click();
+    clickRailItem("Fix grammar");
 
     expect(performAction).not.toHaveBeenCalled();
-    expect(pillButton().dataset.mode).toBe("dot");
+    expect(isWindowOpen()).toBe(true);
+    expect(chipShadow().querySelector('[role="alert"]')?.textContent).toBe("Type something first.");
   });
 
-  it("closes the menu when clicking outside the pill", () => {
-    const textarea = document.createElement("textarea");
-    document.body.append(textarea);
+  it("cancels a running action via the window's close button, returning to the rail", async () => {
+    const textarea = focusedTextarea(LONG_DRAFT);
+    const performAction = vi.fn<(...args: unknown[]) => Promise<RefineResult>>().mockReturnValue(new Promise(() => {}));
+    stop = startChipController({ performAction });
+
+    textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    trigger().click();
+    clickRailItem("Fix grammar");
+    clickWinButton("Close");
+
+    expect(isWindowOpen()).toBe(false);
+    expect(isRailOpen()).toBe(true);
+  });
+
+  it("closes the rail when clicking outside the chip", () => {
+    const textarea = focusedTextarea();
     stop = startChipController();
 
     textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
-    pillButton().click();
-    expect(pillButton().dataset.mode).toBe("menu");
+    trigger().click();
+    expect(isRailOpen()).toBe(true);
 
     document.body.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    expect(pillButton().dataset.mode).toBe("dot");
+    expect(isRailOpen()).toBe(false);
   });
 
-  it("hides the pill once the editor loses focus, unless the menu is open", async () => {
-    const textarea = document.createElement("textarea");
-    document.body.append(textarea);
+  it("Escape leaves edit mode first, then closes the window, returning focus to the chip", async () => {
+    const textarea = focusedTextarea(LONG_DRAFT);
+    stop = startChipController({ performAction: refineResult() });
+
+    textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    trigger().click();
+    clickRailItem("Fix grammar");
+    await vi.advanceTimersByTimeAsync(1);
+    clickWinButton("Edit");
+
+    trigger().dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    expect(isWindowOpen()).toBe(true);
+    expect(winBodyText()).toBe(REFINED_DRAFT);
+
+    trigger().dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    expect(isWindowOpen()).toBe(false);
+    expect(chipShadow().activeElement).toBe(trigger());
+  });
+
+  it("Escape closes an open strip before closing the rail", () => {
+    const textarea = focusedTextarea();
     stop = startChipController();
 
     textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
-    textarea.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
-    await vi.advanceTimersByTimeAsync(130);
-    expect(pillHost()!.style.display).toBe("none");
+    trigger().click();
+    clickRailItem("Change tone");
+    expect(railNode().querySelector(".pz-rail__strip")).not.toBeNull();
+
+    trigger().dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    expect(isRailOpen()).toBe(true);
+    expect(railNode().querySelector(".pz-rail__strip")).toBeNull();
+
+    trigger().dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    expect(isRailOpen()).toBe(false);
   });
 
-  it("keeps a running action alive and shows its result after the editor loses focus", async () => {
-    const textarea = document.createElement("textarea");
-    textarea.value = LONG_DRAFT;
-    document.body.append(textarea);
+  it("moves focus into the rail when it opens, and to Replace text once a result loads", async () => {
+    const textarea = focusedTextarea(LONG_DRAFT);
+    stop = startChipController({ performAction: refineResult() });
+
+    textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    trigger().click();
+    expect(chipShadow().activeElement?.getAttribute("aria-label")).toBe("Improve writing");
+
+    clickRailItem("Fix grammar");
+    await vi.advanceTimersByTimeAsync(1);
+    expect(chipShadow().activeElement?.getAttribute("aria-label")).toBe("Replace text");
+  });
+
+  it("moves focus to Try again after an error", async () => {
+    const textarea = focusedTextarea(LONG_DRAFT);
+    stop = startChipController({
+      performAction: vi.fn<(...args: unknown[]) => Promise<RefineResult>>().mockResolvedValue({ decision: "error" }),
+    });
+
+    textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    trigger().click();
+    clickRailItem("Fix grammar");
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(chipShadow().activeElement?.getAttribute("aria-label")).toBe("Try again");
+  });
+
+  it("keeps the chip and window visible while the window holds focus after the editor blurs", async () => {
+    const textarea = focusedTextarea();
+    stop = startChipController();
+
+    textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    trigger().click();
+    textarea.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+    await vi.advanceTimersByTimeAsync(130);
+
+    expect(chipHost()!.style.display).toBe("block");
+    expect(isRailOpen()).toBe(true);
+  });
+
+  it("drops a stale result when the action is cancelled mid-flight", async () => {
+    const textarea = focusedTextarea(LONG_DRAFT);
     let resolveAction: (result: RefineResult) => void = () => {};
     const performAction = vi
       .fn<(...args: unknown[]) => Promise<RefineResult>>()
@@ -253,102 +523,58 @@ describe("startChipController", () => {
     stop = startChipController({ performAction });
 
     textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
-    pillButton().click();
-    clickMenuItem("Refine prompt");
-
-    textarea.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
-    await vi.advanceTimersByTimeAsync(130);
-    expect(pillHost()!.style.display).toBe("block");
-    expect(pillButton().dataset.mode).toBe("loading");
+    trigger().click();
+    clickRailItem("Fix grammar");
+    clickWinButton("Close");
 
     resolveAction({ decision: "refine", refinedText: REFINED_DRAFT });
     await vi.advanceTimersByTimeAsync(1);
 
-    expect(pillButton().dataset.mode).toBe("result");
-    expect(pillShadow().querySelector(".pz-pill__label")!.textContent).toBe(REFINED_DRAFT);
-  });
-
-  it("replaces the originating draft after focus moved away", async () => {
-    const textarea = document.createElement("textarea");
-    textarea.value = LONG_DRAFT;
-    const other = document.createElement("input");
-    document.body.append(textarea, other);
-    const performAction = vi.fn<(...args: unknown[]) => Promise<RefineResult>>().mockResolvedValue({
-      decision: "refine",
-      refinedText: REFINED_DRAFT,
-    });
-    stop = startChipController({ performAction });
-
-    textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
-    pillButton().click();
-    clickMenuItem("Refine prompt");
-    textarea.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
-    await vi.advanceTimersByTimeAsync(130);
-
-    const replaceButton = [...pillShadow().querySelectorAll("button")].find((b) => b.textContent === "Replace")!;
-    replaceButton.click();
-
-    expect(textarea.value).toBe(REFINED_DRAFT);
-    expect(pillHost()!.style.display).toBe("none");
+    expect(isWindowOpen()).toBe(false);
+    expect(isRailOpen()).toBe(true);
   });
 
   it("does not cancel a running action when another editor is focused", async () => {
-    const textarea = document.createElement("textarea");
-    textarea.value = LONG_DRAFT;
-    const other = document.createElement("textarea");
-    other.value = "another draft";
-    document.body.append(textarea, other);
-    const performAction = vi.fn<(...args: unknown[]) => Promise<RefineResult>>().mockResolvedValue({
-      decision: "refine",
-      refinedText: REFINED_DRAFT,
-    });
+    const textarea = focusedTextarea(LONG_DRAFT);
+    const other = focusedTextarea("another draft");
+    const performAction = refineResult();
     stop = startChipController({ performAction });
 
     textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
-    pillButton().click();
-    clickMenuItem("Refine prompt");
+    trigger().click();
+    clickRailItem("Fix grammar");
     other.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
     await vi.advanceTimersByTimeAsync(1);
 
     expect(performAction).toHaveBeenCalledTimes(1);
-    expect(pillButton().dataset.mode).toBe("result");
-
-    const replaceButton = [...pillShadow().querySelectorAll("button")].find((b) => b.textContent === "Replace")!;
-    replaceButton.click();
+    clickWinButton("Replace text");
     expect(textarea.value).toBe(REFINED_DRAFT);
     expect(other.value).toBe("another draft");
-    expect(pillButton().dataset.mode).toBe("dot");
   });
 
   it("drops a pending result when the originating editor is removed", async () => {
-    const textarea = document.createElement("textarea");
-    textarea.value = LONG_DRAFT;
-    document.body.append(textarea);
-    const performAction = vi.fn<(...args: unknown[]) => Promise<RefineResult>>().mockResolvedValue({
-      decision: "refine",
-      refinedText: REFINED_DRAFT,
-    });
-    stop = startChipController({ performAction });
+    const textarea = focusedTextarea(LONG_DRAFT);
+    stop = startChipController({ performAction: refineResult() });
 
     textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
-    pillButton().click();
-    clickMenuItem("Refine prompt");
+    trigger().click();
+    clickRailItem("Fix grammar");
     await vi.advanceTimersByTimeAsync(1);
 
     textarea.remove();
-    await vi.waitFor(() => expect(pillHost()!.style.display).toBe("none"));
+    await vi.waitFor(() => expect(chipHost()!.style.display).toBe("none"));
+    expect(isWindowOpen()).toBe(false);
   });
 
-  it("hides the pill when the editor is removed from the page", async () => {
-    const textarea = document.createElement("textarea");
-    document.body.append(textarea);
+  it("hides the chip when the editor is removed from the page", async () => {
+    const textarea = focusedTextarea();
     stop = startChipController();
 
     textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
-    expect(pillHost()!.style.display).toBe("block");
+    expect(chipHost()!.style.display).toBe("block");
 
     textarea.remove();
-    await vi.waitFor(() => expect(pillHost()!.style.display).toBe("none"));
+    await vi.waitFor(() => expect(chipHost()!.style.display).toBe("none"));
   });
 
   it("resolves the outermost contenteditable ancestor when a nested node is focused", () => {
@@ -361,7 +587,47 @@ describe("startChipController", () => {
 
     paragraph.dispatchEvent(new FocusEvent("focusin", { bubbles: true, composed: true }));
 
-    expect(pillHost()!.style.display).toBe("block");
+    expect(chipHost()!.style.display).toBe("block");
+  });
+
+  it("turns off from the rail, hiding the chip and persisting it as disabled in storage", async () => {
+    const textarea = focusedTextarea();
+    stop = startChipController();
+    await vi.advanceTimersByTimeAsync(0);
+
+    textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    trigger().click();
+    clickRailItem("Turn off");
+    await vi.advanceTimersByTimeAsync(120);
+
+    expect(chipHost()!.style.display).toBe("none");
+    const stored = await fakeBrowser.storage.local.get("popupState");
+    expect((stored.popupState as { globalEnabled?: boolean }).globalEnabled).toBe(false);
+  });
+
+  it("never shows the chip when storage already says the extension is off", async () => {
+    await fakeBrowser.storage.local.set({ popupState: { globalEnabled: false } });
+    const textarea = focusedTextarea();
+    stop = startChipController();
+    await vi.advanceTimersByTimeAsync(0);
+
+    textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+
+    expect(chipHost()!.style.display).toBe("none");
+  });
+
+  it("reappears once the popup turns the extension back on", async () => {
+    await fakeBrowser.storage.local.set({ popupState: { globalEnabled: false } });
+    const textarea = focusedTextarea();
+    stop = startChipController();
+    await vi.advanceTimersByTimeAsync(0);
+    textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    expect(chipHost()!.style.display).toBe("none");
+
+    await fakeBrowser.storage.local.set({ popupState: { globalEnabled: true } });
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(chipHost()!.style.display).toBe("block");
   });
 });
 

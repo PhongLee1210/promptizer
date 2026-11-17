@@ -11,7 +11,7 @@ describe("refineViaGroqLoopback", () => {
   it("sends a PROMPTIZER_GROQ_REFINE message with the prompt text", async () => {
     const sendMessage = vi
       .spyOn(fakeBrowser.runtime, "sendMessage")
-      .mockResolvedValue({ ok: true, decision: "refine", refinedPrompt: "Refined." });
+      .mockImplementation(async () => ({ ok: true, decision: "refine", refinedPrompt: "Refined." }));
 
     const result = await refineViaGroqLoopback("draft text");
 
@@ -20,7 +20,7 @@ describe("refineViaGroqLoopback", () => {
   });
 
   it("maps a keep decision with no refinedText", async () => {
-    vi.spyOn(fakeBrowser.runtime, "sendMessage").mockResolvedValue({ ok: true, decision: "keep" });
+    vi.spyOn(fakeBrowser.runtime, "sendMessage").mockImplementation(async () => ({ ok: true, decision: "keep" }));
 
     const result = await refineViaGroqLoopback("already clear");
 
@@ -28,7 +28,7 @@ describe("refineViaGroqLoopback", () => {
   });
 
   it("errors when the background reports failure (e.g. unpaired or service down)", async () => {
-    vi.spyOn(fakeBrowser.runtime, "sendMessage").mockResolvedValue({ ok: false });
+    vi.spyOn(fakeBrowser.runtime, "sendMessage").mockImplementation(async () => ({ ok: false }));
 
     const result = await refineViaGroqLoopback("draft");
 

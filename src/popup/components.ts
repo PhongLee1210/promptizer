@@ -1,5 +1,10 @@
+import { browser } from "wxt/browser";
 import { el, iconEl } from "./dom";
 import type { IconName } from "../utils/icons";
+
+function brandLogo(): HTMLImageElement {
+  return el("img", { class: "pz-brand-logo", alt: "", src: browser.runtime.getURL("/icon/32.png") });
+}
 
 function isDisabled(node: HTMLElement): boolean {
   return node.getAttribute("aria-disabled") === "true";
@@ -183,7 +188,7 @@ export function headerMain(options: {
   return el("div", { class: "pz-header-main" }, [
     menuButton(options),
     el("div", { class: "pz-header-main__brand" }, [
-      iconEl("logo", 22),
+      brandLogo(),
       el("h1", { class: "pz-header" }, ["Promptizer"]),
     ]),
     options.statusPillNode,

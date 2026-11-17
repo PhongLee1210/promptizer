@@ -65,13 +65,13 @@ describe("nanoAvailability", () => {
 
 describe("refineWithNano", () => {
   it("errors when no LanguageModel global exists", async () => {
-    const result = await refineWithNano("refine", "some long enough draft text", undefined, {});
+    const result = await refineWithNano("refine", "some long enough draft text", {});
     expect(result.decision).toBe("error");
   });
 
   it("errors when Nano is not available yet", async () => {
     const languageModel = fakeLanguageModel("downloading", fakeSession("{}"));
-    const result = await refineWithNano("refine", "draft", undefined, { languageModel });
+    const result = await refineWithNano("refine", "draft", { languageModel });
     expect(result.decision).toBe("error");
     expect(languageModel.create).not.toHaveBeenCalled();
   });
@@ -80,7 +80,7 @@ describe("refineWithNano", () => {
     const session = fakeSession(JSON.stringify({ decision: "refine", refined_prompt: "Draft, refined." }));
     const languageModel = fakeLanguageModel("available", session);
 
-    const result = await refineWithNano("refine", "draft", undefined, { languageModel });
+    const result = await refineWithNano("refine", "draft", { languageModel });
 
     expect(result).toEqual({ decision: "refine", refinedText: "Draft, refined." });
     expect(session.destroy).toHaveBeenCalledTimes(1);
@@ -90,7 +90,7 @@ describe("refineWithNano", () => {
     const session = fakeSession(JSON.stringify({ decision: "keep", refined_prompt: "ignored" }));
     const languageModel = fakeLanguageModel("available", session);
 
-    const result = await refineWithNano("refine", "Already clear draft.", undefined, { languageModel });
+    const result = await refineWithNano("refine", "Already clear draft.", { languageModel });
 
     expect(result).toEqual({ decision: "keep" });
   });
@@ -99,7 +99,7 @@ describe("refineWithNano", () => {
     const session = fakeSession(JSON.stringify({ decision: "refine", refined_prompt: "- a bullet point" }));
     const languageModel = fakeLanguageModel("available", session);
 
-    const result = await refineWithNano("refine", "draft", undefined, { languageModel });
+    const result = await refineWithNano("refine", "draft", { languageModel });
 
     expect(result.decision).toBe("error");
   });
@@ -108,33 +108,75 @@ describe("refineWithNano", () => {
     const session = fakeSession("not json");
     const languageModel = fakeLanguageModel("available", session);
 
-    const result = await refineWithNano("refine", "draft", undefined, { languageModel });
+    const result = await refineWithNano("refine", "draft", { languageModel });
 
     expect(result.decision).toBe("error");
     expect(session.destroy).toHaveBeenCalledTimes(1);
   });
 
-  it("uses a translate-specific instruction naming the target language", async () => {
-    const session = fakeSession(JSON.stringify({ decision: "refine", refined_prompt: "Hola mundo." }));
+  it("uses a Vietnamese-specific instruction for the vi action", async () => {
+    const session = fakeSession(JSON.stringify({ decision: "refine", refined_prompt: "Xin chào thế giới." }));
     const languageModel = fakeLanguageModel("available", session);
 
-    await refineWithNano("translate", "hello world", "Spanish", { languageModel });
+    await refineWithNano("vi", "hello world", { languageModel });
 
-    const createCall = (languageModel.create as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    const createCall = (languageModel.create as ReturnType<typeof vi.fn>).mock.calls[0]![0];
     const systemContent = createCall.initialPrompts[0].content as string;
     expect(systemContent).toContain("Translate");
-    expect(systemContent).toContain("Spanish");
+    expect(systemContent).toContain("Vietnamese");
+  });
+
+  it("uses an English-specific instruction for the en action", async () => {
+    const session = fakeSession(JSON.stringify({ decision: "refine", refined_prompt: "Hello world." }));
+    const languageModel = fakeLanguageModel("available", session);
+
+    await refineWithNano("en", "hola mundo", { languageModel });
+
+    const createCall = (languageModel.create as ReturnType<typeof vi.fn>).mock.calls[0]![0];
+    const systemContent = createCall.initialPrompts[0].content as string;
+    expect(systemContent).toContain("Translate");
+    expect(systemContent).toContain("English");
   });
 
   it("uses an improve-specific instruction distinct from the refine instruction", async () => {
     const session = fakeSession(JSON.stringify({ decision: "refine", refined_prompt: "Improved." }));
     const languageModel = fakeLanguageModel("available", session);
 
-    await refineWithNano("improve", "draft", undefined, { languageModel });
+    await refineWithNano("improve", "draft", { languageModel });
 
-    const createCall = (languageModel.create as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    const createCall = (languageModel.create as ReturnType<typeof vi.fn>).mock.calls[0]![0];
     const systemContent = createCall.initialPrompts[0].content as string;
     expect(systemContent).toContain("specific and actionable");
+  });
+
+  it("uses a grammar-specific instruction", async () => {
+    const session = fakeSession(JSON.stringify({ decision: "refine", refined_prompt: "Fixed." }));
+    const languageModel = fakeLanguageModel("available", session);
+
+    await refineWithNano("grammar", "draft", { languageModel });
+
+    const createCall = (languageModel.create as ReturnType<typeof vi.fn>).mock.calls[0]![0];
+    expect(createCall.initialPrompts[0].content as string).toContain("grammar");
+  });
+
+  it("uses a shorten-specific instruction", async () => {
+    const session = fakeSession(JSON.stringify({ decision: "refine", refined_prompt: "Short." }));
+    const languageModel = fakeLanguageModel("available", session);
+
+    await refineWithNano("shorten", "draft", { languageModel });
+
+    const createCall = (languageModel.create as ReturnType<typeof vi.fn>).mock.calls[0]![0];
+    expect(createCall.initialPrompts[0].content as string).toContain("Shorten");
+  });
+
+  it.each(["pro", "friendly", "direct"] as const)("uses a %s tone-specific instruction", async (tone) => {
+    const session = fakeSession(JSON.stringify({ decision: "refine", refined_prompt: "Rewritten." }));
+    const languageModel = fakeLanguageModel("available", session);
+
+    await refineWithNano(tone, "draft", { languageModel });
+
+    const createCall = (languageModel.create as ReturnType<typeof vi.fn>).mock.calls[0]![0];
+    expect(createCall.initialPrompts[0].content as string).toContain("tone");
   });
 });
 
@@ -143,8 +185,8 @@ describe("warm session reuse", () => {
     const template = fakeClonableSession(JSON.stringify({ decision: "refine", refined_prompt: "Draft, refined." }));
     const languageModel = fakeLanguageModel("available", template);
 
-    await refineWithNano("refine", "draft", undefined, { languageModel });
-    await refineWithNano("refine", "another draft", undefined, { languageModel });
+    await refineWithNano("refine", "draft", { languageModel });
+    await refineWithNano("refine", "another draft", { languageModel });
 
     expect(languageModel.create).toHaveBeenCalledTimes(1);
     expect(template.clone).toHaveBeenCalledTimes(2);
@@ -155,8 +197,8 @@ describe("warm session reuse", () => {
     const template = fakeClonableSession(JSON.stringify({ decision: "keep", refined_prompt: "ignored" }));
     const languageModel = fakeLanguageModel("available", template);
 
-    await refineWithNano("refine", "draft", undefined, { languageModel });
-    await refineWithNano("refine", "draft", undefined, { languageModel });
+    await refineWithNano("refine", "draft", { languageModel });
+    await refineWithNano("refine", "draft", { languageModel });
 
     expect(languageModel.availability).toHaveBeenCalledTimes(1);
   });
@@ -165,19 +207,19 @@ describe("warm session reuse", () => {
     const template = fakeClonableSession(JSON.stringify({ decision: "refine", refined_prompt: "Improved." }));
     const languageModel = fakeLanguageModel("available", template);
 
-    await refineWithNano("refine", "draft", undefined, { languageModel });
-    await refineWithNano("improve", "draft", undefined, { languageModel });
-    await refineWithNano("improve", "draft", undefined, { languageModel });
+    await refineWithNano("refine", "draft", { languageModel });
+    await refineWithNano("improve", "draft", { languageModel });
+    await refineWithNano("improve", "draft", { languageModel });
 
     expect(languageModel.create).toHaveBeenCalledTimes(2);
   });
 
-  it("keeps separate templates per translation target language", async () => {
+  it("keeps separate templates per translation action", async () => {
     const template = fakeClonableSession(JSON.stringify({ decision: "refine", refined_prompt: "Hola." }));
     const languageModel = fakeLanguageModel("available", template);
 
-    await refineWithNano("translate", "hello world", "Spanish", { languageModel });
-    await refineWithNano("translate", "hello world", "German", { languageModel });
+    await refineWithNano("vi", "hello world", { languageModel });
+    await refineWithNano("en", "hello world", { languageModel });
 
     expect(languageModel.create).toHaveBeenCalledTimes(2);
   });
@@ -186,8 +228,8 @@ describe("warm session reuse", () => {
     const session = fakeSession(JSON.stringify({ decision: "refine", refined_prompt: "Draft, refined." }));
     const languageModel = fakeLanguageModel("available", session);
 
-    const first = await refineWithNano("refine", "draft", undefined, { languageModel });
-    await refineWithNano("refine", "draft", undefined, { languageModel });
+    const first = await refineWithNano("refine", "draft", { languageModel });
+    await refineWithNano("refine", "draft", { languageModel });
 
     expect(first).toEqual({ decision: "refine", refinedText: "Draft, refined." });
     expect(languageModel.create).toHaveBeenCalledTimes(2);
@@ -198,13 +240,13 @@ describe("warm session reuse", () => {
     template.clone.mockRejectedValue(new Error("session gone"));
     const languageModel = fakeLanguageModel("available", template);
 
-    const result = await refineWithNano("refine", "draft", undefined, { languageModel });
+    const result = await refineWithNano("refine", "draft", { languageModel });
 
     expect(result.decision).toBe("error");
     expect(template.destroy).toHaveBeenCalledTimes(1);
     expect(languageModel.availability).toHaveBeenCalledTimes(1);
 
-    await refineWithNano("refine", "draft", undefined, { languageModel });
+    await refineWithNano("refine", "draft", { languageModel });
     expect(languageModel.availability).toHaveBeenCalledTimes(2);
   });
 
@@ -215,7 +257,7 @@ describe("warm session reuse", () => {
     const controller = new AbortController();
     controller.abort();
 
-    await refineWithNano("refine", "draft", undefined, { languageModel, signal: controller.signal });
+    await refineWithNano("refine", "draft", { languageModel, signal: controller.signal });
 
     expect(template.destroy).not.toHaveBeenCalled();
   });
@@ -234,7 +276,7 @@ describe("template eviction", () => {
     const template = fakeClonableSession(JSON.stringify({ decision: "keep", refined_prompt: "ignored" }));
     const languageModel = fakeLanguageModel("available", template);
 
-    await refineWithNano("refine", "draft", undefined, { languageModel });
+    await refineWithNano("refine", "draft", { languageModel });
     vi.advanceTimersByTime(180_000);
     await vi.runAllTicks();
 
@@ -245,9 +287,9 @@ describe("template eviction", () => {
     const template = fakeClonableSession(JSON.stringify({ decision: "keep", refined_prompt: "ignored" }));
     const languageModel = fakeLanguageModel("available", template);
 
-    await refineWithNano("refine", "draft", undefined, { languageModel });
+    await refineWithNano("refine", "draft", { languageModel });
     vi.advanceTimersByTime(120_000);
-    await refineWithNano("refine", "draft", undefined, { languageModel });
+    await refineWithNano("refine", "draft", { languageModel });
     vi.advanceTimersByTime(120_000);
 
     expect(template.destroy).not.toHaveBeenCalled();
@@ -259,8 +301,8 @@ describe("prewarmNano", () => {
     const template = fakeClonableSession(JSON.stringify({ decision: "keep", refined_prompt: "ignored" }));
     const languageModel = fakeLanguageModel("available", template);
 
-    await prewarmNano("refine", undefined, { languageModel });
-    await refineWithNano("refine", "draft", undefined, { languageModel });
+    await prewarmNano("refine", { languageModel });
+    await refineWithNano("refine", "draft", { languageModel });
 
     expect(languageModel.create).toHaveBeenCalledTimes(1);
     expect(template.clone).toHaveBeenCalledTimes(1);
@@ -269,7 +311,7 @@ describe("prewarmNano", () => {
   it("never creates a session while the model is only downloadable", async () => {
     const languageModel = fakeLanguageModel("downloadable", fakeClonableSession("{}"));
 
-    await prewarmNano("refine", undefined, { languageModel });
+    await prewarmNano("refine", { languageModel });
 
     expect(languageModel.create).not.toHaveBeenCalled();
   });

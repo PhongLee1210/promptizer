@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 
 import { dirname, join, resolve } from "node:path";
 import { defineWxtModule } from "wxt/modules";
 
-const sourceDir = "docs/promptizer-package-v2/assets/icons";
+const sourceDir = "src/assets/icon-sources";
 const outputPath = "src/utils/icons.ts";
 
 function inlineSvg(markup: string): string {

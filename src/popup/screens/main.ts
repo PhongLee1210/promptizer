@@ -86,6 +86,9 @@ function heroCopy(state: PopupState, view: MainView): { title: string; caption: 
   if (view.kind === "primary-unavailable") {
     return { title: "Can't suggest yet", caption: "Gemini Nano isn't available on this computer" };
   }
+  if (view.kind === "unsupported") {
+    return { title: "Not on a supported site", caption: "No chat box found in this tab" };
+  }
   if (suggestsOnRequest(state, view)) {
     return { title: "Suggesting on request", caption: "Click the Promptizer badge in the message box" };
   }
@@ -138,7 +141,6 @@ export function renderMainScreen(dispatch: Dispatch): HTMLElement {
 
   if (view.kind === "unsupported") {
     body.push(
-      el("p", { class: "pz-body pz-text-muted pz-ineligible-note" }, ["No chat box found on this site"]),
       button({
         label: "Add this site",
         variant: "outline",

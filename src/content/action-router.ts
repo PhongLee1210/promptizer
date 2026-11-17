@@ -14,14 +14,14 @@ const defaultDependencies: ActionRouterDependencies = {
 
 export function performAction(
   dependencies: ActionRouterDependencies = defaultDependencies,
-): (action: ActionId, text: string, targetLanguage?: string) => Promise<RefineResult> {
-  return async (action, text, targetLanguage) => {
-    const nanoResult = await dependencies.refineWithNano(action, text, targetLanguage);
+): (action: ActionId, text: string) => Promise<RefineResult> {
+  return async (action, text) => {
+    const nanoResult = await dependencies.refineWithNano(action, text);
     if (nanoResult.decision !== "error") {
       return nanoResult;
     }
     if (action !== "refine") {
-      return { decision: "error" };
+      return nanoResult;
     }
     return dependencies.refineViaGroqLoopback(text);
   };

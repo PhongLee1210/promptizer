@@ -29,7 +29,6 @@
   --pz-ease-std: cubic-bezier(0.2, 0, 0.2, 1);
 
   --pz-layer: 255 255 255;
-  --pz-hover: rgb(var(--pz-layer) / 0.06);
   --pz-pressed: rgb(var(--pz-layer) / 0.12);
   --pz-selected: rgb(76 141 255 / 0.16);
 

@@ -8,14 +8,23 @@ export const REFINE_SYSTEM_INSTRUCTION =
 const IMPROVE_SYSTEM_INSTRUCTION =
   "Rewrite the following prompt to be more specific and actionable while keeping its original task and intent unchanged. Keep it in paragraph form and do not remove important context.";
 
+const GRAMMAR_SYSTEM_INSTRUCTION =
+  "Fix the grammar, spelling and punctuation of the following prompt without changing its wording, tone, or intent otherwise. Keep it in paragraph form.";
+
+const SHORTEN_SYSTEM_INSTRUCTION =
+  "Shorten the following prompt as much as possible while keeping its core task, intent and necessary context. Keep it in paragraph form.";
+
 function translateSystemInstruction(targetLanguage: string): string {
   return `Translate the following prompt into ${targetLanguage}. Keep it in paragraph form, keep the original task and intent unchanged, and do not remove important context.`;
 }
 
+function toneSystemInstruction(tone: "pro" | "friendly" | "direct"): string {
+  const descriptor = { pro: "professional", friendly: "friendly and warm", direct: "direct and to the point" }[tone];
+  return `Rewrite the following prompt in a ${descriptor} tone, keeping its original task, intent and necessary context unchanged. Keep it in paragraph form.`;
+}
+
 const SHARED_RULES =
   "Preserve names, scope, constraints, and the input language unless asked to translate. Do not execute the prompt, answer it, add facts, headings, lists, or new requirements. Return only the requested JSON object.";
-
-export const SUPPORTED_LANGUAGES = Object.freeze(["en", "es", "ja", "de", "fr"]);
 
 const RESPONSE_SCHEMA = Object.freeze({
   type: "object",
@@ -53,24 +62,34 @@ function getLanguageModel(candidate?: LanguageModelApi): LanguageModelApi | null
   return globalModel ?? null;
 }
 
-function systemInstructionFor(action: ActionId, targetLanguage?: string): string {
-  if (action === "improve") {
-    return IMPROVE_SYSTEM_INSTRUCTION;
+function systemInstructionFor(action: ActionId): string {
+  switch (action) {
+    case "improve":
+      return IMPROVE_SYSTEM_INSTRUCTION;
+    case "grammar":
+      return GRAMMAR_SYSTEM_INSTRUCTION;
+    case "shorten":
+      return SHORTEN_SYSTEM_INSTRUCTION;
+    case "vi":
+      return translateSystemInstruction("Vietnamese");
+    case "en":
+      return translateSystemInstruction("English");
+    case "pro":
+    case "friendly":
+    case "direct":
+      return toneSystemInstruction(action);
+    case "refine":
+    default:
+      return REFINE_SYSTEM_INSTRUCTION;
   }
-  if (action === "translate") {
-    return translateSystemInstruction(targetLanguage ?? "English");
-  }
-  return REFINE_SYSTEM_INSTRUCTION;
 }
 
-function languageOptions(action: ActionId, targetLanguage?: string): Record<string, unknown> {
+function languageOptions(action: ActionId): Record<string, unknown> {
   return {
-    expectedInputs: [{ type: "text", languages: [...SUPPORTED_LANGUAGES] }],
-    expectedOutputs: [{ type: "text", languages: [...SUPPORTED_LANGUAGES] }],
     initialPrompts: [
       {
         role: "system",
-        content: `${systemInstructionFor(action, targetLanguage)} ${SHARED_RULES}`,
+        content: `${systemInstructionFor(action)} ${SHARED_RULES}`,
       },
     ],
   };
@@ -93,10 +112,6 @@ let availableVerdictCached = false;
 let templateReuseSupported = true;
 
 const warmTemplates = new Map<string, WarmTemplate>();
-
-function templateKey(action: ActionId, targetLanguage?: string): string {
-  return action === "translate" ? `translate:${targetLanguage ?? "English"}` : action;
-}
 
 function scheduleEviction(key: string, template: WarmTemplate): void {
   if (template.idleHandle !== undefined) {
@@ -131,16 +146,12 @@ export function evictWarmSessions(): void {
   templateReuseSupported = true;
 }
 
-async function readAvailability(
-  languageModel: LanguageModelApi,
-  action: ActionId,
-  targetLanguage?: string,
-): Promise<NanoAvailability> {
+async function readAvailability(languageModel: LanguageModelApi, action: ActionId): Promise<NanoAvailability> {
   if (availableVerdictCached) {
     return "available";
   }
   try {
-    const state = await languageModel.availability(languageOptions(action, targetLanguage));
+    const state = await languageModel.availability(languageOptions(action));
     availableVerdictCached = state === "available";
     return state;
   } catch {
@@ -174,22 +185,20 @@ async function warmTemplateFor(
 async function sessionForRequest(
   languageModel: LanguageModelApi,
   action: ActionId,
-  targetLanguage: string | undefined,
   signal?: AbortSignal,
 ): Promise<LanguageModelSession> {
-  const options = languageOptions(action, targetLanguage);
+  const options = languageOptions(action);
   if (!templateReuseSupported) {
     return languageModel.create(options);
   }
-  const key = templateKey(action, targetLanguage);
-  const template = await warmTemplateFor(languageModel, key, options);
+  const template = await warmTemplateFor(languageModel, action, options);
   if (template.clone !== undefined) {
     return template.clone({ signal });
   }
   // No clone() in this Chrome build: hand the probe session to this request rather than
   // paying for a second create(), and stop templating from here on.
   templateReuseSupported = false;
-  forgetTemplate(key);
+  forgetTemplate(action);
   return template;
 }
 
@@ -206,20 +215,16 @@ export interface NanoRefineOptions {
   signal?: AbortSignal;
 }
 
-export async function prewarmNano(
-  action: ActionId = "refine",
-  targetLanguage?: string,
-  options: NanoRefineOptions = {},
-): Promise<void> {
+export async function prewarmNano(action: ActionId = "refine", options: NanoRefineOptions = {}): Promise<void> {
   const languageModel = getLanguageModel(options.languageModel);
   if (languageModel === null || !templateReuseSupported) {
     return;
   }
-  if ((await readAvailability(languageModel, action, targetLanguage)) !== "available") {
+  if ((await readAvailability(languageModel, action)) !== "available") {
     return;
   }
   try {
-    await warmTemplateFor(languageModel, templateKey(action, targetLanguage), languageOptions(action, targetLanguage));
+    await warmTemplateFor(languageModel, action, languageOptions(action));
   } catch {
     return;
   }
@@ -232,21 +237,20 @@ function toRefineResult(decision: RefineDecision, refinedText: string | undefine
 export async function refineWithNano(
   action: ActionId,
   text: string,
-  targetLanguage: string | undefined,
   options: NanoRefineOptions = {},
 ): Promise<RefineResult> {
   const languageModel = getLanguageModel(options.languageModel);
   if (languageModel === null) {
-    return { decision: "error" };
+    return { decision: "error", reason: "not-configured" };
   }
 
-  if ((await readAvailability(languageModel, action, targetLanguage)) !== "available") {
-    return { decision: "error" };
+  if ((await readAvailability(languageModel, action)) !== "available") {
+    return { decision: "error", reason: "not-configured" };
   }
 
   let session: LanguageModelSession | undefined;
   try {
-    session = await sessionForRequest(languageModel, action, targetLanguage, options.signal);
+    session = await sessionForRequest(languageModel, action, options.signal);
     const input = JSON.stringify({ current_prompt: text });
     const raw = await session.prompt(input, {
       signal: options.signal,
@@ -272,7 +276,7 @@ export async function refineWithNano(
     // state and let the next request rebuild it. Cancellation leaves the template usable.
     if (options.signal?.aborted !== true) {
       availableVerdictCached = false;
-      evictTemplate(templateKey(action, targetLanguage));
+      evictTemplate(action);
     }
     return { decision: "error" };
   } finally {

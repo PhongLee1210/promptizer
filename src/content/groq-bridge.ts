@@ -10,6 +10,7 @@ interface GroqRefineResponse {
   ok: boolean;
   decision?: "keep" | "refine";
   refinedPrompt?: string;
+  reason?: "not-configured";
 }
 
 export async function refineViaGroqLoopback(text: string): Promise<RefineResult> {
@@ -21,7 +22,7 @@ export async function refineViaGroqLoopback(text: string): Promise<RefineResult>
     return { decision: "error" };
   }
   if (response === undefined || !response.ok || response.decision === undefined) {
-    return { decision: "error" };
+    return { decision: "error", reason: response?.reason };
   }
   return response.decision === "refine"
     ? { decision: "refine", refinedText: response.refinedPrompt }

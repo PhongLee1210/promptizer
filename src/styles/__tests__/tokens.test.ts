@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 const stylesDir = resolve(__dirname, "..");
 const tokensCss = readFileSync(resolve(stylesDir, "tokens.css"), "utf8");
 const baseCss = readFileSync(resolve(stylesDir, "base.css"), "utf8");
+const statesCss = readFileSync(resolve(stylesDir, "states.css"), "utf8");
 
 const tokens: [string, string][] = [
   ["--pz-bg", "#14161A"],
@@ -93,9 +94,9 @@ describe("base.css", () => {
     }
   });
 
-  it("rings focus with the accent at 2px and 2px offset", () => {
+  it("draws no focus ring and no hover layer on controls", () => {
     expect(baseCss).toContain(":focus-visible");
-    expect(baseCss).toContain("outline: 2px solid var(--pz-accent);");
-    expect(baseCss).toContain("outline-offset: 2px;");
+    expect(baseCss).not.toContain("outline: 2px solid");
+    expect(statesCss).not.toContain(":hover");
   });
 });

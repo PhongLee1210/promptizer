@@ -42,10 +42,10 @@ describe("performAction", () => {
     expect(deps.refineViaGroqLoopback).toHaveBeenCalledWith("draft");
   });
 
-  it("does not fall back to Groq for translate when Nano errors, since the Go backend has no translate endpoint", async () => {
+  it("does not fall back to Groq for vi when Nano errors, since the Go backend has no translate endpoint", async () => {
     const deps = dependencies();
 
-    const result = await performAction(deps)("translate", "draft", "Spanish");
+    const result = await performAction(deps)("vi", "draft");
 
     expect(result).toEqual({ decision: "error" });
     expect(deps.refineViaGroqLoopback).not.toHaveBeenCalled();
@@ -59,4 +59,16 @@ describe("performAction", () => {
     expect(result).toEqual({ decision: "error" });
     expect(deps.refineViaGroqLoopback).not.toHaveBeenCalled();
   });
+
+  it.each(["grammar", "shorten", "en", "pro", "friendly", "direct"] as const)(
+    "does not fall back to Groq for %s when Nano errors",
+    async (action) => {
+      const deps = dependencies();
+
+      const result = await performAction(deps)(action, "draft");
+
+      expect(result).toEqual({ decision: "error" });
+      expect(deps.refineViaGroqLoopback).not.toHaveBeenCalled();
+    },
+  );
 });

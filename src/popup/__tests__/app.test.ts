@@ -35,6 +35,15 @@ describe("mountPopup", () => {
     expect(document.activeElement).toBe(power);
   });
 
+  it("renders the brand mark as the packaged icon, not the old vector logo", async () => {
+    const root = await mount();
+
+    const brand = root.querySelector<HTMLImageElement>(".pz-header-main__brand .pz-brand-logo");
+    expect(brand?.tagName).toBe("IMG");
+    expect(brand?.getAttribute("src")).toContain("/icon/32.png");
+    expect(root.querySelector(".pz-header-main__brand svg")).toBeNull();
+  });
+
   it("pauses suggestions and reports it from the power button", async () => {
     const root = await mount();
 

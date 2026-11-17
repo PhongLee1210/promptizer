@@ -10,6 +10,7 @@ interface GroqRefineResponse {
   ok: boolean;
   decision?: "keep" | "refine";
   refinedPrompt?: string;
+  reason?: "not-configured";
 }
 
 export function isGroqRefineMessage(message: unknown): message is GroqRefineMessage {
@@ -22,7 +23,7 @@ export async function handleGroqRefine(prompt: string): Promise<GroqRefineRespon
   const stored = await browser.storage.local.get("pairingToken");
   const pairingToken = typeof stored.pairingToken === "string" ? stored.pairingToken : "";
   if (pairingToken === "") {
-    return { ok: false };
+    return { ok: false, reason: "not-configured" };
   }
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
