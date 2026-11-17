@@ -438,6 +438,23 @@ describe("startChipController", () => {
     expect(isRailOpen()).toBe(false);
   });
 
+  it("keeps a run going and still shows the result when the user clicks away mid-run", async () => {
+    const textarea = focusedTextarea(LONG_DRAFT);
+    stop = startChipController({ performAction: refineResult() });
+
+    textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    trigger().click();
+    clickRailItem("Fix grammar");
+
+    document.body.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(isWindowOpen()).toBe(true);
+    expect(winBodyText()).toBe(REFINED_DRAFT);
+  });
+
   it("Escape leaves edit mode first, then closes the window, returning focus to the chip", async () => {
     const textarea = focusedTextarea(LONG_DRAFT);
     stop = startChipController({ performAction: refineResult() });

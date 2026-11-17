@@ -58,6 +58,7 @@ const CHIP_STYLE = `
     background: var(--pz-chip-surface);
     border: 1px solid var(--pz-rail-border);
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+    color: var(--pz-rail-text);
     cursor: pointer;
   }
   .pz-chip[hidden] {
@@ -76,8 +77,14 @@ const CHIP_STYLE = `
     outline: none;
   }
   .pz-chip img {
-    width: 18px;
-    height: 18px;
+    width: 14px;
+    height: 14px;
+    display: block;
+    pointer-events: none;
+  }
+  .pz-chip > svg:not(.pz-chip__ring) {
+    width: 14px;
+    height: 14px;
     display: block;
     pointer-events: none;
   }

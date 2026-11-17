@@ -370,7 +370,10 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
   }
 
   function handleDocumentClick(event: MouseEvent): void {
-    if (state.view.kind !== "closed" && !chip.containsEventTarget(event)) {
+    if (state.view.kind === "closed" || state.view.kind === "loading") {
+      return;
+    }
+    if (!chip.containsEventTarget(event)) {
       dispatch({ type: "dismissed" });
     }
   }
