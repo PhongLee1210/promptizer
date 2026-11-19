@@ -17,29 +17,48 @@ function startServer() {
     res.writeHead(200, { "content-type": "text/html" });
     res.end(fs.readFileSync(path.join(FIXTURE_DIR, "index.html")));
   });
-  return new Promise((resolve) => server.listen(PORT, "127.0.0.1", () => resolve(server)));
+  return new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(PORT, "127.0.0.1", () => resolve(server));
+  });
 }
+
+function stopServer(server) {
+  return new Promise((resolve) => {
+    server.closeAllConnections();
+    server.close(resolve);
+  });
+}
+
+// GitHub's Ubuntu runners disable unprivileged user namespaces through AppArmor,
+// so Chrome's zygote sandbox cannot start there.
+const SANDBOX_ARGS = process.env.CI ? ["--no-sandbox", "--disable-setuid-sandbox"] : [];
 
 // Runs one test case: launches real Chrome with the built extension, opens the
 // local fixture (content script only matches it because wxt.config.ts +
 // content.ts temporarily add http://127.0.0.1:4173/* before `pnpm build` —
 // see e2e/README.md), and tears everything down after.
 export async function runCase(name, fn) {
-  const server = await startServer();
-  const browser = await puppeteer.launch({
-    headless: false,
-    args: [`--disable-extensions-except=${EXT_PATH}`, `--load-extension=${EXT_PATH}`, "--window-size=1000,800"],
-    defaultViewport: null,
-    ignoreDefaultArgs: ["--disable-extensions"],
-  });
-
   const results = [];
   const check = (label, pass, detail = "") => {
     results.push({ label, pass, detail });
     console.log(`${pass ? "PASS" : "FAIL"} - ${label}${detail ? ` (${detail})` : ""}`);
   };
 
+  const server = await startServer();
+  let browser;
   try {
+    browser = await puppeteer.launch({
+      headless: false,
+      args: [
+        `--disable-extensions-except=${EXT_PATH}`,
+        `--load-extension=${EXT_PATH}`,
+        "--window-size=1000,800",
+        ...SANDBOX_ARGS,
+      ],
+      defaultViewport: null,
+      ignoreDefaultArgs: ["--disable-extensions"],
+    });
     await new Promise((r) => setTimeout(r, 1000));
     const page = await browser.newPage();
     await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: "networkidle0" });
@@ -48,8 +67,8 @@ export async function runCase(name, fn) {
     });
     await fn(page, check, browser);
   } finally {
-    await browser.close();
-    server.close();
+    await browser?.close();
+    await stopServer(server);
   }
 
   const failed = results.filter((r) => !r.pass);
