@@ -1,9 +1,8 @@
 # Release checklist
 
 Releases are tag-driven. Pushing a `v*` tag runs
-[`.github/workflows/release.yml`](../.github/workflows/release.yml), which builds the extension zip,
-cross-compiles `promptrefine`, and publishes the GitHub release. Nothing is created by hand in the
-GitHub UI.
+[`.github/workflows/release.yml`](../.github/workflows/release.yml), which builds the extension zip
+and publishes the GitHub release. Nothing is created by hand in the GitHub UI.
 
 ## Before tagging
 
@@ -30,7 +29,7 @@ git push origin v0.1.0
 
 - [ ] Watch the build — `gh run watch`
 - [ ] Open the release — `gh release view v0.2.0 --web`
-- [ ] Confirm assets: `promptizer-<version>-chrome.zip`, four `promptrefine-*` binaries, `checksums.txt`
+- [ ] Confirm assets: `promptizer-<version>-chrome.zip` and `checksums.txt`
 - [ ] Install the zip on a clean profile and run one refine end to end
 
 ## If the build fails
