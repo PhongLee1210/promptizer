@@ -55,15 +55,14 @@ after:   Make the contact button sticky on scroll while preserving the
   |  content script     | -----> Gemini Nano (Chrome built-in AI)
   |  editable preview   |
   +---------------------+ --+
-            ^               |    fallback, opt-in and disclosed
-            |               +--> 127.0.0.1:8765  ->  promptrefine serve  ->  Groq
+            ^               |    cloud, opt-in, your own API key
+            |               +--> Anthropic / OpenAI / OpenRouter
             |
        Replace / Dismiss
 ```
 
-Nano handles the rewrite locally. If Nano is unavailable on the device — or you pick Groq-only mode —
-the extension calls a **local, token-authenticated** service on `127.0.0.1` that you run yourself.
-No hosted backend exists.
+Nano handles the rewrite locally by default. If you'd rather use a cloud model, add your own API
+key for Anthropic, OpenAI, or OpenRouter in Promptizer settings. No hosted backend exists.
 
 ## Install
 
@@ -86,28 +85,13 @@ make build-ext            # -> .output/chrome-mv3/
 
 ```bash
 make build                                 # -> ./bin/promptrefine
-set -a; . ./.env; set +a                   # Groq key, copy from .env.example
+set -a; . ./.env; set +a                   # provider key, copy from .env.example
 
 printf '%s\n' 'make contact button sticky but dont change existing design' \
   | ./bin/promptrefine refine
 ```
 
 Add `--json` for structured output, `--context-file ./context.txt` to pass extra context.
-
-## Groq fallback (optional)
-
-Two terminals:
-
-```bash
-set -a; . ./.env; set +a
-./bin/promptrefine pair      # paste the printed token into extension settings
-```
-
-```bash
-export PROMPTREFINE_EXTENSION_ORIGIN='chrome-extension://YOUR_EXTENSION_ID'
-./bin/promptrefine serve
-./bin/promptrefine health    # third terminal, sanity check
-```
 
 ## Development
 
@@ -123,16 +107,8 @@ Always pnpm — never `npm install`, never `npx`. Full working rules in [AGENTS.
 ## Privacy
 
 Only the prompt and context you explicitly select are processed. Gemini Nano keeps them on-device.
-They reach Groq only in Groq-only mode or through the disclosed fallback, via a service running on your
-own machine. No prompt logging, no page scraping, no automatic submission.
-
-Details: [security and privacy](docs/security-privacy.md).
-
-## Documentation
-
-[Scope](docs/scope.md) · [Request limits](docs/request-limits.md) · [Troubleshooting](docs/troubleshooting.md) ·
-[Known limitations](docs/known-limitations.md) · [Manual test checklist](docs/manual-test.md) ·
-[Benchmarks](docs/benchmarks.md) · [Model evaluation](docs/model-evaluation.md) · [Contributing rules](AGENTS.md)
+A cloud provider only sees your prompt if you add that provider's API key yourself. No prompt
+logging, no page scraping, no automatic submission.
 
 ## Contributing
 

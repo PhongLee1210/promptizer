@@ -13,6 +13,7 @@ The rewrite is always shown as an editable preview. Nothing is submitted automat
 
 ## Working rules
 
+- ALWAYS Serena MCP for code work.
 - ALWAYS use pnpm. Never `npm install`, never `npx`, never commit a `package-lock.json`.
 - `packageManager` in `package.json` pins the pnpm version; activate it with `corepack install -g pnpm@10`.
 - Stay on pnpm 10. Corepack's shim loads `bin/pnpm.cjs`, which pnpm 11 and later no longer ship, so `pnpm -v` fails
