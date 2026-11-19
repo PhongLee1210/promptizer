@@ -1,0 +1,114 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  extension:
+    name: Extension quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Format check
+        run: pnpm run format:check
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Unit tests
+        run: pnpm run test
+
+      - name: Legacy extension checks
+        run: make test-js
+
+      - name: Build extension
+        run: pnpm run build
+
+      - name: Assert built manifest
+        run: bash scripts/assert-manifest.sh
+
+      - name: Upload extension bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: chrome-mv3
+          path: .output/chrome-mv3
+          retention-days: 7
+
+  e2e:
+    name: Extension e2e
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Cache Chrome for Puppeteer
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/puppeteer
+          key: puppeteer-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Install Chrome for Puppeteer
+        run: pnpm exec puppeteer browsers install chrome
+
+      - name: Run e2e suite
+        run: xvfb-run -a --server-args="-screen 0 1280x1024x24" pnpm run test:e2e
+
+  go:
+    name: Go quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Format check
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "gofmt needed on:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: Tests
+        run: go test -race ./...
+
+      - name: Build
+        run: go build -trimpath -ldflags='-s -w' -o ./bin/promptrefine ./cmd/promptrefine
