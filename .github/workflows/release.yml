@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build release assets
+        run: |
+          version="${VERSION#v}"
+          test "$version" = "$(node -p 'require("./package.json").version')" \
+            || { echo "tag $VERSION does not match package.json version"; exit 1; }
+
+          pnpm exec wxt zip
+          bash scripts/assert-manifest.sh
+
+          mkdir -p dist
+          cp ".output/promptizer-${version}-chrome.zip" dist/
+          cd dist && sha256sum * > checksums.txt
+
+      - name: Publish release
+        run: |
+          gh release create "$VERSION" \
+            --title "Promptizer $VERSION" \
+            --notes-file .github/RELEASE.md \
+            --generate-notes \
+            --verify-tag \
+            dist/*

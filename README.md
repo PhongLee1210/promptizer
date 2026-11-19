@@ -12,7 +12,6 @@ on-device first, always as an editable preview, never auto-submitted.
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Chrome 138+](https://img.shields.io/badge/Chrome-138%2B-4285F4?logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/ai/built-in)
 [![Manifest V3](https://img.shields.io/badge/Manifest-V3-34A853)](https://developer.chrome.com/docs/extensions/develop/migrate)
-[![Go 1.26+](https://img.shields.io/badge/Go-1.26%2B-00ADD8?logo=go&logoColor=white)](https://go.dev)
 [![Built with WXT](https://img.shields.io/badge/Built%20with-WXT-67D4F8)](https://wxt.dev)
 
 <img src="docs/assets/banner.png" alt="Promptizer — clearer prompts, same intent" width="760">
@@ -23,9 +22,8 @@ on-device first, always as an editable preview, never auto-submitted.
 
 ## What it does
 
-You type a rushed prompt into ChatGPT or Claude. Press <kbd>⌘</kbd><kbd>⇧</kbd><kbd>Y</kbd>
-(<kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Y</kbd>). Promptizer shows a rewritten version next to the composer.
-Keep it, or dismiss it. Your words, clarified — not reinterpreted.
+You type a rushed prompt into any text composer on the web. Click the Promptizer chip next to it.
+Promptizer shows a rewritten version. Keep it, or dismiss it. Your words, clarified — not reinterpreted.
 
 ```
 before:  make contact button sticky but dont change existing design
@@ -42,31 +40,29 @@ after:   Make the contact button sticky on scroll while preserving the
 | **Preview, never submit**     | The rewrite lands in an editable preview. Promptizer never presses send for you.                        |
 | **Intent preserved**          | Constraints, tone, and task stay. It cleans the wording, it does not invent requirements.               |
 | **No telemetry**              | No prompt logging, no page scraping, no analytics.                                                      |
-| **Zero runtime dependencies** | No Go modules beyond stdlib, no UI framework, no third-party runtime JavaScript.                        |
+| **Zero runtime dependencies** | No UI framework, no third-party runtime JavaScript.                                                     |
 
 ## How it works
 
 ```
-  ChatGPT / Claude composer
+  any site's text composer
             |
-            |  Command+Shift+Y
+            |  click the Promptizer chip
             v
-  +---------------------+        on-device, default path
-  |  content script     | -----> Gemini Nano (Chrome built-in AI)
+  +---------------------+
+  |  content script     | -----> Gemini Nano (Chrome built-in AI, on-device)
   |  editable preview   |
-  +---------------------+ --+
-            ^               |    cloud, opt-in, your own API key
-            |               +--> Anthropic / OpenAI / OpenRouter
+  +---------------------+
+            ^
             |
        Replace / Dismiss
 ```
 
-Nano handles the rewrite locally by default. If you'd rather use a cloud model, add your own API
-key for Anthropic, OpenAI, or OpenRouter in Promptizer settings. No hosted backend exists.
+Gemini Nano runs the rewrite entirely on-device. No hosted backend, no cloud fallback.
 
 ## Install
 
-Requirements: Chrome 138+, Node.js, [pnpm](https://pnpm.io) 10, Go 1.26+, `jq`.
+Requirements: Chrome 138+, Node.js, [pnpm](https://pnpm.io) 10, `jq`.
 
 ```bash
 pnpm install
@@ -75,34 +71,35 @@ make build-ext            # -> .output/chrome-mv3/
 
 1. Open `chrome://extensions` → enable **Developer mode** → **Load unpacked** → select `.output/chrome-mv3/`.
 2. Open Promptizer settings from the toolbar → **Check or download Gemini Nano** → wait for **Ready on this device**.
-3. On ChatGPT or Claude, type at least 8 characters, press <kbd>⌘</kbd><kbd>⇧</kbd><kbd>Y</kbd>, then **Replace** or **Dismiss**.
-
-> The hand-rolled build in `extension/` is the previous generation and still loads unpacked. New work goes to `src/`.
-
-## CLI
-
-`promptrefine` refines a prompt from stdin, so prompts never land in shell history.
-
-```bash
-make build                                 # -> ./bin/promptrefine
-set -a; . ./.env; set +a                   # provider key, copy from .env.example
-
-printf '%s\n' 'make contact button sticky but dont change existing design' \
-  | ./bin/promptrefine refine
-```
-
-Add `--json` for structured output, `--context-file ./context.txt` to pass extra context.
+3. On any site, type at least 8 characters into a text field, click the Promptizer chip, then **Replace** or **Dismiss**.
 
 ## Development
 
 ```bash
 pnpm dev              # WXT dev server with hot reload
-make verify           # go tests + race + vitest + typecheck + prettier + eslint + builds
+pnpm run test         # vitest
+pnpm run test:e2e     # Puppeteer E2E suite against a real built extension
+make verify           # vitest + typecheck + prettier + build
 make format           # prettier --write
-./scripts/test-mock.sh  # loopback mock Groq, no external traffic
 ```
 
 Always pnpm — never `npm install`, never `npx`. Full working rules in [AGENTS.md](AGENTS.md).
+
+## Releases
+
+`package.json` holds the version. The tag must match it, or the release build fails.
+
+```bash
+pnpm version 0.2.0            # bumps package.json, commits, creates tag v0.2.0
+git push origin main --follow-tags
+```
+
+Pushing the tag runs [.github/workflows/release.yml](.github/workflows/release.yml): it zips the
+extension, writes `checksums.txt`, and publishes the GitHub release. Notes are
+[.github/RELEASE.md](.github/RELEASE.md)
+followed by the changelog GitHub generates from merged pull requests.
+
+Build the zip locally with `pnpm exec wxt zip`.
 
 ## Privacy
 
