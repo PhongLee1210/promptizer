@@ -4,7 +4,6 @@ node_modules/
 .claude/
 .serena/
 bin/
-testdata/
 docs/
 pnpm-lock.yaml
 src/utils/icons.ts
