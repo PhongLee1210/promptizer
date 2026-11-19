@@ -187,10 +187,7 @@ export function headerMain(options: {
 }): HTMLDivElement {
   return el("div", { class: "pz-header-main" }, [
     menuButton(options),
-    el("div", { class: "pz-header-main__brand" }, [
-      brandLogo(),
-      el("h1", { class: "pz-header" }, ["Promptizer"]),
-    ]),
+    el("div", { class: "pz-header-main__brand" }, [brandLogo(), el("h1", { class: "pz-header" }, ["Promptizer"])]),
     options.statusPillNode,
   ]);
 }

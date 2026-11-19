@@ -11,7 +11,7 @@ export default defineConfig({
     web_accessible_resources: [
       {
         resources: ["chip/mark.png"],
-        matches: ["https://chatgpt.com/*", "https://claude.ai/*"],
+        matches: ["<all_urls>"],
       },
     ],
     commands: {

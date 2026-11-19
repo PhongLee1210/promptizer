@@ -8,7 +8,8 @@ export interface ActionCopy {
 }
 
 export const ERROR_MESSAGE = "Couldn't get a result. Your text is unchanged.";
-export const NOT_CONFIGURED_MESSAGE = "No AI provider is set up yet. Enable on-device AI or pair a provider in the extension popup.";
+export const NOT_CONFIGURED_MESSAGE =
+  "No AI provider is set up yet. Enable on-device AI or pair a provider in the extension popup.";
 
 export const ACTION_COPY: Record<ActionId, ActionCopy> = {
   refine: { label: "Refine prompt", busyLabel: "Refining", resultTitle: "Refined prompt" },
