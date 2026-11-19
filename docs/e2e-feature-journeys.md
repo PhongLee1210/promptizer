@@ -34,7 +34,7 @@ Expected: preview is editable, never auto-submitted. Replace writes exact previe
 Status: FULL
 
 ```
-focus textarea/contentEditable on claude.ai or chatgpt.com
+focus textarea/contentEditable on any site (content script matches <all_urls>)
    |
    v
 resolveEditableTarget() identifies element
@@ -153,46 +153,11 @@ navigate screens, state persists across popup close/reopen
 ```
 Expected: navigation works, state loads back (STORAGE_SCHEMA v2 migration applies for old data).
 
-### 10. CLI `promptrefine refine`
-Status: FULL
-
-```
-printf "rushed prompt" | ./bin/promptrefine refine
-   |
-   v
-reads stdin (bounded) -> calls refine service -> prints clean paragraph
-   |
-   +-- --json -----> structured output
-   +-- --context-file ----> extra context merged in
-```
-Expected: prompt never touches shell history; errors map to readable messages.
-
-### 11. CLI `pair` / `serve` / `health`
-Status: FULL
-
-```
-./bin/promptrefine pair
-   |
-   v
-prints token -----> paste into extension pairing field (legacy extension only)
-
-./bin/promptrefine serve
-   |
-   v
-starts 127.0.0.1:8765, loads token, graceful shutdown on SIGINT/SIGTERM
-
-./bin/promptrefine health
-   |
-   v
-GET /healthz -----> 200 ok (2s timeout)
-```
-Expected: `serve` refuses to start without a token from `pair` first.
-
 ---
 
 ## ADVANCED FEATURES
 
-### 12. Action rail (9 actions + sub-menus)
+### 10. Action rail (9 actions + sub-menus)
 Status: FULL
 
 ```
@@ -206,7 +171,7 @@ refine | improve | grammar | shorten | translate> | tone>
 ```
 Expected: arrow keys / Home / End move focus; Escape closes rail.
 
-### 13. Tweak menu on result
+### 11. Tweak menu on result
 Status: FULL
 
 ```
@@ -220,58 +185,8 @@ result shown -----> click Tweak
 ```
 Expected: original prompt never re-sent; only the visible result is the input.
 
-### 14. Pairing-token auth (Groq access control)
-Status: GAP — Go side full, no UI in `src/` to set token
-
-```
-Go side (full):
-  pair -> token saved 0600 -----> serve checks Authorization header
-                                       |
-                             constant-time compare
-                                       |
-                            match: proceed  /  mismatch: 401
-
-src/ extension (missing):
-  background.ts reads storage.pairingToken
-       |
-       v
-  NO screen anywhere writes this value  <-- dead end
-```
-Expected (current real behavior): Groq fallback in `src/` build can never authenticate — always fails `not-configured`. Only legacy `extension/options.js` pairing field works.
-
-### 15. Server cache / dedup
+### 12. Output validation guardrails
 Status: FULL
-
-```
-request A -----> SHA-256(prompt+model) -----> cache miss -----> call Groq -----> store
-request A again (same hash, <10min) -----> cache hit -----> instant return, no Groq call
-```
-Expected: identical repeated requests skip provider call.
-
-### 16. Busy guard (single-flight)
-Status: FULL
-
-```
-request 1 in flight -----> request 2 arrives concurrently
-                                 |
-                                 v
-                           HTTP 429 "BUSY"
-```
-Expected: no overlapping Groq calls from one server instance.
-
-### 17. Retry with backoff
-Status: FULL
-
-```
-Groq returns 429/5xx -----> isTransient? -----> retry once (honors Retry-After)
-                                                      |
-                                           still fails -> surface error
-(live-trigger mode: retry SKIPPED, fails fast)
-```
-Expected: manual "refine" retries once; as-you-type "live" mode never retries.
-
-### 18. Output validation guardrails
-Status: FULL (triplicated: Go / Nano / legacy JS)
 
 ```
 model returns text
@@ -290,7 +205,7 @@ decision must be "keep" or "refine"
 ```
 Expected: malformed model output never reaches the editor.
 
-### 19. Model fallback-order UI (multi-provider slots)
+### 13. Model fallback-order UI (multi-provider slots)
 Status: STUB — UI only, no execution path
 
 ```
@@ -299,9 +214,9 @@ popup -----> Models screen -----> reorder slots (primary/backup/fallback)
                                         v
                               saved to storage... and nothing reads it
 ```
-Expected (current real behavior): reordering has zero effect on actual refine routing. Content script only ever tries Nano then Groq.
+Expected (current real behavior): reordering has zero effect on actual refine routing. Content script only ever uses Nano — there is no cloud fallback.
 
-### 20. Provider key "Save & test"
+### 14. Provider key "Save & test"
 Status: STUB
 
 ```
@@ -316,7 +231,7 @@ type key -----> click "Save & test"
 ```
 Expected (current real behavior): any 8+ character string "succeeds" regardless of validity. Key itself not persisted, only last 4 chars.
 
-### 21. Per-site platform toggle
+### 15. Per-site platform toggle
 Status: GAP — UI works, not enforced
 
 ```
@@ -331,7 +246,7 @@ popup -----> Platforms screen -----> toggle claude.ai OFF
 ```
 Expected (current real behavior): only the global on/off switch (#8) has any effect; per-site toggle is cosmetic.
 
-### 22. Suggestion settings (live mode, categories, underline)
+### 16. Suggestion settings (live mode, categories, underline)
 Status: DEAD STORAGE
 
 ```
@@ -342,8 +257,8 @@ popup -----> Suggestions screen -----> toggle "live mode" / categories / underli
 ```
 Expected (current real behavior): no visible change in behavior regardless of toggle state.
 
-### 23. Keyboard shortcut (Cmd/Ctrl+Shift+Y)
-Status: DEAD in `src/`
+### 17. Keyboard shortcut (Cmd/Ctrl+Shift+Y)
+Status: DEAD
 
 ```
 press Cmd+Shift+Y
@@ -352,15 +267,15 @@ press Cmd+Shift+Y
 chrome fires "refine-prompt" command
    |
    v
-src/entrypoints/background.ts -----> NO onCommand listener -----> nothing happens
+NO background script, NO onCommand listener -----> nothing happens
 ```
-Expected (current real behavior): shortcut does nothing in active build. Works only in legacy `extension/`.
+Expected (current real behavior): shortcut does nothing. `wxt.config.ts` still declares the command; nothing consumes it.
 
 ---
 
 ## AI INTEGRATIONS
 
-### 24. Gemini Nano (on-device, primary)
+### 18. Gemini Nano (on-device, primary)
 Status: FULL
 
 ```
@@ -374,69 +289,28 @@ action triggered -----> nanoAvailability() check
      warm session reused/created    surface error
      (or created fresh, 180s idle         |
       eviction)                           v
-                 |                 (only "refine" action
-                 v                  falls through to Groq,
-     JSON-schema constrained        see #25)
+                 |                 (Nano is the only
+                 v                  refine path — no cloud
+     JSON-schema constrained        fallback of any kind)
      output -----> validate -----> return result
 ```
 Expected: no network call; works offline. Requires Chrome 138+, ~16GB RAM/4 cores in practice.
 
-### 25. Groq cloud fallback (via local Go service)
-Status: PARTIAL — only "refine" action has fallback
+Note: the Groq cloud-fallback path (local Go service + pairing-token auth) that previously backed the "refine" action has been removed entirely. Nano failures now surface directly for every action, with no fallback. The Go CLI/service (`cmd/promptrefine`, `internal/`) no longer exists in this repo.
 
-```
-"refine" action, Nano fails
-   |
-   v
-content script -----> runtime.sendMessage -----> background.ts
-                                                        |
-                                                        v
-                                          POST 127.0.0.1:8765 (Bearer pairingToken)
-                                          6.5s timeout, cache: no-store
-                                                        |
-                                              +---------+---------+
-                                              v                   v
-                                        token missing        token valid
-                                              |                   |
-                                              v                   v
-                                     fails "not-configured"   Groq call -> result
-
-other 8 actions (improve/grammar/shorten/translate/tone), Nano fails
-   |
-   v
-error surfaced directly, NO Groq fallback attempted
-```
-Expected: only refine has a safety net; other actions are Nano-only today.
-
-### 26. Language-aware routing (Vietnamese -> Groq)
-Status: MISSING in `src/` (exists only in legacy `extension/`)
+### 19. Language-aware routing (Vietnamese)
+Status: MISSING
 
 ```
 docs claim:
-  Vietnamese/non-Latin input -----> detected -----> routed to Groq
+  Vietnamese/non-Latin input -----> detected -----> routed to a dedicated path
 
 src/ actual:
   Vietnamese/non-Latin input -----> NO detector exists -----> goes to Nano same as any input
 ```
 Expected (current real behavior): needs direct observation — likely Nano attempts anyway since Nano doesn't officially support vi; outcome (garbage output vs quiet failure) is untested, flagged as open question.
 
-### 27. Nano <-> Groq prompt contract sync
-Status: FULL but fragile (comment + one test, no shared code)
-
-```
-edit Nano system instruction (nano.ts)
-   |
-   v
-must manually also edit:
-  - internal/refine/prompt.go (Go)
-  - extension/nano.js (legacy)
-   |
-   v
-nano-prompt-sync.test.ts catches ONLY the Nano<->Go drift, not legacy
-```
-Expected: if someone edits one and forgets the others, only Go/Nano mismatch is caught by test; legacy drift is silent.
-
-### 28. Popup Nano status display
+### 20. Popup Nano status display
 Status: FAKE
 
 ```

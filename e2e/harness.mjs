@@ -1,6 +1,7 @@
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
+import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import puppeteer from "puppeteer";
 
@@ -45,7 +46,7 @@ export async function runCase(name, fn) {
     await page.waitForFunction(() => document.documentElement.hasAttribute("data-promptizer-active"), {
       timeout: 5000,
     });
-    await fn(page, check);
+    await fn(page, check, browser);
   } finally {
     await browser.close();
     server.close();
@@ -69,6 +70,19 @@ export async function openRailOnRefine(page) {
   const refineLeaf = await page.waitForSelector("aria/Refine prompt", { timeout: 5000 });
   await new Promise((r) => setTimeout(r, 200)); // let the rail-open animation settle
   return refineLeaf;
+}
+
+// Chrome derives an unpacked extension's id deterministically from its absolute
+// install path (sha256 of the path, first 16 bytes, nibbles mapped to a-p) since
+// MV3 extensions without a background entrypoint never expose a service-worker
+// target to discover the id from.
+export function extensionId() {
+  const hash = crypto.createHash("sha256").update(EXT_PATH).digest();
+  const hex = hash.toString("hex").slice(0, 32);
+  return hex
+    .split("")
+    .map((nibble) => String.fromCharCode(97 + Number.parseInt(nibble, 16)))
+    .join("");
 }
 
 export function findAccessibleName(node, predicate) {
