@@ -3,11 +3,9 @@
 ## What this repo is
 
 Promptizer rewrites a messy prompt into one clean paragraph, keeping the original task and intent.
-It ships two parts:
 
-- `cmd/promptrefine` + `internal/` — Go CLI and an authenticated `127.0.0.1` service that calls Groq.
-- `src/` — WXT-built Chrome MV3 extension for ChatGPT and Claude that uses on-device Gemini Nano first and the local
-  Groq service as fallback. `extension/` holds the earlier hand-rolled JavaScript build.
+- `src/` — WXT-built Chrome MV3 extension that works on any site with a recognized text composer, using on-device
+  Gemini Nano.
 
 The rewrite is always shown as an editable preview. Nothing is submitted automatically.
 
@@ -31,15 +29,14 @@ The rewrite is always shown as an editable preview. Nothing is submitted automat
 - Keep the existing structure. Edit the files that are already there instead of adding new ones unless a new file is
   genuinely required.
 - There is no limit on file or function length, so prefer extending an existing file over splitting it.
-- No third-party Go dependencies. No third-party runtime JavaScript dependencies beyond the extension framework's own
-  bundled helpers, and no UI framework. WXT, Vite, Vitest, ESLint and Prettier are the permitted dev dependencies.
+- No third-party runtime JavaScript dependencies beyond the extension framework's own bundled helpers, and no UI
+  framework. WXT, Vite, Vitest, Puppeteer and Prettier are the permitted dev dependencies.
 - Pure functions get Vitest unit tests under the neighbouring `__tests__/` directory. Anything that needs a real
   browser is verified by loading `.output/chrome-mv3/` unpacked and exercising it by hand.
 - Formatting is Prettier's: 2 spaces, semicolons, double quotes, trailing commas, `printWidth` 120. Configured in
   `.prettierrc.json`; `.prettierignore` keeps it out of generated output, vendored agent directories and `docs/`.
 - Use `import type` for type-only imports.
-- No comments in the code. Names and structure carry the meaning; ESLint enforces this for `extension/` through the
-  custom `local/no-comments` rule in `eslint.config.mjs`.
+- No comments in the code. Names and structure carry the meaning.
 - Never log, commit or expose credentials. Never print or commit `.env`. Mask password, payment-card and
   one-time-code values wherever page content is returned.
 - Do not edit `.output/**`, `.wxt/**` or `src/utils/icons.ts`. All three are produced by the build.
@@ -47,8 +44,8 @@ The rewrite is always shown as an editable preview. Nothing is submitted automat
 ## Verify
 
 ```bash
-make verify        # go tests, race, extension syntax checks, typecheck, vitest, prettier, eslint, builds
+make verify        # typecheck, vitest, prettier, build
 make format        # prettier --write
 make format-check  # prettier --check
-make lint          # eslint only
+pnpm run test:e2e  # Puppeteer E2E suite
 ```

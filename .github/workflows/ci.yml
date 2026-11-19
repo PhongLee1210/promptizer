@@ -32,17 +32,11 @@ jobs:
       - name: Format check
         run: pnpm run format:check
 
-      - name: Lint
-        run: pnpm run lint
-
       - name: Typecheck
         run: pnpm run typecheck
 
       - name: Unit tests
         run: pnpm run test
-
-      - name: Legacy extension checks
-        run: make test-js
 
       - name: Build extension
         run: pnpm run build
@@ -83,32 +77,3 @@ jobs:
 
       - name: Run e2e suite
         run: xvfb-run -a --server-args="-screen 0 1280x1024x24" pnpm run test:e2e
-
-  go:
-    name: Go quality
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache: true
-
-      - name: Vet
-        run: go vet ./...
-
-      - name: Format check
-        run: |
-          unformatted="$(gofmt -l .)"
-          if [ -n "$unformatted" ]; then
-            echo "gofmt needed on:"
-            echo "$unformatted"
-            exit 1
-          fi
-
-      - name: Tests
-        run: go test -race ./...
-
-      - name: Build
-        run: go build -trimpath -ldflags='-s -w' -o ./bin/promptrefine ./cmd/promptrefine

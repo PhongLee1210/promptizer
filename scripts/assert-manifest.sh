@@ -11,7 +11,7 @@ fi
 jq -e '
   .manifest_version == 3
   and (.minimum_chrome_version | tonumber) >= 138
-  and (.host_permissions == ["http://127.0.0.1:8765/*"])
+  and (.host_permissions // [] | length == 0)
   and (.permissions | index("offscreen") | not)
 ' "$manifest" > /dev/null
 

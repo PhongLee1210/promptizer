@@ -1,6 +1,0 @@
-#promptizer-extension-root {
-  all: initial;
-  position: fixed;
-  inset: auto max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) auto;
-  z-index: 2147483647;
-}

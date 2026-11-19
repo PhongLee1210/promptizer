@@ -1,4 +1,4 @@
 - Product: local-first prompt refiner; whole-prompt rewrite/keep, preview-only, never auto-submit.
-- Two parts: `cmd/promptrefine` + `internal/` (Go CLI, authenticated 127.0.0.1 service calling Groq) and `src/` (WXT-built Chrome MV3 extension, on-device Gemini Nano first, Groq service as fallback). `extension/` holds the earlier hand-rolled JS build, still wired into `make verify`.
-- Stable privacy invariant: only explicitly selected bounded prompt/context may leave host; never scan terminal/page/thread/files implicitly; never log prompt content or expose provider key to extension.
+- `src/` (WXT-built Chrome MV3 extension, on-device Gemini Nano only, no cloud fallback). The legacy hand-rolled `extension/` JS build and the Go CLI/Groq cloud-fallback backend (`cmd/promptrefine`, `internal/`) were both removed entirely — no longer supported. `src/` is the only codebase now.
+- Stable privacy invariant: only explicitly selected bounded prompt/context may leave host; never scan terminal/page/thread/files implicitly; never log prompt content.
 - Architecture/stack details: `mem:tech_stack`.

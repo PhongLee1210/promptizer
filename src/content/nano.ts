@@ -1,7 +1,5 @@
 import type { ActionId, RefineDecision, RefineResult } from "./action-types";
 
-// Must stay in sync with the opening sentence of internal/refine/prompt.go so the
-// in-browser Nano path and the Go+Groq fallback path apply the same rewrite policy.
 export const REFINE_SYSTEM_INSTRUCTION =
   "Refine the following prompt into a clean and well-structured format. Keep it in paragraph form and do not change the core task or intent. You may improve clarity and focus, but do not remove important context. Ensure the grammar is correct and the wording is professional and easy to understand.";
 

@@ -7,7 +7,6 @@ export default defineConfig({
     description: "Preview a clearer version of the current prompt before replacing it.",
     minimum_chrome_version: "138",
     permissions: ["storage", "activeTab"],
-    host_permissions: ["http://127.0.0.1:8765/*"],
     web_accessible_resources: [
       {
         resources: ["chip/mark.png"],

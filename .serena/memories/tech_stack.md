@@ -1,5 +1,3 @@
-- Go standard library only for `cmd/promptrefine` + `internal/`; no third-party Go modules.
-- `src/` is a WXT (Chrome MV3) extension in TypeScript, built with Vite, tested with Vitest; no UI framework, no runtime JS dependencies beyond WXT's own bundled helpers.
-- `extension/` is the earlier hand-rolled JS build (plain JS/CSS, no bundler), kept and tested separately via `make test-js`/`make lint`.
-- Groq Chat Completions via `net/http`; default `openai/gpt-oss-120b`, `openai/gpt-oss-20b` as lower-cost alternative; local deterministic mock at `scripts/mock-groq/main.go`.
-- In-memory bounded cache only; no database, container, local LLM runtime, or always-on daemon beyond the loopback service.
+- `src/` is a WXT (Chrome MV3) extension in TypeScript, built with Vite, tested with Vitest; no UI framework, no runtime JS dependencies beyond WXT's own bundled helpers. No ESLint — Prettier + `tsc` only.
+- No legacy JS build, no Go backend, no cloud provider, no cache/daemon/service beyond the browser extension itself — Gemini Nano (on-device) is the only refine path.
+- E2E coverage: Puppeteer suite in `e2e/` (`pnpm run test:e2e`) drives the real built extension in Chrome for Testing against a local fixture page, with a fake on-device Nano shim injected only for test runs.
