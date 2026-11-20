@@ -646,6 +646,84 @@ describe("startChipController", () => {
 
     expect(chipHost()!.style.display).toBe("block");
   });
+  it("downloads the missing on-device model, shows progress, then answers the request", async () => {
+    const textarea = focusedTextarea(LONG_DRAFT);
+    const performAction = vi
+      .fn<(...args: unknown[]) => Promise<RefineResult>>()
+      .mockResolvedValueOnce({ decision: "error", reason: "not-configured" })
+      .mockResolvedValue({ decision: "refine", refinedText: REFINED_DRAFT });
+    let finishDownload: ((availability: "available") => void) | undefined;
+    let report: ((percent: number) => void) | undefined;
+    const prepareModel = vi.fn((onProgress: (percent: number) => void) => {
+      report = onProgress;
+      onProgress(0);
+      return new Promise<"available">((resolve) => {
+        finishDownload = resolve;
+      });
+    });
+    stop = startChipController({ performAction, prepareModel });
+
+    textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    trigger().click();
+    clickRailItem("Fix grammar");
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(prepareModel).toHaveBeenCalledTimes(1);
+    report!(60);
+    expect(trigger().dataset.progress).toBe("60");
+    expect(winNode().querySelector(".pz-win__prep-pct")?.textContent).toBe("60%");
+
+    finishDownload!("available");
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(performAction).toHaveBeenCalledTimes(2);
+    expect(winBodyText()).toBe(REFINED_DRAFT);
+    expect(trigger().dataset.progress).toBeUndefined();
+  });
+
+  it("keeps the setup error when the model still cannot be prepared", async () => {
+    const textarea = focusedTextarea(LONG_DRAFT);
+    const performAction = vi
+      .fn<(...args: unknown[]) => Promise<RefineResult>>()
+      .mockResolvedValue({ decision: "error", reason: "not-configured" });
+    const prepareModel = vi.fn(async () => "unavailable" as const);
+    stop = startChipController({ performAction, prepareModel });
+
+    textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    trigger().click();
+    clickRailItem("Fix grammar");
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(performAction).toHaveBeenCalledTimes(1);
+    expect(winBodyText()).toContain("On-device AI isn't ready yet");
+    expect(winButtonLabels()).toContain("Try again");
+  });
+
+  it("stops reporting download progress once the run is cancelled", async () => {
+    const textarea = focusedTextarea(LONG_DRAFT);
+    const performAction = vi
+      .fn<(...args: unknown[]) => Promise<RefineResult>>()
+      .mockResolvedValue({ decision: "error", reason: "not-configured" });
+    let report: ((percent: number) => void) | undefined;
+    const prepareModel = vi.fn((onProgress: (percent: number) => void) => {
+      report = onProgress;
+      onProgress(0);
+      return new Promise<"available">(() => undefined);
+    });
+    stop = startChipController({ performAction, prepareModel });
+
+    textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    trigger().click();
+    clickRailItem("Fix grammar");
+    await vi.advanceTimersByTimeAsync(1);
+    expect(trigger().dataset.progress).toBe("0");
+
+    clickWinButton("Close");
+    report!(80);
+
+    expect(trigger().dataset.progress).toBeUndefined();
+    expect(isRailOpen()).toBe(true);
+  });
 });
 
 describe("startChipController warm-up", () => {

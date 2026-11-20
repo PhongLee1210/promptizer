@@ -1,6 +1,25 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeBrowser } from "wxt/testing/fake-browser";
 import { mountPopup } from "../app";
+import { evictWarmSessions, type NanoAvailability } from "../../content/nano";
+
+interface DownloadMonitor {
+  addEventListener(type: "downloadprogress", listener: (event: { loaded: number }) => void): void;
+}
+
+function stubLanguageModel(availability: NanoAvailability, progressFraction = 0.5): ReturnType<typeof vi.fn> {
+  const create = vi.fn(async (options: { monitor?: (monitor: DownloadMonitor) => void }) => {
+    options.monitor?.({
+      addEventListener: (_type, listener) => listener({ loaded: progressFraction }),
+    });
+    return { prompt: vi.fn(), destroy: vi.fn() };
+  });
+  (globalThis as Record<string, unknown>).LanguageModel = {
+    availability: vi.fn().mockResolvedValue(availability),
+    create,
+  };
+  return create;
+}
 
 async function mount(): Promise<HTMLElement> {
   const root = document.createElement("div");
@@ -22,9 +41,15 @@ describe("mountPopup", () => {
   beforeEach(() => {
     fakeBrowser.reset();
     localStorage.clear();
+    evictWarmSessions();
+    stubLanguageModel("available");
     vi.spyOn(fakeBrowser.runtime, "getManifest").mockReturnValue({
       version: "0.1.0",
     } as ReturnType<typeof fakeBrowser.runtime.getManifest>);
+  });
+
+  afterEach(() => {
+    delete (globalThis as Record<string, unknown>).LanguageModel;
   });
 
   it("renders the main screen with the power button focused", async () => {
@@ -139,7 +164,7 @@ describe("mountPopup", () => {
     expect(root.textContent).toContain("No cloud model connected");
   });
 
-  it("stores a suggestion category change under schema 2", async () => {
+  it("stores a suggestion category change under the current schema", async () => {
     const root = await mount();
 
     openDrawer(root);
@@ -149,7 +174,7 @@ describe("mountPopup", () => {
     await Promise.resolve();
 
     const stored = await fakeBrowser.storage.local.get("popupState");
-    expect(stored.popupState).toMatchObject({ schema: 2, suggest: { categories: { gap: false } } });
+    expect(stored.popupState).toMatchObject({ schema: 3, suggest: { categories: { gap: false } } });
   });
 
   it("opens the model screen from the main model card", async () => {
@@ -173,5 +198,49 @@ describe("mountPopup", () => {
     await Promise.resolve();
 
     expect(root.querySelector<HTMLButtonElement>("#pz-platform-claude")?.getAttribute("aria-checked")).toBe("false");
+  });
+
+  it("surfaces the setup steps when Chrome reports no on-device model", async () => {
+    stubLanguageModel("unavailable");
+    const root = await mount();
+
+    expect(root.textContent).toContain("On-device AI needs setup");
+    root.querySelector<HTMLButtonElement>(".pz-card .pz-button--primary")!.click();
+
+    expect(root.querySelector(".pz-header-sub")?.textContent).toContain("On-device AI");
+    expect(root.querySelectorAll(".pz-step")).toHaveLength(6);
+    expect(root.textContent).toContain("chrome://flags/#prompt-api");
+    expect([...root.querySelectorAll<HTMLImageElement>(".pz-step__shot")].map((shot) => shot.alt)).toHaveLength(4);
+  });
+
+  it("downloads Gemini Nano from the setup screen and tracks progress", async () => {
+    const create = stubLanguageModel("downloadable", 0.5);
+    const root = await mount();
+
+    openDrawer(root);
+    drawerItemLabelled(root, "Setup guide").click();
+    root.querySelector<HTMLButtonElement>(".pz-button--primary")!.click();
+    await vi.waitFor(() => expect(root.textContent).toContain("Ready"));
+
+    expect(create).toHaveBeenCalledTimes(1);
+    const stored = await fakeBrowser.storage.local.get("popupState");
+    expect(stored.popupState).toMatchObject({ nano: { status: "ready", percent: 100 } });
+  });
+
+  it("follows a download that another context already started", async () => {
+    stubLanguageModel("downloading", 0.25);
+    const root = await mount();
+    await vi.waitFor(() => expect(root.textContent).toContain("Setting up"));
+
+    const stored = await fakeBrowser.storage.local.get("popupState");
+    expect(stored.popupState).toMatchObject({ nano: { status: "ready" } });
+  });
+
+  it("reports the on-device model as ready in the drawer when it is available", async () => {
+    const root = await mount();
+
+    openDrawer(root);
+
+    expect(drawerItemLabelled(root, "Setup guide").textContent).toContain("Ready");
   });
 });

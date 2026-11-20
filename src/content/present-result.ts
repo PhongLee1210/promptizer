@@ -9,7 +9,9 @@ export interface ActionCopy {
 
 export const ERROR_MESSAGE = "Couldn't get a result. Your text is unchanged.";
 export const NOT_CONFIGURED_MESSAGE =
-  "No AI provider is set up yet. Enable on-device AI or pair a provider in the extension popup.";
+  "On-device AI isn't ready yet. Open the Promptizer popup and follow the On-device AI setup steps.";
+export const PREPARING_TITLE = "Setting up on-device AI";
+export const PREPARING_CAPTION = "Downloading Gemini Nano. Keep Chrome open; this happens once per computer.";
 
 export const ACTION_COPY: Record<ActionId, ActionCopy> = {
   refine: { label: "Refine prompt", busyLabel: "Refining", resultTitle: "Refined prompt" },

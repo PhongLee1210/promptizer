@@ -12,7 +12,7 @@ import {
 } from "./chip-state";
 import { getEditorText, isContentEditableElement, resolveEditableTarget } from "./editor-detector";
 import { disableGlobally, isGloballyEnabled, onGlobalEnabledChanged } from "./global-enabled";
-import { evictWarmSessions, prewarmNano } from "./nano";
+import { evictWarmSessions, prepareNano, prewarmNano, type NanoAvailability } from "./nano";
 import { presentResult } from "./present-result";
 import { ActionRail } from "./rail";
 import { ResultWindow } from "./result-window";
@@ -24,6 +24,7 @@ const COPY_FLASH_MS = 1200;
 
 export interface ChipControllerOptions {
   performAction?: (action: ActionId, text: string) => Promise<RefineResult>;
+  prepareModel?: (onProgress: (percent: number) => void) => Promise<NanoAvailability>;
   prewarm?: () => void;
   releaseWarmSessions?: () => void;
 }
@@ -39,6 +40,7 @@ function railItemCount(hasHistory: boolean): number {
 
 export function startChipController(options: ChipControllerOptions = {}): () => void {
   const performAction = options.performAction ?? performActionWithRealProviders;
+  const prepareModel = options.prepareModel ?? ((onProgress) => prepareNano({ onProgress }));
   const prewarm = options.prewarm ?? (() => void prewarmNano());
   const releaseWarmSessions = options.releaseWarmSessions ?? evictWarmSessions;
 
@@ -116,7 +118,8 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
 
   function render(): void {
     chip.setExpanded(state.view.kind !== "closed");
-    chip.setLoading(state.view.kind === "loading");
+    chip.setLoading(state.view.kind === "loading" || state.view.kind === "preparing");
+    chip.setProgress(state.view.kind === "preparing" ? state.view.percent : null);
     chip.setUndoVisible(state.replaced);
     rail.render(state.view, context, state.results.length > 0);
     resultWindow.render(state);
@@ -148,7 +151,7 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
       dispatch({ type: "group-toggled", group: state.view.openGroup });
       return;
     }
-    if (state.view.kind === "loading") {
+    if (state.view.kind === "loading" || state.view.kind === "preparing") {
       generation += 1;
       dispatch({ type: "run-cancelled" });
       chip.focusTrigger();
@@ -159,7 +162,7 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
   }
 
   function closeWindow(): void {
-    if (state.view.kind === "loading") {
+    if (state.view.kind === "loading" || state.view.kind === "preparing") {
       generation += 1;
       dispatch({ type: "run-cancelled" });
     } else {
@@ -241,7 +244,7 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
     chip.show();
     updatePosition();
 
-    void performAction(action, text).then((result) => {
+    void runUntilAnswered(action, text, myGeneration).then((result) => {
       if (myGeneration !== generation) {
         return;
       }
@@ -254,6 +257,24 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
       const outcome = presentResult({ action, result, originalText: text });
       dispatch({ type: "outcome-arrived", id: String(++resultIdCounter), action, source, outcome });
     });
+  }
+
+  // A missing on-device model is recoverable: download it, reporting progress on the chip, then
+  // answer the request that exposed the gap.
+  async function runUntilAnswered(action: ActionId, text: string, myGeneration: number): Promise<RefineResult> {
+    const first = await performAction(action, text);
+    if (first.reason !== "not-configured" || myGeneration !== generation) {
+      return first;
+    }
+    const readiness = await prepareModel((percent) => {
+      if (myGeneration === generation) {
+        dispatch({ type: "prepare-progress", percent });
+      }
+    });
+    if (readiness !== "available" || myGeneration !== generation) {
+      return first;
+    }
+    return performAction(action, text);
   }
 
   function regenerate(): void {
@@ -370,7 +391,7 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
   }
 
   function handleDocumentClick(event: MouseEvent): void {
-    if (state.view.kind === "closed" || state.view.kind === "loading") {
+    if (state.view.kind === "closed" || state.view.kind === "loading" || state.view.kind === "preparing") {
       return;
     }
     if (!chip.containsEventTarget(event)) {

@@ -19,6 +19,7 @@ export type ChipView =
   | { kind: "closed" }
   | { kind: "rail"; openGroup: RailGroupId | null }
   | { kind: "loading"; action: ActionId; source: ActionSource }
+  | { kind: "preparing"; action: ActionId; source: ActionSource; percent: number }
   | { kind: "result" }
   | { kind: "editing"; draft: string }
   | { kind: "tweak" }
@@ -37,6 +38,7 @@ export type ChipEvent =
   | { type: "group-toggled"; group: RailGroupId }
   | { type: "action-selected"; action: ActionId; source: ActionSource; hasText: boolean }
   | { type: "outcome-arrived"; id: string; action: ActionId; source: ActionSource; outcome: Outcome }
+  | { type: "prepare-progress"; percent: number }
   | { type: "run-cancelled" }
   | { type: "step"; direction: -1 | 1 }
   | { type: "recent-opened" }
@@ -112,6 +114,20 @@ export function reduceChipState(state: ChipState, event: ChipEvent): ChipState {
       };
       const results = [...state.results, entry].slice(-HISTORY_LIMIT);
       return { ...state, results, index: results.length - 1, view: { kind: "result" } };
+    }
+
+    case "prepare-progress": {
+      if (state.view.kind !== "loading" && state.view.kind !== "preparing") {
+        return state;
+      }
+      const percent = Math.min(100, Math.max(0, Math.round(event.percent)));
+      if (state.view.kind === "preparing" && state.view.percent === percent) {
+        return state;
+      }
+      return {
+        ...state,
+        view: { kind: "preparing", action: state.view.action, source: state.view.source, percent },
+      };
     }
 
     case "run-cancelled":

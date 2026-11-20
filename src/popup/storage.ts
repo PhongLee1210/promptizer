@@ -36,6 +36,7 @@ function migrate(stored: Partial<PopupState> | undefined): PopupState {
       categories: { ...defaults.suggest.categories, ...stored.suggest?.categories },
     },
     railCollapsed: stored.railCollapsed ?? defaults.railCollapsed,
+    nano: { ...defaults.nano, ...stored.nano },
   };
 }
 

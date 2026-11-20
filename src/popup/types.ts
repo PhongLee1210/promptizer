@@ -1,6 +1,6 @@
 import type { PopupState } from "./state-types";
 
-export type PopupScreen = "main" | "platforms" | "models" | "providers" | "suggestions";
+export type PopupScreen = "main" | "platforms" | "models" | "providers" | "suggestions" | "nano-setup";
 
 export interface Dispatch {
   getState(): PopupState;
@@ -13,4 +13,6 @@ export interface Dispatch {
   openDrawer(): void;
   closeDrawer(): void;
   goTo(screen: PopupScreen): void;
+  refreshNano(): Promise<void>;
+  startNanoDownload(): Promise<void>;
 }

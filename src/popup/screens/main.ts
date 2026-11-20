@@ -86,6 +86,18 @@ function heroCopy(state: PopupState, view: MainView): { title: string; caption: 
   if (view.kind === "primary-unavailable") {
     return { title: "Can't suggest yet", caption: "Gemini Nano isn't available on this computer" };
   }
+  if (view.kind === "nano-downloading") {
+    return { title: "Setting up on-device AI", caption: `Gemini Nano is ${view.percent}% downloaded` };
+  }
+  if (view.kind === "nano-setup") {
+    return {
+      title: "On-device AI needs setup",
+      caption:
+        view.status === "unsupported"
+          ? "Chrome reports no on-device model here"
+          : "Gemini Nano hasn't been downloaded yet",
+    };
+  }
   if (view.kind === "unsupported") {
     return { title: "Not on a supported site", caption: "No chat box found in this tab" };
   }
@@ -110,6 +122,12 @@ function statusPillFor(view: MainView): HTMLElement {
   }
   if (view.kind === "backup") {
     return statusPill("Using backup", "warning");
+  }
+  if (view.kind === "nano-downloading") {
+    return statusPill(`Setting up ${view.percent}%`, "warning");
+  }
+  if (view.kind === "nano-setup") {
+    return statusPill("Setup needed", "warning");
   }
   return statusPill("Needs attention", "error");
 }
@@ -176,7 +194,32 @@ export function renderMainScreen(dispatch: Dispatch): HTMLElement {
     }
   }
 
-  if (view.kind === "primary-unavailable") {
+  if (view.kind === "nano-downloading") {
+    body.push(
+      el("div", { class: "pz-card", role: "status" }, [
+        el("p", { class: "pz-overline pz-text-muted" }, ["Model"]),
+        el("p", { class: "pz-body" }, [`Downloading Gemini Nano ${view.percent}%`]),
+        el("div", { class: "pz-progress-track" }, [
+          el("div", { class: "pz-progress-fill", style: `width: ${view.percent}%` }),
+        ]),
+        el("p", { class: "pz-caption pz-text-muted" }, ["Keep Chrome open until this finishes."]),
+        button({ label: "Setup details", variant: "outline", onClick: () => dispatch.goTo("nano-setup") }),
+      ]),
+    );
+  } else if (view.kind === "nano-setup") {
+    body.push(
+      el("div", { class: "pz-card" }, [
+        el("p", { class: "pz-overline pz-text-muted" }, ["Model"]),
+        el("p", { class: "pz-body" }, [
+          view.status === "unsupported"
+            ? "Gemini Nano isn't enabled in this Chrome yet."
+            : "Gemini Nano still needs a one-time download.",
+        ]),
+        button({ label: "Show setup steps", onClick: () => dispatch.goTo("nano-setup") }),
+        button({ label: "Add a backup model", variant: "outline", onClick: () => dispatch.goTo("models") }),
+      ]),
+    );
+  } else if (view.kind === "primary-unavailable") {
     body.push(
       el("div", { class: "pz-card" }, [
         el("p", { class: "pz-overline pz-text-muted" }, ["Model"]),

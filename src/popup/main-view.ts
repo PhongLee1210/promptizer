@@ -1,4 +1,4 @@
-import type { ModelSlot, PlatformEntry, PopupState } from "./state-types";
+import type { ModelSlot, NanoSetupStatus, PlatformEntry, PopupState } from "./state-types";
 
 export type MainView =
   | { kind: "active"; slot: ModelSlot }
@@ -7,7 +7,11 @@ export type MainView =
   | { kind: "unsupported" }
   | { kind: "backup"; slot: ModelSlot; allSlots: ModelSlot[] }
   | { kind: "primary-unavailable"; primary: ModelSlot }
+  | { kind: "nano-downloading"; percent: number }
+  | { kind: "nano-setup"; status: NanoSetupStatus }
   | { kind: "all-failing" };
+
+export const NANO_PROVIDER_ID = "gemini-nano";
 
 function findPlatformEntry(state: PopupState, hostname: string): PlatformEntry | undefined {
   const normalized = hostname.toLowerCase();
@@ -35,11 +39,20 @@ export function deriveMainView(state: PopupState, activeHostname: string | undef
   if (primary === undefined) {
     return { kind: "all-failing" };
   }
+  const readyBackup = rest.find((slot) => slot.status === "ready");
+  if (primary.providerId === NANO_PROVIDER_ID && readyBackup === undefined) {
+    if (state.nano.status === "downloading") {
+      return { kind: "nano-downloading", percent: state.nano.percent };
+    }
+    if (state.nano.status === "needs-download" || state.nano.status === "unsupported") {
+      return { kind: "nano-setup", status: state.nano.status };
+    }
+  }
+
   if (primary.status === "ready") {
     return { kind: "active", slot: primary };
   }
 
-  const readyBackup = rest.find((slot) => slot.status === "ready");
   if (readyBackup !== undefined) {
     return { kind: "backup", slot: readyBackup, allSlots: state.modelOrder };
   }

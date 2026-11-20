@@ -81,4 +81,19 @@ describe("PromptizerChip", () => {
     expect(shadowRoot().querySelector('[data-testid="rail"]')).toBe(rail);
     expect(shadowRoot().querySelector('[data-testid="win"]')).toBe(win);
   });
+
+  it("draws a download progress arc and clears it again", () => {
+    const trigger = shadowRoot().querySelector('[aria-label="Promptizer actions"]') as HTMLButtonElement;
+    const arc = trigger.querySelector(".pz-chip__progress-arc") as SVGCircleElement;
+    const circumference = Number(arc.getAttribute("stroke-dasharray"));
+
+    chip.setProgress(25);
+    expect(trigger.dataset.progress).toBe("25");
+    expect(trigger.getAttribute("aria-valuenow")).toBe("25");
+    expect(Number(arc.getAttribute("stroke-dashoffset"))).toBeCloseTo(circumference * 0.75, 5);
+
+    chip.setProgress(null);
+    expect(trigger.dataset.progress).toBeUndefined();
+    expect(Number(arc.getAttribute("stroke-dashoffset"))).toBeCloseTo(circumference, 5);
+  });
 });

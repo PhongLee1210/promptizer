@@ -195,4 +195,28 @@ describe("ResultWindow", () => {
     win.render(tweaking);
     expect(labels(win)).not.toContain("Replace text");
   });
+
+  it("shows download progress while the on-device model is being prepared", () => {
+    const preparing: ChipState = {
+      ...initialChipState,
+      view: { kind: "preparing", action: "refine", source: "text", percent: 42 },
+    };
+    win.render(preparing);
+
+    const body = win.node().querySelector(".pz-win__prep")!;
+    expect(win.node().dataset.open).toBe("true");
+    expect(body.getAttribute("aria-valuenow")).toBe("42");
+    expect(win.node().querySelector(".pz-win__prep-pct")?.textContent).toBe("42%");
+    expect(win.node().querySelector<HTMLElement>(".pz-win__bar-fill")?.style.width).toBe("42%");
+    expect(labels(win)).toEqual(["Close"]);
+  });
+
+  it("runs the bar indeterminately before the first progress event lands", () => {
+    win.render({
+      ...initialChipState,
+      view: { kind: "preparing", action: "refine", source: "text", percent: 0 },
+    });
+
+    expect(win.node().querySelector<HTMLElement>(".pz-win__bar-fill")?.dataset.indeterminate).toBe("true");
+  });
 });

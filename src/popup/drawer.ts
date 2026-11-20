@@ -2,6 +2,7 @@ import { browser } from "wxt/browser";
 import { el } from "./dom";
 import { drawerHeader, drawerItem } from "./components";
 import { countEnabledPlatforms } from "./main-view";
+import { nanoStatusLabel } from "./state-types";
 import type { Dispatch, PopupScreen } from "./types";
 import type { IconName } from "../utils/icons";
 
@@ -50,6 +51,13 @@ export function renderDrawer(dispatch: Dispatch): HTMLElement {
       el("div", { class: "pz-drawer__divider" }),
       drawerItem({ iconName: "help", label: "Help", external: true, onClick: () => openInTab(HELP_URL) }),
       drawerItem({ iconName: "shield", label: "Privacy", external: true, onClick: () => openInTab(PRIVACY_URL) }),
+      drawerItem({
+        iconName: "sparkle",
+        label: "Setup guide",
+        value: nanoStatusLabel(state.nano),
+        current: current === "nano-setup",
+        onClick: () => dispatch.goTo("nano-setup"),
+      }),
     ]),
     el("p", { class: "pz-drawer__version pz-micro pz-text-muted" }, [
       `Promptizer ${browser.runtime.getManifest().version}`,

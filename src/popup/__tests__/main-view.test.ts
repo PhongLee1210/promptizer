@@ -101,6 +101,42 @@ describe("deriveMainView", () => {
     state.platforms.forEach((p) => (p.enabled = false));
     expect(deriveMainView(state, undefined).kind).toBe("active");
   });
+
+  it("is nano-downloading while the on-device model is still arriving", () => {
+    const state = seededState();
+    state.nano = { status: "downloading", percent: 37 };
+    const view = deriveMainView(state, "claude.ai");
+    expect(view.kind).toBe("nano-downloading");
+    expect(view.kind === "nano-downloading" && view.percent).toBe(37);
+  });
+
+  it("is nano-setup when Chrome has no on-device model and there is no backup", () => {
+    const state = seededState();
+    state.nano = { status: "unsupported", percent: 0 };
+    expect(deriveMainView(state, "claude.ai").kind).toBe("nano-setup");
+  });
+
+  it("prefers a ready backup over the Gemini Nano setup prompt", () => {
+    const state = seededState();
+    state.nano = { status: "needs-download", percent: 0 };
+    state.modelOrder = [
+      {
+        providerId: "gemini-nano",
+        providerLabel: "On-device",
+        modelName: "Gemini Nano",
+        device: "on-device",
+        status: "unavailable",
+      },
+      {
+        providerId: "anthropic",
+        providerLabel: "Anthropic",
+        modelName: "Claude Haiku",
+        device: "cloud",
+        status: "ready",
+      },
+    ];
+    expect(deriveMainView(state, "claude.ai").kind).toBe("backup");
+  });
 });
 
 describe("countEnabledPlatforms", () => {

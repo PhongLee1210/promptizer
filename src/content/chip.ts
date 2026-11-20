@@ -71,13 +71,14 @@ const CHIP_STYLE = `
     display: block;
     pointer-events: none;
   }
-  .pz-chip > svg:not(.pz-chip__ring) {
+  .pz-chip > svg:not(.pz-chip__ring):not(.pz-chip__progress) {
     width: calc(var(--pz-chip-size) * ${ICON_RATIO});
     height: calc(var(--pz-chip-size) * ${ICON_RATIO});
     display: block;
     pointer-events: none;
   }
-  .pz-chip__ring {
+  .pz-chip__ring,
+  .pz-chip__progress {
     position: absolute;
     top: 50%;
     left: 50%;
@@ -87,10 +88,11 @@ const CHIP_STYLE = `
     display: none;
   }
   .pz-chip img,
-  .pz-chip > svg:not(.pz-chip__ring) {
+  .pz-chip > svg:not(.pz-chip__ring):not(.pz-chip__progress) {
     transition: transform var(--pz-dur-morph) ease-in-out;
   }
-  .pz-chip[data-loading="true"] img {
+  .pz-chip[data-loading="true"] img,
+  .pz-chip[data-progress] img {
     transform: scale(0.78);
   }
   .pz-chip[data-loading="true"] .pz-chip__ring {
@@ -103,6 +105,22 @@ const CHIP_STYLE = `
   }
   .pz-chip[data-loading="true"] {
     animation: pz-chip-pulse 1.1s ease-in-out infinite;
+  }
+  .pz-chip[data-progress] .pz-chip__progress {
+    display: block;
+  }
+  .pz-chip[data-progress] .pz-chip__ring {
+    display: none;
+  }
+  .pz-chip[data-progress] {
+    animation: none;
+  }
+  .pz-chip__progress circle {
+    stroke: var(--pz-color-fill-track-translucent);
+  }
+  .pz-chip__progress-arc {
+    stroke: var(--pz-color-fill-brand-default);
+    transition: stroke-dashoffset var(--pz-dur-slow) var(--pz-ease-out);
   }
   .pz-root[data-enter="true"] {
     animation: pz-chip-pop 110ms ease-out;
@@ -138,6 +156,9 @@ const CHIP_STYLE = `
     .pz-chip__ring path {
       animation-duration: 1.8s;
     }
+    .pz-chip__progress-arc {
+      transition: none;
+    }
     .pz-chip[data-loading="true"],
     .pz-root[data-enter="true"],
     .pz-root[data-exit="true"] {
@@ -148,6 +169,16 @@ const CHIP_STYLE = `
 
 const RING_SVG =
   '<svg class="pz-chip__ring" aria-hidden="true" viewBox="0 0 22 22" fill="none"><path d="M11 1a10 10 0 0 1 10 10" stroke-width="2" stroke-linecap="round"/></svg>';
+
+const PROGRESS_RADIUS = 9;
+const PROGRESS_CIRCUMFERENCE = 2 * Math.PI * PROGRESS_RADIUS;
+
+const PROGRESS_SVG =
+  `<svg class="pz-chip__progress" aria-hidden="true" viewBox="0 0 22 22" fill="none">` +
+  `<circle cx="11" cy="11" r="${PROGRESS_RADIUS}" stroke-width="2"/>` +
+  `<circle class="pz-chip__progress-arc" cx="11" cy="11" r="${PROGRESS_RADIUS}" stroke-width="2" ` +
+  `stroke-linecap="round" stroke-dasharray="${PROGRESS_CIRCUMFERENCE}" stroke-dashoffset="${PROGRESS_CIRCUMFERENCE}" ` +
+  `transform="rotate(-90 11 11)"/></svg>`;
 
 function readPadding(editor: HTMLElement): EdgeInsets {
   const computed = window.getComputedStyle(editor);
@@ -207,7 +238,7 @@ export class PromptizerChip {
     this.trigger.setAttribute("aria-expanded", "false");
     this.trigger.setAttribute("aria-label", "Promptizer actions");
     this.trigger.title = "Promptizer actions";
-    this.trigger.innerHTML = `<img alt="" src="${browser.runtime.getURL("/chip/mark.png")}">${RING_SVG}`;
+    this.trigger.innerHTML = `<img alt="" src="${browser.runtime.getURL("/chip/mark.png")}">${RING_SVG}${PROGRESS_SVG}`;
     this.trigger.addEventListener("mousedown", (event) => event.preventDefault());
     this.trigger.addEventListener("click", (event) => {
       event.stopPropagation();
@@ -234,6 +265,20 @@ export class PromptizerChip {
 
   setLoading(loading: boolean): void {
     this.trigger.dataset.loading = String(loading);
+  }
+
+  setProgress(percent: number | null): void {
+    const arc = this.trigger.querySelector<SVGCircleElement>(".pz-chip__progress-arc");
+    if (percent === null) {
+      delete this.trigger.dataset.progress;
+      arc?.setAttribute("stroke-dashoffset", String(PROGRESS_CIRCUMFERENCE));
+      this.trigger.removeAttribute("aria-valuenow");
+      return;
+    }
+    const clamped = Math.min(100, Math.max(0, Math.round(percent)));
+    this.trigger.dataset.progress = String(clamped);
+    this.trigger.setAttribute("aria-valuenow", String(clamped));
+    arc?.setAttribute("stroke-dashoffset", String((PROGRESS_CIRCUMFERENCE * (100 - clamped)) / 100));
   }
 
   setExpanded(expanded: boolean): void {

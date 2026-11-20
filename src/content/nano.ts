@@ -213,6 +213,58 @@ export interface NanoRefineOptions {
   signal?: AbortSignal;
 }
 
+export interface NanoPrepareOptions extends NanoRefineOptions {
+  onProgress?: (percent: number) => void;
+}
+
+interface DownloadMonitor {
+  addEventListener(type: "downloadprogress", listener: (event: { loaded: number }) => void): void;
+}
+
+// The spec reports progress as a 0..1 fraction; older Chrome builds reported 0..100.
+function toPercent(loaded: number): number {
+  const ratio = loaded > 1 ? loaded / 100 : loaded;
+  return Math.min(100, Math.max(0, Math.round(ratio * 100)));
+}
+
+function monitorOption(onProgress: ((percent: number) => void) | undefined): Record<string, unknown> {
+  if (onProgress === undefined) {
+    return {};
+  }
+  return {
+    monitor(monitor: DownloadMonitor) {
+      monitor.addEventListener("downloadprogress", (event) => onProgress(toPercent(event.loaded)));
+    },
+  };
+}
+
+export async function prepareNano(options: NanoPrepareOptions = {}): Promise<NanoAvailability> {
+  const languageModel = getLanguageModel(options.languageModel);
+  if (languageModel === null) {
+    return "unavailable";
+  }
+  const state = await readAvailability(languageModel, "refine");
+  if (state === "available" || state === "unavailable") {
+    return state;
+  }
+
+  options.onProgress?.(0);
+  try {
+    const session = await languageModel.create({
+      ...languageOptions("refine"),
+      ...monitorOption(options.onProgress),
+      signal: options.signal,
+    });
+    session.destroy?.();
+    availableVerdictCached = true;
+    options.onProgress?.(100);
+    return "available";
+  } catch {
+    availableVerdictCached = false;
+    return options.signal?.aborted === true ? state : "unavailable";
+  }
+}
+
 export async function prewarmNano(action: ActionId = "refine", options: NanoRefineOptions = {}): Promise<void> {
   const languageModel = getLanguageModel(options.languageModel);
   if (languageModel === null || !templateReuseSupported) {

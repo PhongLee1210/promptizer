@@ -234,4 +234,38 @@ describe("reduceChipState", () => {
     expect(editorLeft.view).toEqual({ kind: "closed" });
     expect(editorLeft.results).toHaveLength(1);
   });
+
+  it("enters the preparing view while the on-device model downloads", () => {
+    const loading = reduceChipState(initialChipState, {
+      type: "action-selected",
+      action: "refine",
+      source: "text",
+      hasText: true,
+    });
+    const preparing = reduceChipState(loading, { type: "prepare-progress", percent: 42 });
+    expect(preparing.view).toEqual({ kind: "preparing", action: "refine", source: "text", percent: 42 });
+
+    const further = reduceChipState(preparing, { type: "prepare-progress", percent: 143 });
+    expect(further.view).toEqual({ kind: "preparing", action: "refine", source: "text", percent: 100 });
+  });
+
+  it("keeps the same state object when the rounded percentage has not moved", () => {
+    const preparing = reduceAll([
+      { type: "action-selected", action: "refine", source: "text", hasText: true },
+      { type: "prepare-progress", percent: 42 },
+    ]);
+    expect(reduceChipState(preparing, { type: "prepare-progress", percent: 42.4 })).toBe(preparing);
+  });
+
+  it("ignores download progress outside a run", () => {
+    expect(reduceChipState(initialChipState, { type: "prepare-progress", percent: 10 })).toBe(initialChipState);
+  });
+
+  it("returns to the rail when a preparing run is cancelled", () => {
+    const preparing = reduceAll([
+      { type: "action-selected", action: "refine", source: "text", hasText: true },
+      { type: "prepare-progress", percent: 5 },
+    ]);
+    expect(reduceChipState(preparing, { type: "run-cancelled" }).view).toEqual({ kind: "rail", openGroup: null });
+  });
 });

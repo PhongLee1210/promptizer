@@ -7,6 +7,9 @@ import { renderModelsScreen } from "./screens/models";
 import { renderPlatformsScreen } from "./screens/platforms";
 import { renderProvidersScreen } from "./screens/providers";
 import { renderSuggestionsScreen } from "./screens/suggestions";
+import { renderNanoSetupScreen } from "./screens/nano-setup";
+import { nanoAvailability, prepareNano, type NanoAvailability } from "../content/nano";
+import type { NanoSetupStatus, NanoState } from "./state-types";
 import type { Dispatch, PopupScreen } from "./types";
 
 const DRAWER_CLOSE_MS = 180;
@@ -17,7 +20,21 @@ const SCREENS: Record<PopupScreen, (dispatch: Dispatch) => HTMLElement> = {
   models: renderModelsScreen,
   providers: renderProvidersScreen,
   suggestions: renderSuggestionsScreen,
+  "nano-setup": renderNanoSetupScreen,
 };
+
+function nanoStatusFor(availability: NanoAvailability): NanoSetupStatus {
+  switch (availability) {
+    case "available":
+      return "ready";
+    case "downloading":
+      return "downloading";
+    case "downloadable":
+      return "needs-download";
+    default:
+      return "unsupported";
+  }
+}
 
 export async function mountPopup(root: HTMLElement): Promise<void> {
   let state = syncModelOrderStatus(readCachedState() ?? defaultPopupState());
@@ -26,6 +43,43 @@ export async function mountPopup(root: HTMLElement): Promise<void> {
   let drawerOpen = false;
   let drawerWasOpen = false;
   let drawerCloseTimer: number | undefined;
+  let nanoTracking = false;
+
+  async function applyNano(next: NanoState): Promise<void> {
+    if (state.nano.status === next.status && state.nano.percent === next.percent) {
+      return;
+    }
+    await dispatch.updateState((current) => ({ ...current, nano: next }));
+  }
+
+  // One create() call both starts the download and reports its progress, so the same call
+  // covers "begin it" and "follow one already running".
+  async function trackNanoDownload(): Promise<void> {
+    if (nanoTracking) {
+      return;
+    }
+    nanoTracking = true;
+    try {
+      const outcome = await prepareNano({
+        onProgress: (percent) => void applyNano({ status: "downloading", percent }),
+      });
+      await applyNano(
+        outcome === "available" ? { status: "ready", percent: 100 } : { status: nanoStatusFor(outcome), percent: 0 },
+      );
+    } finally {
+      nanoTracking = false;
+    }
+  }
+
+  async function refreshNano(): Promise<void> {
+    const availability = await nanoAvailability();
+    if (availability === "downloading") {
+      await applyNano({ status: "downloading", percent: state.nano.percent });
+      void trackNanoDownload();
+      return;
+    }
+    await applyNano({ status: nanoStatusFor(availability), percent: availability === "available" ? 100 : 0 });
+  }
 
   const live = liveRegion();
   const screenHost = document.createElement("div");
@@ -73,6 +127,8 @@ export async function mountPopup(root: HTMLElement): Promise<void> {
       drawerOpen = false;
       render();
     },
+    refreshNano,
+    startNanoDownload: trackNanoDownload,
   };
 
   document.addEventListener("keydown", (event: KeyboardEvent) => {
@@ -130,6 +186,8 @@ export async function mountPopup(root: HTMLElement): Promise<void> {
   state = syncModelOrderStatus(await loadPopupState());
   activeHostname = await getActiveTabHostname();
   render();
+
+  await refreshNano();
 
   onPopupStateChanged((next: PopupState) => {
     state = syncModelOrderStatus(next);

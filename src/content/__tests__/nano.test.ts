@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   evictWarmSessions,
   nanoAvailability,
+  prepareNano,
   prewarmNano,
   refineWithNano,
   type LanguageModelApi,
@@ -318,5 +319,48 @@ describe("prewarmNano", () => {
 
   it("does nothing when no LanguageModel global exists", async () => {
     await expect(prewarmNano()).resolves.toBeUndefined();
+  });
+});
+
+describe("prepareNano", () => {
+  it("reports ready without creating a session when the model is already available", async () => {
+    const languageModel = fakeLanguageModel("available", fakeClonableSession("{}"));
+
+    await expect(prepareNano({ languageModel })).resolves.toBe("available");
+    expect(languageModel.create).not.toHaveBeenCalled();
+  });
+
+  it("downloads the model and reports progress as whole percentages", async () => {
+    const session = fakeSession("{}");
+    const languageModel: LanguageModelApi = {
+      availability: vi.fn().mockResolvedValue("downloadable"),
+      create: vi.fn(async (options: Record<string, unknown>) => {
+        const monitor = options.monitor as (listener: {
+          addEventListener: (type: string, callback: (event: { loaded: number }) => void) => void;
+        }) => void;
+        monitor({ addEventListener: (_type, callback) => callback({ loaded: 0.42 }) });
+        return session;
+      }),
+    };
+    const seen: number[] = [];
+
+    await expect(prepareNano({ languageModel, onProgress: (percent) => seen.push(percent) })).resolves.toBe(
+      "available",
+    );
+    expect(seen).toEqual([0, 42, 100]);
+    expect(session.destroy).toHaveBeenCalledTimes(1);
+  });
+
+  it("is unavailable when the download fails", async () => {
+    const languageModel: LanguageModelApi = {
+      availability: vi.fn().mockResolvedValue("downloadable"),
+      create: vi.fn().mockRejectedValue(new Error("no disk space")),
+    };
+
+    await expect(prepareNano({ languageModel })).resolves.toBe("unavailable");
+  });
+
+  it("is unavailable when no LanguageModel global exists", async () => {
+    await expect(prepareNano()).resolves.toBe("unavailable");
   });
 });

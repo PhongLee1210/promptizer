@@ -1,7 +1,7 @@
 import { icon, type IconName } from "../utils/icons";
 import type { ActionId } from "./action-types";
 import { currentResult, type ChipState } from "./chip-state";
-import { ACTION_COPY } from "./present-result";
+import { ACTION_COPY, PREPARING_CAPTION, PREPARING_TITLE } from "./present-result";
 
 export interface ResultWindowCallbacks {
   onStep: (direction: -1 | 1) => void;
@@ -146,6 +146,55 @@ export const WINDOW_STYLE = `
     gap: 9px;
     padding-top: 14px;
   }
+  .pz-win__prep {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 12px;
+  }
+  .pz-win__prep-line {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 12px;
+  }
+  .pz-win__prep-pct {
+    font-variant-numeric: tabular-nums;
+    color: var(--pz-color-text-brand-strong);
+  }
+  .pz-win__prep-note {
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--pz-color-text-base-subdued);
+  }
+  .pz-win__bar-track {
+    height: 4px;
+    border-radius: var(--pz-radius-half);
+    background: var(--pz-color-fill-track-default);
+    overflow: hidden;
+  }
+  .pz-win__bar-fill {
+    height: 100%;
+    background: var(--pz-color-fill-brand-default);
+    transition: width 240ms ease-out;
+  }
+  .pz-win__bar-fill[data-indeterminate="true"] {
+    width: 40%;
+    animation: pz-win-slide 1.4s ease-in-out infinite;
+  }
+  @keyframes pz-win-slide {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(250%); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pz-win__bar-fill {
+      transition: none;
+    }
+    .pz-win__bar-fill[data-indeterminate="true"] {
+      animation: none;
+    }
+  }
   .pz-win__sk {
     height: 10px;
     border-radius: 5px;
@@ -250,6 +299,7 @@ export class ResultWindow {
   render(state: ChipState): void {
     const open =
       state.view.kind === "loading" ||
+      state.view.kind === "preparing" ||
       state.view.kind === "result" ||
       state.view.kind === "editing" ||
       state.view.kind === "tweak" ||
@@ -265,6 +315,9 @@ export class ResultWindow {
     switch (state.view.kind) {
       case "loading":
         this.renderLoading(state.view.action);
+        return;
+      case "preparing":
+        this.renderPreparing(state.view.percent);
         return;
       case "error":
         this.renderError(state.view.action, state.view.message);
@@ -300,6 +353,51 @@ export class ResultWindow {
       bar.style.width = width;
       body.append(bar);
     }
+    this.bodyWrap.append(body);
+  }
+
+  private renderPreparing(percent: number): void {
+    const title = document.createElement("span");
+    title.className = "pz-win__title";
+    title.textContent = PREPARING_TITLE;
+    const trailing = document.createElement("span");
+    trailing.className = "pz-win__trailing";
+    trailing.append(button("close", null, "Close", this.callbacks.onClose, "muted"));
+    this.topBar.append(document.createElement("span"), title, trailing);
+
+    const body = document.createElement("div");
+    body.className = "pz-win__body pz-win__prep";
+    body.setAttribute("role", "progressbar");
+    body.setAttribute("aria-valuemin", "0");
+    body.setAttribute("aria-valuemax", "100");
+    body.setAttribute("aria-valuenow", String(percent));
+    body.setAttribute("aria-label", PREPARING_TITLE);
+
+    const line = document.createElement("div");
+    line.className = "pz-win__prep-line";
+    const label = document.createElement("span");
+    label.textContent = "Gemini Nano";
+    const value = document.createElement("span");
+    value.className = "pz-win__prep-pct";
+    value.textContent = `${percent}%`;
+    line.append(label, value);
+
+    const track = document.createElement("div");
+    track.className = "pz-win__bar-track";
+    const fill = document.createElement("div");
+    fill.className = "pz-win__bar-fill";
+    if (percent === 0) {
+      fill.dataset.indeterminate = "true";
+    } else {
+      fill.style.width = `${percent}%`;
+    }
+    track.append(fill);
+
+    const note = document.createElement("p");
+    note.className = "pz-win__prep-note";
+    note.textContent = PREPARING_CAPTION;
+
+    body.append(line, track, note);
     this.bodyWrap.append(body);
   }
 
