@@ -51,9 +51,9 @@ export const RAIL_STYLE = `
     gap: 2px;
     width: 28px;
     border-radius: 14px;
-    background: var(--pz-rail-surface);
-    border: 1px solid var(--pz-rail-border);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    background: var(--pz-color-background-base-floating);
+    border: 1px solid var(--pz-color-border-base-floating);
+    box-shadow: var(--pz-elevation-base-medium);
     padding: 0;
   }
   .pz-rail[data-open="true"] {
@@ -91,11 +91,11 @@ export const RAIL_STYLE = `
     font-size: 10px;
     font-weight: 600;
     letter-spacing: 0.04em;
-    color: var(--pz-rail-text);
+    color: var(--pz-color-text-base-default);
     cursor: pointer;
   }
   button.pz-rail__btn[aria-expanded="true"] {
-    background: var(--pz-rail-selected);
+    background: var(--pz-color-fill-selected-default);
   }
   button.pz-rail__btn:focus-visible {
     outline: none;
@@ -107,9 +107,9 @@ export const RAIL_STYLE = `
     display: flex;
     gap: 2px;
     border-radius: 14px;
-    background: var(--pz-rail-surface);
-    border: 1px solid var(--pz-rail-border);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    background: var(--pz-color-background-base-floating);
+    border: 1px solid var(--pz-color-border-base-floating);
+    box-shadow: var(--pz-elevation-base-medium);
   }
   .pz-rail [data-tip]::after {
     content: attr(data-tip);
@@ -119,9 +119,9 @@ export const RAIL_STYLE = `
     transform: translateY(-50%);
     padding: 5px 8px;
     border-radius: 6px;
-    background: #0b0c0f;
-    border: 1px solid var(--pz-rail-border);
-    color: var(--pz-rail-text);
+    background: var(--pz-color-background-tooltip-default);
+    border: 1px solid var(--pz-color-border-base-floating);
+    color: var(--pz-color-text-base-default);
     font-size: 11px;
     font-weight: 500;
     white-space: nowrap;
@@ -137,7 +137,7 @@ export const RAIL_STYLE = `
   }
   @media (hover: hover) and (pointer: fine) {
     button.pz-rail__btn:hover {
-      background: var(--pz-rail-hover);
+      background: var(--pz-color-fill-hover-default);
     }
     .pz-rail [data-tip]:hover::after {
       opacity: 1;

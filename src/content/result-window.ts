@@ -27,10 +27,10 @@ export const WINDOW_STYLE = `
     flex-direction: column;
     width: 280px;
     border-radius: 12px;
-    background: var(--pz-win-surface);
-    border: 1px solid var(--pz-win-border);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-    color: var(--pz-win-text);
+    background: var(--pz-color-background-base-floating);
+    border: 1px solid var(--pz-color-border-base-floating);
+    box-shadow: var(--pz-elevation-base-medium);
+    color: var(--pz-color-text-base-default);
     overflow: hidden;
   }
   .pz-win[data-open="true"] {
@@ -63,10 +63,10 @@ export const WINDOW_STYLE = `
   .pz-win__bar--top {
     display: grid;
     grid-template-columns: auto 1fr auto;
-    border-bottom: 1px solid var(--pz-win-divider);
+    border-bottom: 1px solid var(--pz-color-border-base-muted);
   }
   .pz-win__bar--bottom {
-    border-top: 1px solid var(--pz-win-divider);
+    border-top: 1px solid var(--pz-color-border-base-muted);
   }
   .pz-win__leading,
   .pz-win__trailing {
@@ -82,7 +82,7 @@ export const WINDOW_STYLE = `
     text-align: center;
     font-size: 11px;
     font-variant-numeric: tabular-nums;
-    color: var(--pz-win-text-2);
+    color: var(--pz-color-text-base-subdued);
   }
   .pz-win__title {
     margin: 0 4px;
@@ -96,7 +96,7 @@ export const WINDOW_STYLE = `
   .pz-win__edited {
     font-size: 10px;
     font-weight: 500;
-    color: var(--pz-win-text-2);
+    color: var(--pz-color-text-base-subdued);
   }
   .pz-win__bodywrap {
     height: 80px;
@@ -121,11 +121,11 @@ export const WINDOW_STYLE = `
     overflow-wrap: anywhere;
   }
   textarea.pz-win__body {
-    background: var(--pz-win-inset);
+    background: var(--pz-color-background-base-raised);
   }
   .pz-win__body {
     scrollbar-width: thin;
-    scrollbar-color: var(--pz-win-divider) transparent;
+    scrollbar-color: var(--pz-color-fill-track-default) transparent;
   }
   .pz-win__body::-webkit-scrollbar {
     width: 8px;
@@ -134,11 +134,11 @@ export const WINDOW_STYLE = `
     background: transparent;
   }
   .pz-win__body::-webkit-scrollbar-thumb {
-    background: var(--pz-win-divider);
+    background: var(--pz-color-fill-track-default);
     border-radius: 4px;
   }
   .pz-win__body--error {
-    color: var(--pz-win-danger);
+    color: var(--pz-color-text-critical-default);
   }
   .pz-win__body--busy {
     display: flex;
@@ -149,7 +149,7 @@ export const WINDOW_STYLE = `
   .pz-win__sk {
     height: 10px;
     border-radius: 5px;
-    background: var(--pz-win-border);
+    background: var(--pz-color-fill-skeleton-default);
     animation: pz-win-sk 1.1s ease-in-out infinite;
   }
   button.pz-win__btn {
@@ -163,7 +163,7 @@ export const WINDOW_STYLE = `
     justify-content: center;
     font-size: 10px;
     font-weight: 600;
-    color: var(--pz-win-text);
+    color: var(--pz-color-text-base-default);
     cursor: pointer;
   }
   button.pz-win__btn:disabled {
@@ -176,21 +176,21 @@ export const WINDOW_STYLE = `
   button.pz-win__btn--primary {
     width: 34px;
     margin-left: auto;
-    background: var(--pz-win-brand);
-    color: #ffffff;
+    background: var(--pz-color-fill-brand-default);
+    color: var(--pz-color-button-primary-content-default);
   }
   button.pz-win__btn--muted {
-    color: var(--pz-win-text-2);
+    color: var(--pz-color-text-base-subdued);
   }
   button.pz-win__btn:focus-visible {
     outline: none;
   }
   @media (hover: hover) and (pointer: fine) {
     button.pz-win__btn:hover:not(:disabled) {
-      background: var(--pz-win-hover);
+      background: var(--pz-color-fill-hover-default);
     }
     button.pz-win__btn--primary:hover {
-      background: var(--pz-win-brand-strong);
+      background: var(--pz-color-text-brand-strong);
     }
   }
   @keyframes pz-win-sk {

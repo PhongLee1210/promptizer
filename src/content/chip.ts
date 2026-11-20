@@ -1,4 +1,5 @@
 import { browser } from "wxt/browser";
+import designTokens from "../styles/tokens.css?inline";
 import { icon } from "../utils/icons";
 import { RAIL_STYLE } from "./rail";
 import { WINDOW_STYLE } from "./result-window";
@@ -20,26 +21,7 @@ const CHIP_STYLE = `
     box-sizing: border-box;
   }
   .pz-root {
-    --pz-chip-surface: #262A31;
-    --pz-chip-surface-hover: #30353E;
-    --pz-rail-surface: #262A31;
-    --pz-rail-border: #4A505A;
-    --pz-rail-hover: rgba(255, 255, 255, 0.1);
-    --pz-rail-selected: rgba(255, 255, 255, 0.16);
-    --pz-rail-text: #E8EAED;
-    --pz-rail-focus: #6FA3FF;
-    --pz-win-surface: #262A31;
-    --pz-win-border: #4A505A;
-    --pz-win-divider: #3A3F48;
-    --pz-win-inset: #1B1E24;
-    --pz-win-text: #E8EAED;
-    --pz-win-text-2: #B4BAC4;
-    --pz-win-brand: #3B7DFA;
-    --pz-win-brand-strong: #5490FB;
-    --pz-win-danger: #FF8A80;
-    --pz-win-focus: #6FA3FF;
-    --pz-win-hover: rgba(255, 255, 255, 0.1);
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-family: var(--pz-font-family-sans-default);
     position: relative;
     display: flex;
     align-items: center;
@@ -55,10 +37,10 @@ const CHIP_STYLE = `
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--pz-chip-surface);
-    border: 1px solid var(--pz-rail-border);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
-    color: var(--pz-rail-text);
+    background: var(--pz-color-background-base-floating);
+    border: 1px solid var(--pz-color-border-base-floating);
+    box-shadow: var(--pz-elevation-base-low);
+    color: var(--pz-color-text-base-default);
     cursor: pointer;
   }
   .pz-chip[hidden] {
@@ -71,7 +53,7 @@ const CHIP_STYLE = `
   }
   .pz-chip:hover,
   .pz-chip[aria-expanded="true"] {
-    background: var(--pz-chip-surface-hover);
+    background: var(--pz-color-background-base-floating-hover);
   }
   .pz-chip:focus-visible {
     outline: none;
@@ -99,6 +81,7 @@ const CHIP_STYLE = `
     display: block;
   }
   .pz-chip__ring path {
+    stroke: var(--pz-color-fill-brand-default);
     transform-origin: 11px 11px;
     animation: pz-chip-spin 0.9s linear infinite;
   }
@@ -148,7 +131,7 @@ const CHIP_STYLE = `
 `;
 
 const RING_SVG =
-  '<svg class="pz-chip__ring" aria-hidden="true" viewBox="0 0 22 22" fill="none"><path d="M11 1a10 10 0 0 1 10 10" stroke="#3B7DFA" stroke-width="2" stroke-linecap="round"/></svg>';
+  '<svg class="pz-chip__ring" aria-hidden="true" viewBox="0 0 22 22" fill="none"><path d="M11 1a10 10 0 0 1 10 10" stroke-width="2" stroke-linecap="round"/></svg>';
 
 export class PromptizerChip {
   private readonly host: HTMLDivElement;
@@ -173,7 +156,7 @@ export class PromptizerChip {
 
     const shadow = this.host.attachShadow({ mode: "closed" });
     const style = document.createElement("style");
-    style.textContent = CHIP_STYLE + RAIL_STYLE + WINDOW_STYLE;
+    style.textContent = designTokens + CHIP_STYLE + RAIL_STYLE + WINDOW_STYLE;
 
     this.root = document.createElement("div");
     this.root.className = "pz-root";

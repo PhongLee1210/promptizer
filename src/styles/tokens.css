@@ -1,36 +1,180 @@
-:root {
-  --pz-bg: #14161a;
-  --pz-surface: #1b1e24;
-  --pz-surface-inset: #101216;
-  --pz-divider: #23262d;
-  --pz-border-control: #6e7582;
-  --pz-track-off: #3a3f48;
-  --pz-text: #e8eaed;
-  --pz-text-2: #b4bac4;
-  --pz-text-3: #9aa0aa;
-  --pz-accent: #4c8dff;
-  --pz-on-accent: #0b1220;
-  --pz-accent-tint: #1b2233;
-  --pz-success: #3fcf8e;
-  --pz-success-text: #7fe0b3;
-  --pz-success-bg: #16291f;
-  --pz-warning: #f5c469;
-  --pz-warning-bg: #2a2415;
-  --pz-danger: #ff8a80;
-  --pz-danger-bg: #2e1a1a;
+/* Promptizer design tokens.
+ *
+ * Organised after the Grammarly "Origin" design system (see
+ * docs/references/grammarly-design-system/README.md):
+ *
+ *   base block  :where(:root,:host)                     -> typography, spacing, radius, size,
+ *                                                          motion, z-index (mode independent)
+ *   dark block  :where(:root,:host),[data-pz-mode=dark] -> primitive ramps + semantic colours
+ *
+ * The selectors include :host so the same sheet resolves inside the content-script shadow roots.
+ * Promptizer ships dark only; a light block would slot in after the dark one.
+ */
+
+/* ===== promptizer / mode: base ===== */
+:where(:root, :host) {
+  --pz-font-family-sans-default: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --pz-font-weight-regular: 400;
+  --pz-font-weight-medium: 500;
+  --pz-font-weight-semibold: 600;
+
+  --pz-text-size-xxsmall: 11px;
+  --pz-text-size-xsmall: 12px;
+  --pz-text-size-small: 13px;
+  --pz-text-size-medium: 14px;
+  --pz-heading-size-xxsmall: 15px;
+  --pz-heading-size-xsmall: 16px;
+
+  --pz-line-height-text-xxsmall: 15px;
+  --pz-line-height-text-xsmall: 16px;
+  --pz-line-height-text-small: 18px;
+  --pz-line-height-text-medium: 20px;
+  --pz-line-height-heading-xxsmall: 20px;
+  --pz-line-height-heading-xsmall: 22px;
+
+  --pz-letter-spacing-overline: 0.06em;
+
+  --pz-space-0: 0px;
+  --pz-space-half: 2px;
+  --pz-space-1: 4px;
+  --pz-space-1-and-half: 6px;
+  --pz-space-2: 8px;
+  --pz-space-2-and-half: 10px;
+  --pz-space-3: 12px;
+  --pz-space-3-and-half: 14px;
+  --pz-space-4: 16px;
+  --pz-space-5: 20px;
+  --pz-space-6: 24px;
+
+  --pz-radius-0: 0px;
+  --pz-radius-half: 2px;
+  --pz-radius-1: 4px;
+  --pz-radius-1-and-half: 6px;
+  --pz-radius-2: 8px;
+  --pz-radius-2-and-half: 10px;
+  --pz-radius-3: 12px;
+  --pz-radius-3-and-half: 14px;
+  --pz-radius-small: 8px;
+  --pz-radius-medium: 10px;
+  --pz-radius-large: 14px;
+  --pz-radius-full: 9999px;
+
+  --pz-size-control-small: 26px;
+  --pz-size-control-medium: 28px;
+  --pz-size-control-large: 34px;
+  --pz-size-control-xlarge: 44px;
+  --pz-size-row-small: 48px;
+  --pz-size-row-medium: 52px;
+  --pz-size-row-large: 56px;
 
   --pz-dur-instant: 0ms;
   --pz-dur-fast: 100ms;
   --pz-dur-knob: 120ms;
   --pz-dur-base: 160ms;
   --pz-dur-slow: 220ms;
+  --pz-dur-morph: 250ms;
   --pz-ease-out: cubic-bezier(0.2, 0, 0, 1);
   --pz-ease-in: cubic-bezier(0.4, 0, 1, 1);
   --pz-ease-std: cubic-bezier(0.2, 0, 0.2, 1);
 
-  --pz-layer: 255 255 255;
-  --pz-pressed: rgb(var(--pz-layer) / 0.12);
-  --pz-selected: rgb(76 141 255 / 0.16);
+  --pz-z-tooltip: 5;
+  --pz-z-drawer: 10;
+}
+
+/* ===== promptizer / mode: dark ===== */
+:where(:root, :host),
+[data-pz-mode="dark"] {
+  --pz-blue-20: #6fa3ff;
+  --pz-blue-40: #4c8dff;
+  --pz-blue-90: #1b2233;
+  --pz-blue-100: #0b1220;
+  --pz-green-20: #7fe0b3;
+  --pz-green-40: #3fcf8e;
+  --pz-green-100: #16291f;
+  --pz-neutral-0: #e8eaed;
+  --pz-neutral-10: #b4bac4;
+  --pz-neutral-20: #9aa0aa;
+  --pz-neutral-30: #6e7582;
+  --pz-neutral-40: #4a505a;
+  --pz-neutral-60: #3a3f48;
+  --pz-neutral-80: #30353e;
+  --pz-neutral-85: #262a31;
+  --pz-neutral-90: #23262d;
+  --pz-neutral-95: #1b1e24;
+  --pz-neutral-97: #14161a;
+  --pz-neutral-100: #101216;
+  --pz-red-30: #ff8a80;
+  --pz-red-100: #2e1a1a;
+  --pz-yellow-30: #f5c469;
+  --pz-yellow-100: #2a2415;
+  --pz-white-0: #ffffff;
+
+  --pz-alpha-light-10: rgb(255 255 255 / 0.1);
+  --pz-alpha-light-12: rgb(255 255 255 / 0.12);
+  --pz-alpha-light-18: rgb(255 255 255 / 0.18);
+  --pz-alpha-brand-16: rgb(76 141 255 / 0.16);
+  --pz-alpha-dark-16: rgb(0 0 0 / 0.16);
+  --pz-alpha-dark-50: rgb(0 0 0 / 0.5);
+
+  --pz-elevation-base-low: 0 2px 6px rgb(0 0 0 / 0.35);
+  --pz-elevation-base-medium: 0 8px 24px rgb(0 0 0 / 0.45);
+  --pz-elevation-panel-leading: 8px 0 24px rgb(0 0 0 / 0.4);
+
+  --pz-color-background-base-default: var(--pz-neutral-97);
+  --pz-color-background-base-raised: var(--pz-neutral-95);
+  --pz-color-background-base-inset: var(--pz-neutral-100);
+  --pz-color-background-base-floating: var(--pz-neutral-85);
+  --pz-color-background-base-floating-hover: var(--pz-neutral-80);
+  --pz-color-background-base-overlay: var(--pz-alpha-dark-50);
+  --pz-color-background-brand-default: var(--pz-blue-40);
+  --pz-color-background-brand-subdued: var(--pz-blue-90);
+  --pz-color-background-critical-subdued: var(--pz-red-100);
+  --pz-color-background-success-subdued: var(--pz-green-100);
+  --pz-color-background-tooltip-default: var(--pz-neutral-100);
+  --pz-color-background-warning-subdued: var(--pz-yellow-100);
+
+  --pz-color-border-base-default: var(--pz-neutral-30);
+  --pz-color-border-base-floating: var(--pz-neutral-40);
+  --pz-color-border-base-muted: var(--pz-neutral-60);
+  --pz-color-border-base-subdued: var(--pz-neutral-90);
+  --pz-color-border-brand-default: var(--pz-blue-40);
+  --pz-color-border-focus-default: var(--pz-blue-20);
+
+  --pz-color-button-primary-content-default: var(--pz-blue-100);
+  --pz-color-button-primary-fill-default: var(--pz-blue-40);
+  --pz-color-button-primary-fill-hover: var(--pz-blue-20);
+  --pz-color-button-primary-fill-active: var(--pz-alpha-dark-16);
+
+  --pz-color-fill-base-default: var(--pz-neutral-0);
+  --pz-color-fill-brand-default: var(--pz-blue-40);
+  --pz-color-fill-brand-strong: var(--pz-blue-20);
+  --pz-color-fill-hover-default: var(--pz-alpha-light-10);
+  --pz-color-fill-pressed-default: var(--pz-alpha-light-12);
+  --pz-color-fill-selected-default: var(--pz-alpha-brand-16);
+  --pz-color-fill-skeleton-default: var(--pz-neutral-40);
+  --pz-color-fill-success-default: var(--pz-green-40);
+  --pz-color-fill-track-default: var(--pz-neutral-60);
+  --pz-color-fill-track-translucent: var(--pz-alpha-light-18);
+
+  --pz-color-text-base-default: var(--pz-neutral-0);
+  --pz-color-text-base-subdued: var(--pz-neutral-10);
+  --pz-color-text-base-muted: var(--pz-neutral-20);
+  --pz-color-text-base-inverse: var(--pz-white-0);
+  --pz-color-text-brand-default: var(--pz-blue-40);
+  --pz-color-text-brand-strong: var(--pz-blue-20);
+  --pz-color-text-critical-default: var(--pz-red-30);
+  --pz-color-text-success-default: var(--pz-green-20);
+  --pz-color-text-warning-default: var(--pz-yellow-30);
 
   color-scheme: dark;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(:root, :host) {
+    --pz-dur-fast: 0s;
+    --pz-dur-knob: 0s;
+    --pz-dur-base: 0s;
+    --pz-dur-slow: 0s;
+    --pz-dur-morph: 0s;
+  }
 }

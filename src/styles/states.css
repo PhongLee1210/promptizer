@@ -7,14 +7,14 @@
 }
 
 .pz-control:active {
-  background-color: var(--pz-pressed);
+  background-color: var(--pz-color-fill-pressed-default);
   transform: scale(0.98);
   transition-duration: var(--pz-dur-instant);
 }
 
 .pz-control[aria-pressed="true"],
 .pz-control[aria-current="page"] {
-  background-color: var(--pz-selected);
+  background-color: var(--pz-color-fill-selected-default);
 }
 
 .pz-control[aria-disabled="true"] {
@@ -29,8 +29,8 @@
 }
 
 .pz-control--filled {
-  background-color: var(--pz-accent);
-  color: var(--pz-on-accent);
+  background-color: var(--pz-color-button-primary-fill-default);
+  color: var(--pz-color-button-primary-content-default);
 }
 
 .pz-control--filled::after {
@@ -38,13 +38,13 @@
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background-color: rgb(0 0 0 / 0);
+  background-color: transparent;
   pointer-events: none;
   transition: background-color var(--pz-dur-fast) var(--pz-ease-out);
 }
 
 .pz-control--filled:active::after {
-  background-color: rgb(0 0 0 / 0.16);
+  background-color: var(--pz-color-button-primary-fill-active);
 }
 
 @media (prefers-reduced-motion: reduce) {

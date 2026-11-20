@@ -16,26 +16,6 @@
   src: url("../assets/fonts/inter-latin-600.woff2") format("woff2");
 }
 
-:root {
-  --pz-space-4: 4px;
-  --pz-space-8: 8px;
-  --pz-space-12: 12px;
-  --pz-space-16: 16px;
-  --pz-space-24: 24px;
-
-  --pz-radius-8: 8px;
-  --pz-radius-10: 10px;
-  --pz-radius-14: 14px;
-  --pz-radius-full: 9999px;
-
-  --pz-row-48: 48px;
-  --pz-row-52: 52px;
-  --pz-row-56: 56px;
-  --pz-hit: 44px;
-
-  font-size: 16px;
-}
-
 *,
 *::before,
 *::after {
@@ -49,11 +29,11 @@ body {
 }
 
 body {
-  background: var(--pz-bg);
-  color: var(--pz-text);
-  font-family: "Inter", system-ui, sans-serif;
-  font-size: 0.8125rem;
-  line-height: 1.125rem;
+  background: var(--pz-color-background-base-default);
+  color: var(--pz-color-text-base-default);
+  font-family: var(--pz-font-family-sans-default);
+  font-size: var(--pz-text-size-small);
+  line-height: var(--pz-line-height-text-small);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -89,7 +69,7 @@ button {
 }
 
 a {
-  color: var(--pz-accent);
+  color: var(--pz-color-text-brand-default);
 }
 
 svg {
@@ -103,47 +83,47 @@ svg {
 }
 
 .pz-title {
-  font-size: 1rem;
-  line-height: 1.375rem;
-  font-weight: 600;
+  font-size: var(--pz-heading-size-xsmall);
+  line-height: var(--pz-line-height-heading-xsmall);
+  font-weight: var(--pz-font-weight-semibold);
 }
 
 .pz-header {
-  font-size: 0.9375rem;
-  line-height: 1.25rem;
-  font-weight: 600;
+  font-size: var(--pz-heading-size-xxsmall);
+  line-height: var(--pz-line-height-heading-xxsmall);
+  font-weight: var(--pz-font-weight-semibold);
 }
 
 .pz-body-strong {
-  font-size: 0.875rem;
-  line-height: 1.25rem;
-  font-weight: 600;
+  font-size: var(--pz-text-size-medium);
+  line-height: var(--pz-line-height-text-medium);
+  font-weight: var(--pz-font-weight-semibold);
 }
 
 .pz-body {
-  font-size: 0.8125rem;
-  line-height: 1.125rem;
-  font-weight: 400;
+  font-size: var(--pz-text-size-small);
+  line-height: var(--pz-line-height-text-small);
+  font-weight: var(--pz-font-weight-regular);
 }
 
 .pz-caption {
-  font-size: 0.75rem;
-  line-height: 1rem;
-  font-weight: 400;
+  font-size: var(--pz-text-size-xsmall);
+  line-height: var(--pz-line-height-text-xsmall);
+  font-weight: var(--pz-font-weight-regular);
 }
 
 .pz-overline {
-  font-size: 0.6875rem;
-  line-height: 0.875rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  font-size: var(--pz-text-size-xxsmall);
+  line-height: var(--pz-line-height-text-xxsmall);
+  font-weight: var(--pz-font-weight-semibold);
+  letter-spacing: var(--pz-letter-spacing-overline);
   text-transform: uppercase;
 }
 
 .pz-micro {
-  font-size: 0.6875rem;
-  line-height: 0.9375rem;
-  font-weight: 400;
+  font-size: var(--pz-text-size-xxsmall);
+  line-height: var(--pz-line-height-text-xxsmall);
+  font-weight: var(--pz-font-weight-regular);
 }
 
 .pz-num {
@@ -171,12 +151,5 @@ svg {
     animation-delay: 0s !important;
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
-  }
-
-  :root {
-    --pz-dur-fast: 0s;
-    --pz-dur-knob: 0s;
-    --pz-dur-base: 0s;
-    --pz-dur-slow: 0s;
   }
 }

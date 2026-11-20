@@ -6,28 +6,38 @@ const stylesDir = resolve(__dirname, "..");
 const tokensCss = readFileSync(resolve(stylesDir, "tokens.css"), "utf8");
 const baseCss = readFileSync(resolve(stylesDir, "base.css"), "utf8");
 const statesCss = readFileSync(resolve(stylesDir, "states.css"), "utf8");
+const popupCss = readFileSync(resolve(stylesDir, "popup.css"), "utf8");
+const chipTs = readFileSync(resolve(stylesDir, "..", "content", "chip.ts"), "utf8");
+const railTs = readFileSync(resolve(stylesDir, "..", "content", "rail.ts"), "utf8");
+const windowTs = readFileSync(resolve(stylesDir, "..", "content", "result-window.ts"), "utf8");
 
-const tokens: [string, string][] = [
-  ["--pz-bg", "#14161A"],
-  ["--pz-surface", "#1B1E24"],
-  ["--pz-surface-inset", "#101216"],
-  ["--pz-divider", "#23262D"],
-  ["--pz-border-control", "#6E7582"],
-  ["--pz-track-off", "#3A3F48"],
-  ["--pz-text", "#E8EAED"],
-  ["--pz-text-2", "#B4BAC4"],
-  ["--pz-text-3", "#9AA0AA"],
-  ["--pz-accent", "#4C8DFF"],
-  ["--pz-on-accent", "#0B1220"],
-  ["--pz-accent-tint", "#1B2233"],
-  ["--pz-success", "#3FCF8E"],
-  ["--pz-success-text", "#7FE0B3"],
-  ["--pz-success-bg", "#16291F"],
-  ["--pz-warning", "#F5C469"],
-  ["--pz-warning-bg", "#2A2415"],
-  ["--pz-danger", "#FF8A80"],
-  ["--pz-danger-bg", "#2E1A1A"],
+const primitives: [string, string][] = [
+  ["--pz-blue-20", "#6FA3FF"],
+  ["--pz-blue-40", "#4C8DFF"],
+  ["--pz-blue-90", "#1B2233"],
+  ["--pz-blue-100", "#0B1220"],
+  ["--pz-green-20", "#7FE0B3"],
+  ["--pz-green-40", "#3FCF8E"],
+  ["--pz-green-100", "#16291F"],
+  ["--pz-neutral-0", "#E8EAED"],
+  ["--pz-neutral-10", "#B4BAC4"],
+  ["--pz-neutral-20", "#9AA0AA"],
+  ["--pz-neutral-30", "#6E7582"],
+  ["--pz-neutral-40", "#4A505A"],
+  ["--pz-neutral-60", "#3A3F48"],
+  ["--pz-neutral-80", "#30353E"],
+  ["--pz-neutral-85", "#262A31"],
+  ["--pz-neutral-90", "#23262D"],
+  ["--pz-neutral-95", "#1B1E24"],
+  ["--pz-neutral-97", "#14161A"],
+  ["--pz-neutral-100", "#101216"],
+  ["--pz-red-30", "#FF8A80"],
+  ["--pz-red-100", "#2E1A1A"],
+  ["--pz-yellow-30", "#F5C469"],
+  ["--pz-yellow-100", "#2A2415"],
 ];
+
+const semanticFamilies = ["background", "border", "button", "fill", "text"];
 
 const typeClasses = [
   ".pz-title",
@@ -39,18 +49,75 @@ const typeClasses = [
   ".pz-micro",
 ];
 
+const componentSheets: [string, string][] = [
+  ["popup.css", popupCss],
+  ["chip.ts", chipTs],
+  ["rail.ts", railTs],
+  ["result-window.ts", windowTs],
+];
+
 describe("tokens.css", () => {
-  it.each(tokens)("declares %s as %s", (name, value) => {
+  it.each(primitives)("declares the primitive %s as %s", (name, value) => {
     expect(tokensCss.toLowerCase()).toContain(`${name}: ${value.toLowerCase()};`);
   });
 
-  it("declares all nineteen tokens", () => {
-    expect(tokens).toHaveLength(19);
+  it("resolves every semantic colour through a primitive, never a raw literal", () => {
+    const semantics = [...tokensCss.matchAll(/--pz-color-[\w-]+:\s*([^;]+);/g)].map((match) => match[1]);
+    expect(semantics.length).toBeGreaterThan(0);
+    for (const value of semantics) {
+      expect(value).toMatch(/^var\(--pz-[\w-]+\)$/);
+    }
   });
 
-  it("ships dark theme only", () => {
+  it.each(semanticFamilies)("groups %s colours under one semantic family", (family) => {
+    expect(tokensCss).toContain(`--pz-color-${family}-`);
+  });
+
+  it("exposes the base and dark blocks to shadow roots as well as the document", () => {
+    expect([...tokensCss.matchAll(/:where\(:root, :host\)/g)].length).toBeGreaterThanOrEqual(2);
+    expect(tokensCss).toContain('[data-pz-mode="dark"]');
+  });
+
+  it("ships dark only", () => {
     expect(tokensCss).not.toContain("prefers-color-scheme: light");
     expect(baseCss).not.toContain("prefers-color-scheme: light");
+    expect(tokensCss).toContain("color-scheme: dark;");
+  });
+
+  it("declares the spacing, radius and control-size scales", () => {
+    for (const [step, value] of [
+      ["1", "4px"],
+      ["2", "8px"],
+      ["3", "12px"],
+      ["4", "16px"],
+      ["6", "24px"],
+    ]) {
+      expect(tokensCss).toContain(`--pz-space-${step}: ${value};`);
+    }
+    for (const [name, value] of [
+      ["small", "8px"],
+      ["medium", "10px"],
+      ["large", "14px"],
+      ["full", "9999px"],
+    ]) {
+      expect(tokensCss).toContain(`--pz-radius-${name}: ${value};`);
+    }
+    expect(tokensCss).toContain("--pz-size-control-xlarge: 44px;");
+  });
+
+  it("never declares a font size below 11px", () => {
+    const sizes = [...tokensCss.matchAll(/--pz-(?:text|heading)-size-[\w-]+:\s*(\d+)px;/g)].map((m) => Number(m[1]));
+    expect(sizes.length).toBeGreaterThan(0);
+    for (const px of sizes) {
+      expect(px).toBeGreaterThanOrEqual(11);
+    }
+  });
+});
+
+describe("component stylesheets", () => {
+  it.each(componentSheets)("%s holds no colour literal of its own", (_name, css) => {
+    expect(css).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+    expect(css).not.toMatch(/rgba?\(/);
   });
 });
 
@@ -67,31 +134,11 @@ describe("base.css", () => {
     expect(baseCss).toContain("@font-face");
     expect(baseCss).toContain("../assets/fonts/inter-latin.woff2");
     expect(baseCss).toContain("font-display: swap;");
-    expect(baseCss).toContain("system-ui, sans-serif");
+    expect(tokensCss).toContain("system-ui, -apple-system");
   });
 
   it("offers tabular numerals", () => {
     expect(baseCss).toContain("font-variant-numeric: tabular-nums;");
-  });
-
-  it("declares spacing and radius scales", () => {
-    for (const step of ["4px", "8px", "12px", "16px", "24px"]) {
-      expect(baseCss).toContain(`--pz-space-${parseInt(step, 10)}: ${step};`);
-    }
-    for (const radius of ["8px", "10px", "14px"]) {
-      expect(baseCss).toContain(`--pz-radius-${parseInt(radius, 10)}: ${radius};`);
-    }
-    expect(baseCss).toContain("--pz-radius-full: 9999px;");
-  });
-
-  it("never declares a font size below 11px", () => {
-    const remSizes = [...baseCss.matchAll(/font-size:\s*([\d.]+)rem/g)].map((m) => Number(m[1]) * 16);
-    for (const px of remSizes) {
-      expect(px).toBeGreaterThanOrEqual(11);
-    }
-    for (const forbidden of ["font-size: 0.625rem", "font-size: 10px", "font-size: 9px", "font-size: 8px"]) {
-      expect(baseCss).not.toContain(forbidden);
-    }
   });
 
   it("draws no focus ring and no hover layer on controls", () => {
