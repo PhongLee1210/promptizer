@@ -3,12 +3,12 @@ import designTokens from "../styles/tokens.css?inline";
 import { icon } from "../utils/icons";
 import { RAIL_STYLE } from "./rail";
 import { WINDOW_STYLE } from "./result-window";
-import type { PanelPlacement } from "./anchor";
+import { CHIP_MAX_SIZE, placeChip } from "./anchor";
+import type { EdgeInsets, PanelPlacement } from "./anchor";
 
-const CHIP_SIZE = 28;
 const UNDO_GAP = 6;
-const VIEWPORT_MARGIN = 6;
-const CORNER_INSET = 4;
+const ICON_RATIO = 14 / CHIP_MAX_SIZE;
+const RING_RATIO = 22 / CHIP_MAX_SIZE;
 
 const CHIP_STYLE = `
   :host {
@@ -21,6 +21,7 @@ const CHIP_STYLE = `
     box-sizing: border-box;
   }
   .pz-root {
+    --pz-chip-size: ${CHIP_MAX_SIZE}px;
     font-family: var(--pz-font-family-sans-default);
     position: relative;
     display: flex;
@@ -31,8 +32,8 @@ const CHIP_STYLE = `
     all: unset;
     box-sizing: border-box;
     position: relative;
-    width: ${CHIP_SIZE}px;
-    height: ${CHIP_SIZE}px;
+    width: var(--pz-chip-size);
+    height: var(--pz-chip-size);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -42,6 +43,11 @@ const CHIP_STYLE = `
     box-shadow: var(--pz-elevation-base-low);
     color: var(--pz-color-text-base-default);
     cursor: pointer;
+    transition:
+      background var(--pz-dur-fast) linear,
+      border-radius var(--pz-dur-morph) ease-in-out,
+      padding var(--pz-dur-morph) ease-in-out,
+      margin var(--pz-dur-morph) ease-in-out;
   }
   .pz-chip[hidden] {
     display: none;
@@ -54,28 +60,38 @@ const CHIP_STYLE = `
   .pz-chip:hover,
   .pz-chip[aria-expanded="true"] {
     background: var(--pz-color-background-base-floating-hover);
+    border-radius: 100% 100% 100% 0;
   }
   .pz-chip:focus-visible {
     outline: none;
   }
   .pz-chip img {
-    width: 14px;
-    height: 14px;
+    width: calc(var(--pz-chip-size) * ${ICON_RATIO});
+    height: calc(var(--pz-chip-size) * ${ICON_RATIO});
     display: block;
     pointer-events: none;
   }
   .pz-chip > svg:not(.pz-chip__ring) {
-    width: 14px;
-    height: 14px;
+    width: calc(var(--pz-chip-size) * ${ICON_RATIO});
+    height: calc(var(--pz-chip-size) * ${ICON_RATIO});
     display: block;
     pointer-events: none;
   }
   .pz-chip__ring {
     position: absolute;
-    inset: 2px;
-    width: 22px;
-    height: 22px;
+    top: 50%;
+    left: 50%;
+    width: calc(var(--pz-chip-size) * ${RING_RATIO});
+    height: calc(var(--pz-chip-size) * ${RING_RATIO});
+    transform: translate(-50%, -50%);
     display: none;
+  }
+  .pz-chip img,
+  .pz-chip > svg:not(.pz-chip__ring) {
+    transition: transform var(--pz-dur-morph) ease-in-out;
+  }
+  .pz-chip[data-loading="true"] img {
+    transform: scale(0.78);
   }
   .pz-chip[data-loading="true"] .pz-chip__ring {
     display: block;
@@ -83,16 +99,16 @@ const CHIP_STYLE = `
   .pz-chip__ring path {
     stroke: var(--pz-color-fill-brand-default);
     transform-origin: 11px 11px;
-    animation: pz-chip-spin 0.9s linear infinite;
+    animation: pz-chip-spin 1.2s linear infinite;
   }
   .pz-chip[data-loading="true"] {
     animation: pz-chip-pulse 1.1s ease-in-out infinite;
   }
   .pz-root[data-enter="true"] {
-    animation: pz-chip-pop 140ms ease-out;
+    animation: pz-chip-pop 110ms ease-out;
   }
   .pz-root[data-exit="true"] {
-    animation: pz-chip-pop 120ms ease-in reverse forwards;
+    animation: pz-chip-pop 110ms ease-in reverse forwards;
   }
   @keyframes pz-chip-spin {
     to {
@@ -132,6 +148,16 @@ const CHIP_STYLE = `
 
 const RING_SVG =
   '<svg class="pz-chip__ring" aria-hidden="true" viewBox="0 0 22 22" fill="none"><path d="M11 1a10 10 0 0 1 10 10" stroke-width="2" stroke-linecap="round"/></svg>';
+
+function readPadding(editor: HTMLElement): EdgeInsets {
+  const computed = window.getComputedStyle(editor);
+  return {
+    top: Number.parseFloat(computed.paddingTop) || 0,
+    right: Number.parseFloat(computed.paddingRight) || 0,
+    bottom: Number.parseFloat(computed.paddingBottom) || 0,
+    left: Number.parseFloat(computed.paddingLeft) || 0,
+  };
+}
 
 export class PromptizerChip {
   private readonly host: HTMLDivElement;
@@ -250,11 +276,14 @@ export class PromptizerChip {
     return event.composedPath().includes(this.host);
   }
 
-  positionAtBottomRight(rect: DOMRect): void {
-    const rightInset = Math.max(VIEWPORT_MARGIN, window.innerWidth - rect.right + CORNER_INSET);
-    const bottomInset = Math.max(VIEWPORT_MARGIN, window.innerHeight - rect.bottom + CORNER_INSET);
-    this.host.style.right = `${rightInset}px`;
-    this.host.style.bottom = `${bottomInset}px`;
+  positionInsideEditor(editor: HTMLElement): void {
+    const placement = placeChip(editor.getBoundingClientRect(), readPadding(editor), {
+      width: window.innerWidth,
+      height: window.innerHeight,
+    });
+    this.host.style.right = `${placement.rightInset}px`;
+    this.host.style.bottom = `${placement.bottomInset}px`;
+    this.root.style.setProperty("--pz-chip-size", `${placement.size}px`);
   }
 
   show(): void {
@@ -282,7 +311,7 @@ export class PromptizerChip {
       this.host.style.display = "none";
       this.root.removeAttribute("data-exit");
       this.exitTimeout = undefined;
-    }, 120);
+    }, 110);
   }
 
   isVisible(): boolean {

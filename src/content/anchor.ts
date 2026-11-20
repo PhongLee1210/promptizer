@@ -56,7 +56,57 @@ export function placePanel(anchor: Rect, panelHeight: number, viewport: Viewport
   };
 }
 
-export const CHIP_SIZE = 28;
+export const CHIP_MAX_SIZE = 28;
+export const CHIP_MIN_SIZE = 24;
+export const CHIP_MIN_PADDING = 2;
+const CHIP_EDGE_MARGIN = 6;
+
+export const CHIP_SIZE = CHIP_MAX_SIZE;
+
+export interface EdgeInsets {
+  readonly top: number;
+  readonly right: number;
+  readonly bottom: number;
+  readonly left: number;
+}
+
+export interface ChipPlacement {
+  readonly rightInset: number;
+  readonly bottomInset: number;
+  readonly size: number;
+}
+
+/**
+ * Chips shrink inside short fields so they never overhang a single-line input, but stop at
+ * CHIP_MIN_SIZE to stay a comfortable pointer target.
+ */
+export function chipSizeFor(innerWidth: number, innerHeight: number): number {
+  return Math.max(Math.min(innerWidth, innerHeight, CHIP_MAX_SIZE), CHIP_MIN_SIZE);
+}
+
+/**
+ * The chip's bottom-right corner lands on the editor's inner bottom-right corner — the border box
+ * inset by its own CSS padding — so it sits in the gutter the field already reserves for text.
+ */
+export function placeChip(
+  editorRect: Rect,
+  padding: EdgeInsets,
+  viewport: Viewport,
+  minPadding = CHIP_MIN_PADDING,
+): ChipPlacement {
+  const rightGutter = Math.max(padding.right, minPadding);
+  const bottomGutter = Math.max(padding.bottom, minPadding);
+  const size = chipSizeFor(
+    editorRect.width - padding.left - rightGutter,
+    editorRect.height - padding.top - bottomGutter,
+  );
+  return {
+    rightInset: Math.max(viewport.width - editorRect.right + rightGutter, CHIP_EDGE_MARGIN),
+    bottomInset: Math.max(viewport.height - editorRect.bottom + bottomGutter, CHIP_EDGE_MARGIN),
+    size,
+  };
+}
+
 export const RAIL_ITEM_SIZE = 26;
 export const RAIL_GAP = 2;
 export const STRIP_OFFSET = 5;

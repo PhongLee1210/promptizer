@@ -126,7 +126,7 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
   function updatePosition(): void {
     const anchor = anchorEditor();
     if (anchor !== null && document.contains(anchor)) {
-      chip.positionAtBottomRight(anchor.getBoundingClientRect());
+      chip.positionInsideEditor(anchor);
     }
     const viewport = { width: window.innerWidth, height: window.innerHeight };
     if (state.view.kind === "rail") {

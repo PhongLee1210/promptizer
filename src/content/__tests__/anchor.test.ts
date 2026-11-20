@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  CHIP_MAX_SIZE,
+  CHIP_MIN_SIZE,
   CHIP_SIZE,
+  placeChip,
   PANEL_GAP,
   PANEL_MAX_WIDTH,
   RAIL_ITEM_SIZE,
@@ -114,5 +117,32 @@ describe("placeStrip", () => {
     const railItem = anchorAt(300, 10);
     const placed = placeStrip(railItem, 2, { width: 100, height: 200 });
     expect(placed.rightInset).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe("placeChip", () => {
+  const editor: Rect = { top: 400, right: 1000, bottom: 500, left: 400, width: 600, height: 100 };
+
+  it("lands the chip corner on the editor's padding box corner", () => {
+    const placed = placeChip(editor, { top: 12, right: 16, bottom: 12, left: 16 }, DESKTOP);
+    expect(placed.rightInset).toBe(DESKTOP.width - editor.right + 16);
+    expect(placed.bottomInset).toBe(DESKTOP.height - editor.bottom + 12);
+  });
+
+  it("floors zero padding at the minimum gutter so the chip never touches the border", () => {
+    const placed = placeChip(editor, { top: 0, right: 0, bottom: 0, left: 0 }, DESKTOP);
+    expect(placed.rightInset).toBe(DESKTOP.width - editor.right + 2);
+    expect(placed.bottomInset).toBe(DESKTOP.height - editor.bottom + 2);
+  });
+
+  it("keeps the full chip size when the field has room", () => {
+    const placed = placeChip(editor, { top: 8, right: 8, bottom: 8, left: 8 }, DESKTOP);
+    expect(placed.size).toBe(CHIP_MAX_SIZE);
+  });
+
+  it("shrinks inside a short field but never below the minimum target size", () => {
+    const input: Rect = { top: 0, right: 500, bottom: 26, left: 200, width: 300, height: 26 };
+    const placed = placeChip(input, { top: 4, right: 4, bottom: 4, left: 4 }, DESKTOP);
+    expect(placed.size).toBe(CHIP_MIN_SIZE);
   });
 });
