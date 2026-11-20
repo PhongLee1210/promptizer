@@ -12,7 +12,6 @@ import {
   toggle,
 } from "../components";
 import { deriveMainView, type MainView } from "../main-view";
-import { addCurrentSiteAsPlatform, canAddCurrentTab } from "../site-actions";
 import type { Dispatch } from "../types";
 import type { ModelSlot, PopupState } from "../state-types";
 
@@ -157,18 +156,7 @@ export function renderMainScreen(dispatch: Dispatch): HTMLElement {
     ]),
   ];
 
-  if (view.kind === "unsupported") {
-    body.push(
-      button({
-        label: "Add this site",
-        variant: "outline",
-        disabled: !canAddCurrentTab(dispatch),
-        onClick: async () => {
-          await addCurrentSiteAsPlatform(dispatch);
-        },
-      }),
-    );
-  } else {
+  if (view.kind !== "unsupported") {
     const site =
       hostname === undefined
         ? undefined
