@@ -13,3 +13,8 @@ node_modules/
 .wxt/
 
 src/utils/icons.ts
+
+.agents/
+.claude/skills/design-taste-frontend
+.claude/skills/light-ui-ux/
+skills-lock.json
