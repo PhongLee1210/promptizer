@@ -7,3 +7,4 @@ bin/
 docs/
 pnpm-lock.yaml
 src/utils/icons.ts
+.agents/
