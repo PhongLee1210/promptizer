@@ -1,18 +1,22 @@
+import type { IconName } from "../utils/icons";
+
 export interface BuiltinPlatform {
   id: string;
   label: string;
   hostname: string;
-  monogram: string;
+  logo: IconName;
 }
 
 export const BUILTIN_PLATFORMS: BuiltinPlatform[] = [
-  { id: "claude", label: "Claude", hostname: "claude.ai", monogram: "C" },
-  { id: "chatgpt", label: "ChatGPT", hostname: "chatgpt.com", monogram: "Ch" },
-  { id: "gemini", label: "Gemini", hostname: "gemini.google.com", monogram: "G" },
-  { id: "perplexity", label: "Perplexity", hostname: "perplexity.ai", monogram: "P" },
-  { id: "copilot", label: "Copilot", hostname: "copilot.microsoft.com", monogram: "Co" },
-  { id: "deepseek", label: "DeepSeek", hostname: "chat.deepseek.com", monogram: "D" },
+  { id: "claude", label: "Claude", hostname: "claude.ai", logo: "logo-claude" },
+  { id: "chatgpt", label: "ChatGPT", hostname: "chatgpt.com", logo: "logo-chatgpt" },
+  { id: "gemini", label: "Gemini", hostname: "gemini.google.com", logo: "logo-gemini" },
+  { id: "perplexity", label: "Perplexity", hostname: "perplexity.ai", logo: "logo-perplexity" },
+  { id: "copilot", label: "Copilot", hostname: "copilot.microsoft.com", logo: "logo-copilot" },
+  { id: "deepseek", label: "DeepSeek", hostname: "chat.deepseek.com", logo: "logo-deepseek" },
 ];
+
+const CUSTOM_PLATFORM_LOGO: IconName = "globe";
 
 export function findPlatformByHostname(hostname: string): BuiltinPlatform | undefined {
   const normalized = hostname.toLowerCase();
@@ -21,10 +25,6 @@ export function findPlatformByHostname(hostname: string): BuiltinPlatform | unde
   );
 }
 
-export function monogramFor(label: string): string {
-  const words = label.split(/\s+/).filter(Boolean);
-  if (words.length >= 2) {
-    return (words[0]!.charAt(0) + words[1]!.charAt(0)).toUpperCase();
-  }
-  return label.slice(0, 2);
+export function platformLogoFor(platformId: string): IconName {
+  return BUILTIN_PLATFORMS.find((platform) => platform.id === platformId)?.logo ?? CUSTOM_PLATFORM_LOGO;
 }

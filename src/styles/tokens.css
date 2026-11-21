@@ -24,6 +24,7 @@
   --pz-text-size-medium: 14px;
   --pz-heading-size-xxsmall: 15px;
   --pz-heading-size-xsmall: 16px;
+  --pz-heading-size-status: 17px;
 
   --pz-line-height-text-xxsmall: 15px;
   --pz-line-height-text-xsmall: 16px;
@@ -31,6 +32,7 @@
   --pz-line-height-text-medium: 20px;
   --pz-line-height-heading-xxsmall: 20px;
   --pz-line-height-heading-xsmall: 22px;
+  --pz-line-height-heading-status: 22px;
 
   --pz-letter-spacing-overline: 0.06em;
 
@@ -63,9 +65,19 @@
   --pz-size-control-medium: 28px;
   --pz-size-control-large: 34px;
   --pz-size-control-xlarge: 44px;
+  --pz-size-row-compact: 40px;
   --pz-size-row-small: 48px;
   --pz-size-row-medium: 52px;
   --pz-size-row-large: 56px;
+  --pz-size-popup-width: 440px;
+  --pz-size-popup-height: 600px;
+  --pz-size-nav-rail: 64px;
+  --pz-size-nav-item: 48px;
+  --pz-size-header-min: 32px;
+  --pz-size-power-target: 135px;
+  --pz-size-power-art: 200px;
+  --pz-size-region-card: 240px;
+  --pz-size-region-icon: 36px;
 
   --pz-dur-instant: 0ms;
   --pz-dur-fast: 100ms;
@@ -78,7 +90,6 @@
   --pz-ease-std: cubic-bezier(0.2, 0, 0.2, 1);
 
   --pz-z-tooltip: 5;
-  --pz-z-drawer: 10;
 }
 
 /* ===== promptizer / mode: dark ===== */

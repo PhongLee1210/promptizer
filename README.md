@@ -115,3 +115,6 @@ dependency, renaming files, or touching global configuration.
 ## License
 
 [MIT](LICENSE) © PhongLee1210
+
+Platform logos in `src/assets/icon-sources/logo-*.svg` come from [Lobe Icons](https://github.com/lobehub/lobe-icons)
+(MIT). Each logo is a trademark of its owner and is shown only to identify the supported site.

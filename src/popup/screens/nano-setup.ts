@@ -1,6 +1,6 @@
 import { browser } from "wxt/browser";
 import { el, iconEl } from "../dom";
-import { banner, button, headerSub, screenShell, sectionHeading, statusPill } from "../components";
+import { banner, button, headerSub, screenShell, setButtonBusy, statusPill } from "../components";
 import { nanoStatusLabel, type NanoState } from "../state-types";
 import type { Dispatch } from "../types";
 
@@ -60,11 +60,14 @@ const SETUP_STEPS: SetupStep[] = [
   },
 ];
 
+let stepsOpenChoice: boolean | undefined;
+
 function copyAction(value: string, dispatch: Dispatch): HTMLElement {
   return button({
     label: "Copy",
     variant: "text",
     iconName: "copy",
+    compact: true,
     onClick: () => {
       void navigator.clipboard
         ?.writeText(value)
@@ -103,7 +106,42 @@ function stepRow(step: SetupStep, index: number, dispatch: Dispatch): HTMLElemen
   ]);
 }
 
-function statusCard(nano: NanoState): HTMLElement {
+function cardActions(dispatch: Dispatch, nano: NanoState): HTMLElement {
+  const checkAgain = button({
+    label: "Check again",
+    variant: "text",
+    onClick: () => void dispatch.refreshNano(),
+  });
+  if (nano.status === "ready") {
+    return el("div", { class: "pz-row-actions" }, [checkAgain]);
+  }
+  const download = button({ label: "Download model", onClick: () => void dispatch.startNanoDownload() });
+  if (nano.status === "downloading") {
+    setButtonBusy(download, true);
+    return el("div", { class: "pz-row-actions" }, [download]);
+  }
+  return el("div", { class: "pz-row-actions" }, [checkAgain, download]);
+}
+
+function progressRow(nano: NanoState): HTMLElement {
+  const isDownloading = nano.status === "downloading";
+  return el(
+    "div",
+    {
+      class: "pz-nano-progress",
+      "data-active": isDownloading ? "" : undefined,
+      "aria-hidden": isDownloading ? undefined : "true",
+    },
+    [
+      el("div", { class: "pz-progress-track" }, [
+        el("div", { class: "pz-progress-fill", style: `width: ${nano.percent}%` }),
+      ]),
+      el("span", { class: "pz-caption pz-text-muted pz-num" }, [`${nano.percent}%`]),
+    ],
+  );
+}
+
+function statusCard(dispatch: Dispatch, nano: NanoState): HTMLElement {
   const children: (Node | string)[] = [
     el("div", { class: "pz-card__head" }, [
       el("p", { class: "pz-overline pz-text-muted" }, ["On-device AI"]),
@@ -114,65 +152,55 @@ function statusCard(nano: NanoState): HTMLElement {
       el("span", { class: "pz-body" }, ["Gemini Nano"]),
     ]),
   ];
-  if (nano.status === "downloading") {
-    children.push(
-      el("div", { class: "pz-progress-track" }, [
-        el("div", { class: "pz-progress-fill", style: `width: ${nano.percent}%` }),
-      ]),
-      el("p", { class: "pz-caption pz-text-muted" }, ["Keep Chrome open until this finishes."]),
-    );
+  if (nano.status !== "ready") {
+    children.push(progressRow(nano));
   }
+  children.push(cardActions(dispatch, nano));
   return el("div", { class: "pz-card", role: "status" }, children);
 }
 
-function primaryAction(dispatch: Dispatch, nano: NanoState): HTMLElement {
-  if (nano.status === "downloading") {
-    return button({ label: "Downloading…", disabled: true });
-  }
-  if (nano.status === "ready") {
-    return button({ label: "Check again", variant: "outline", onClick: () => void dispatch.refreshNano() });
-  }
-  return button({ label: "Download model", onClick: () => void dispatch.startNanoDownload() });
+function stepsFold(dispatch: Dispatch, nano: NanoState): HTMLElement {
+  const fold = el("details", { class: "pz-steps-fold" }, [
+    el("summary", { class: "pz-control" }, [
+      el("span", { class: "pz-overline pz-text-muted" }, ["Setup steps · once per computer"]),
+      iconEl("chevron-down", 16),
+    ]),
+    el(
+      "ol",
+      { class: "pz-steps" },
+      SETUP_STEPS.map((step, index) => stepRow(step, index, dispatch)),
+    ),
+  ]);
+  fold.open = stepsOpenChoice ?? nano.status !== "ready";
+  fold.addEventListener("toggle", () => {
+    stepsOpenChoice = fold.open;
+  });
+  return fold;
 }
 
 export function renderNanoSetupScreen(dispatch: Dispatch): HTMLElement {
   const nano = dispatch.getState().nano;
 
-  const body: (Node | string)[] = [statusCard(nano)];
+  const body: (Node | string)[] = [statusCard(dispatch, nano)];
 
   if (nano.status === "unsupported") {
     body.push(
       banner({
         kind: "warning",
         text: "Chrome reports no on-device model here. Work through the steps, or add a cloud backup model.",
-        action: button({ label: "Models", variant: "text", onClick: () => dispatch.goTo("models") }),
+        action: button({ label: "Models", variant: "text", compact: true, onClick: () => dispatch.goTo("models") }),
       }),
     );
   }
 
   body.push(
-    sectionHeading("Setup steps", "Once per computer."),
-    el(
-      "ol",
-      { class: "pz-steps" },
-      SETUP_STEPS.map((step, index) => stepRow(step, index, dispatch)),
-    ),
-    primaryAction(dispatch, nano),
-  );
-
-  if (nano.status !== "downloading" && nano.status !== "ready") {
-    body.push(button({ label: "Check again", variant: "text", onClick: () => void dispatch.refreshNano() }));
-  }
-
-  body.push(
+    stepsFold(dispatch, nano),
     el("p", { class: "pz-footer-note pz-micro" }, ["Chrome blocks links to its own settings, so copy and paste."]),
   );
 
   return screenShell(
     headerSub({
       title: "On-device AI",
-      drawerOpen: dispatch.isDrawerOpen(),
-      onMenuClick: () => dispatch.openDrawer(),
     }),
     body,
   );

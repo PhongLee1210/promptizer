@@ -2,14 +2,28 @@
   position: relative;
   transition:
     background-color var(--pz-dur-fast) var(--pz-ease-out),
+    border-color var(--pz-dur-fast) var(--pz-ease-out),
+    color var(--pz-dur-fast) var(--pz-ease-out),
+    box-shadow var(--pz-dur-fast) var(--pz-ease-out),
     transform var(--pz-dur-fast) var(--pz-ease-out),
     opacity var(--pz-dur-fast) var(--pz-ease-out);
+}
+
+.pz-control:focus-visible {
+  box-shadow: 0 0 0 2px var(--pz-color-border-focus-default);
 }
 
 .pz-control:active {
   background-color: var(--pz-color-fill-pressed-default);
   transform: scale(0.98);
   transition-duration: var(--pz-dur-instant);
+}
+
+.pz-nav-row.pz-control:active,
+.pz-provider-row--button.pz-control:active,
+.pz-region-card__main.pz-control:active,
+.pz-steps-fold > summary.pz-control:active {
+  transform: none;
 }
 
 .pz-control[aria-pressed="true"],
@@ -26,6 +40,7 @@
 
 .pz-control[aria-busy="true"] {
   pointer-events: none;
+  transform: none;
 }
 
 .pz-control--filled {

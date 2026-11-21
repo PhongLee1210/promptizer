@@ -1,8 +1,8 @@
-import { el } from "../dom";
-import { button, emptyState, headerSub, iconButton, screenShell, sectionHeading, toggle } from "../components";
+import { el, iconEl } from "../dom";
+import { button, headerSub, iconButton, screenShell, sectionHeading, toggle } from "../components";
 import { countEnabledPlatforms } from "../main-view";
 import { addCurrentSiteAsPlatform, canAddCurrentTab } from "../site-actions";
-import { monogramFor } from "../platforms";
+import { platformLogoFor } from "../platforms";
 import type { Dispatch } from "../types";
 
 export function renderPlatformsScreen(dispatch: Dispatch): HTMLElement {
@@ -11,10 +11,10 @@ export function renderPlatformsScreen(dispatch: Dispatch): HTMLElement {
 
   const rows = state.platforms.map((platform) =>
     el("div", { class: "pz-platform-row" }, [
-      el("span", { class: "pz-platform-row__monogram", "aria-hidden": "true" }, [monogramFor(platform.label)]),
+      el("span", { class: "pz-platform-row__logo", "aria-hidden": "true" }, [iconEl(platformLogoFor(platform.id), 20)]),
       el("div", { class: "pz-platform-row__labels" }, [
         el("span", { class: "pz-body" }, [platform.label]),
-        el("span", { class: "pz-micro pz-text-muted" }, [platform.hostname]),
+        el("span", { class: "pz-micro pz-text-muted pz-platform-row__host" }, [platform.hostname]),
       ]),
       toggle({
         id: `pz-platform-${platform.id}`,
@@ -33,6 +33,7 @@ export function renderPlatformsScreen(dispatch: Dispatch): HTMLElement {
             iconName: "close",
             label: `Remove ${platform.label}`,
             size: 16,
+            extraClass: "pz-icon-button--small",
             onClick: async () => {
               await dispatch.updateState((s) => ({ ...s, platforms: s.platforms.filter((p) => p.id !== platform.id) }));
             },
@@ -50,34 +51,29 @@ export function renderPlatformsScreen(dispatch: Dispatch): HTMLElement {
     },
   });
 
-  const body: (Node | string)[] = [
-    sectionHeading("Where", "Promptizer suggests inside the message box on the sites you switch on."),
-  ];
-
-  if (state.platforms.length === 0 || counts.enabled === 0) {
-    body.push(
-      emptyState({
-        illustration: "–",
-        text: "No platforms are on, so nothing is suggested.",
-        action: button({
+  const turnAllOn =
+    counts.enabled === 0 && state.platforms.length > 0
+      ? button({
           label: "Turn all on",
-          variant: "outline",
+          variant: "text",
+          compact: true,
           onClick: async () => {
             await dispatch.updateState((s) => ({ ...s, platforms: s.platforms.map((p) => ({ ...p, enabled: true })) }));
           },
-        }),
-      }),
-    );
-  }
+        })
+      : undefined;
 
-  body.push(el("div", { class: "pz-list" }, rows), addButton);
+  const body: (Node | string)[] = [
+    sectionHeading("Where", "Suggests inside the message box."),
+    el("div", { class: "pz-list" }, rows),
+    addButton,
+  ];
 
   return screenShell(
     headerSub({
       title: "Platforms",
       count: `${counts.enabled} of ${counts.total} on`,
-      drawerOpen: dispatch.isDrawerOpen(),
-      onMenuClick: () => dispatch.openDrawer(),
+      action: turnAllOn,
     }),
     body,
   );

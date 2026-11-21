@@ -36,7 +36,7 @@ function pickerFor(dispatch: Dispatch, index: number, currentlyFilled: boolean):
   const state = dispatch.getState();
   const options = catalogOptionsExcluding(state, index);
   const select = el("select", { class: "pz-select", "aria-label": `Choose a model for ${ROLE_LABELS[index]}` });
-  select.append(el("option", { value: "" }, ["Choose a model"]));
+  select.append(el("option", { value: "", hidden: "", selected: "" }, ["Choose a model"]));
   const byProvider = new Map<string, CatalogModel[]>();
   for (const entry of options) {
     const list = byProvider.get(entry.providerLabel) ?? [];
@@ -44,21 +44,21 @@ function pickerFor(dispatch: Dispatch, index: number, currentlyFilled: boolean):
     byProvider.set(entry.providerLabel, list);
   }
   for (const [providerLabel, entries] of byProvider) {
-    const group = el("optgroup", { label: providerLabel.toUpperCase() });
+    const group = el("optgroup", { label: providerLabel }, [el("legend", {}, [providerLabel])]);
     for (const entry of entries) {
       group.append(el("option", { value: `${entry.providerId}::${entry.modelName}` }, [entry.modelName]));
     }
     select.append(group);
   }
   if (currentlyFilled) {
-    select.append(el("option", { value: "empty" }, ["Leave this slot empty"]));
+    select.append(el("hr"), el("option", { value: "empty" }, ["Leave this slot empty"]));
   }
   select.addEventListener("change", async () => {
     const value = select.value;
-    openPickerIndex = null;
     if (value === "") {
       return;
     }
+    openPickerIndex = null;
     await dispatch.updateState((s) => {
       const next = [...s.modelOrder];
       if (value === "empty") {
@@ -99,27 +99,13 @@ function slotCard(dispatch: Dispatch, index: number, slot: ModelSlot | undefined
   }
 
   const state = dispatch.getState();
-  const header: (Node | string)[] = [
-    el("span", { class: "pz-overline pz-text-muted" }, [ROLE_LABELS[index] ?? "Slot"]),
-  ];
-  header.push(
-    iconButton({
-      iconName: "chevron-down",
-      label: `Change ${ROLE_LABELS[index]} model`,
-      size: 18,
-      onClick: () => {
-        openPickerIndex = openPickerIndex === index ? null : index;
-        dispatch.rerender();
-      },
-    }),
-  );
 
   const moveUp = iconButton({
     iconName: "chevron-down",
     label: `Move ${slot.modelName} up`,
     size: 16,
+    extraClass: "pz-icon-button--small",
     iconClass: "pz-rotate-180",
-    disabled: index === 0,
     onClick: async () => {
       await dispatch.updateState((s) => {
         const next = [...s.modelOrder];
@@ -132,7 +118,7 @@ function slotCard(dispatch: Dispatch, index: number, slot: ModelSlot | undefined
     iconName: "chevron-down",
     label: `Move ${slot.modelName} down`,
     size: 16,
-    disabled: index === state.modelOrder.length - 1,
+    extraClass: "pz-icon-button--small",
     onClick: async () => {
       await dispatch.updateState((s) => {
         const next = [...s.modelOrder];
@@ -142,21 +128,54 @@ function slotCard(dispatch: Dispatch, index: number, slot: ModelSlot | undefined
     },
   });
 
-  const body = el("div", { class: "pz-model-slot__row" }, [
-    iconEl("drag-handle", 16),
-    el("div", { class: "pz-model-slot__labels" }, [
+  const isPickerOpen = openPickerIndex === index;
+  const pickerPanel = el("div", { class: "pz-model-slot__picker", "data-slot-index": String(index) }, [
+    el("div", { class: "pz-model-slot__picker-inner" }, [pickerFor(dispatch, index, true)]),
+  ]);
+  const pickerToggle = el(
+    "button",
+    {
+      class: "pz-model-slot__labels pz-control",
+      "aria-label": `Change ${ROLE_LABELS[index]} model, currently ${slot.modelName}`,
+    },
+    [
       el("span", { class: "pz-body-strong" }, [slot.modelName]),
       el("span", { class: "pz-caption pz-text-muted" }, [statusLine(state, slot)]),
-    ]),
-    moveUp,
-    moveDown,
+    ],
+  );
+  setPickerOpen(pickerPanel, pickerToggle, isPickerOpen);
+  pickerToggle.addEventListener("click", () => togglePicker(index));
+
+  const canMoveUp = index > 0;
+  const canMoveDown = index < state.modelOrder.length - 1;
+  const body = el("div", { class: "pz-model-slot__row" }, [
+    iconEl("drag-handle", 16),
+    pickerToggle,
+    ...(canMoveUp ? [moveUp] : []),
+    ...(canMoveDown ? [moveDown] : []),
   ]);
 
-  const children: (Node | string)[] = [el("div", { class: "pz-model-slot__header" }, header), body];
-  if (openPickerIndex === index) {
-    children.push(pickerFor(dispatch, index, true));
+  return el("div", { class: "pz-model-slot pz-model-slot--filled" }, [
+    el("div", { class: "pz-model-slot__header" }, [
+      el("span", { class: "pz-overline pz-text-muted" }, [ROLE_LABELS[index] ?? "Slot"]),
+    ]),
+    body,
+    pickerPanel,
+  ]);
+}
+
+function setPickerOpen(panel: HTMLElement, toggleButton: HTMLElement | null, open: boolean): void {
+  panel.toggleAttribute("data-open", open);
+  panel.toggleAttribute("inert", !open);
+  toggleButton?.setAttribute("aria-expanded", String(open));
+}
+
+function togglePicker(index: number): void {
+  openPickerIndex = openPickerIndex === index ? null : index;
+  for (const panel of document.querySelectorAll<HTMLElement>(".pz-model-slot__picker")) {
+    const toggleButton = panel.parentElement?.querySelector<HTMLElement>(".pz-model-slot__labels") ?? null;
+    setPickerOpen(panel, toggleButton, panel.dataset.slotIndex === String(openPickerIndex));
   }
-  return el("div", { class: "pz-model-slot pz-model-slot--filled" }, children);
 }
 
 export function renderModelsScreen(dispatch: Dispatch): HTMLElement {
@@ -165,7 +184,12 @@ export function renderModelsScreen(dispatch: Dispatch): HTMLElement {
   const slots = [0, 1, 2].map((index) => {
     const slot = state.modelOrder[index];
     if (slot === undefined && openPickerIndex === index) {
-      return el("div", { class: "pz-model-slot pz-model-slot--empty" }, [pickerFor(dispatch, index, false)]);
+      return el("div", { class: "pz-model-slot" }, [
+        el("div", { class: "pz-model-slot__header" }, [
+          el("span", { class: "pz-overline pz-text-muted" }, [ROLE_LABELS[index] ?? "Slot"]),
+        ]),
+        pickerFor(dispatch, index, false),
+      ]);
     }
     return slotCard(dispatch, index, slot);
   });
@@ -185,8 +209,6 @@ export function renderModelsScreen(dispatch: Dispatch): HTMLElement {
   return screenShell(
     headerSub({
       title: "Models & keys",
-      drawerOpen: dispatch.isDrawerOpen(),
-      onMenuClick: () => dispatch.openDrawer(),
     }),
     [
       sectionHeading("Model order", "Tried from top to bottom."),

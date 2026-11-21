@@ -1,5 +1,6 @@
+import { el } from "./dom";
 import { liveRegion } from "./components";
-import { renderDrawer } from "./drawer";
+import { renderNavRail } from "./nav-rail";
 import { getActiveTabHostname, loadPopupState, onPopupStateChanged, readCachedState, savePopupState } from "./storage";
 import { defaultPopupState, syncModelOrderStatus, type PopupState } from "./state-types";
 import { renderMainScreen } from "./screens/main";
@@ -11,8 +12,6 @@ import { renderNanoSetupScreen } from "./screens/nano-setup";
 import { nanoAvailability, prepareNano, type NanoAvailability } from "../content/nano";
 import type { NanoSetupStatus, NanoState } from "./state-types";
 import type { Dispatch, PopupScreen } from "./types";
-
-const DRAWER_CLOSE_MS = 180;
 
 const SCREENS: Record<PopupScreen, (dispatch: Dispatch) => HTMLElement> = {
   main: renderMainScreen,
@@ -36,13 +35,17 @@ function nanoStatusFor(availability: NanoAvailability): NanoSetupStatus {
   }
 }
 
+function focusedNavTarget(): string | undefined {
+  const active = document.activeElement;
+  return active instanceof HTMLElement
+    ? active.closest<HTMLElement>("[data-nav-target]")?.dataset.navTarget
+    : undefined;
+}
+
 export async function mountPopup(root: HTMLElement): Promise<void> {
   let state = syncModelOrderStatus(readCachedState() ?? defaultPopupState());
   let activeHostname: string | undefined;
   let screen: PopupScreen = "main";
-  let drawerOpen = false;
-  let drawerWasOpen = false;
-  let drawerCloseTimer: number | undefined;
   let nanoTracking = false;
 
   async function applyNano(next: NanoState): Promise<void> {
@@ -82,10 +85,9 @@ export async function mountPopup(root: HTMLElement): Promise<void> {
   }
 
   const live = liveRegion();
-  const screenHost = document.createElement("div");
-  const drawerHost = document.createElement("div");
-  drawerHost.hidden = true;
-  root.append(live, screenHost, drawerHost);
+  const railHost = el("div", { class: "pz-nav-layout__rail" });
+  const screenHost = el("div", { class: "pz-nav-layout__content" });
+  root.append(live, el("div", { class: "pz-nav-layout" }, [railHost, screenHost]));
 
   const dispatch: Dispatch = {
     getState() {
@@ -96,9 +98,6 @@ export async function mountPopup(root: HTMLElement): Promise<void> {
     },
     getScreen() {
       return screen;
-    },
-    isDrawerOpen() {
-      return drawerOpen;
     },
     async updateState(mutator) {
       state = syncModelOrderStatus(mutator(state));
@@ -114,71 +113,21 @@ export async function mountPopup(root: HTMLElement): Promise<void> {
     rerender() {
       render();
     },
-    openDrawer() {
-      drawerOpen = true;
-      render();
-    },
-    closeDrawer() {
-      drawerOpen = false;
-      render();
-    },
     goTo(next) {
       screen = next;
-      drawerOpen = false;
       render();
     },
     refreshNano,
     startNanoDownload: trackNanoDownload,
   };
 
-  document.addEventListener("keydown", (event: KeyboardEvent) => {
-    if (event.key === "Escape" && drawerOpen) {
-      event.preventDefault();
-      dispatch.closeDrawer();
-    }
-  });
-
-  function openDrawerPanel(): void {
-    if (drawerCloseTimer !== undefined) {
-      window.clearTimeout(drawerCloseTimer);
-      drawerCloseTimer = undefined;
-    }
-    drawerHost.hidden = false;
-    const isFirstOpen = !drawerWasOpen;
-    drawerHost.replaceChildren(renderDrawer(dispatch));
-    const panel = drawerHost.firstElementChild as HTMLElement;
-    if (isFirstOpen) {
-      panel.setAttribute("data-open", "false");
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => panel.setAttribute("data-open", "true"));
-      });
-      panel.querySelector<HTMLElement>(".pz-drawer-item")?.focus();
-    } else {
-      panel.setAttribute("data-open", "true");
-    }
-  }
-
-  function closeDrawerPanel(): void {
-    const panel = drawerHost.firstElementChild as HTMLElement | null;
-    panel?.setAttribute("data-open", "false");
-    drawerCloseTimer = window.setTimeout(() => {
-      drawerHost.replaceChildren();
-      drawerHost.hidden = true;
-      drawerCloseTimer = undefined;
-    }, DRAWER_CLOSE_MS);
-    screenHost.querySelector<HTMLElement>(".pz-menu-button")?.focus();
-  }
-
   function render(): void {
+    const navTargetToRefocus = focusedNavTarget();
+    railHost.replaceChildren(renderNavRail(dispatch));
     screenHost.replaceChildren(SCREENS[screen](dispatch));
-    screenHost.inert = drawerOpen;
-
-    if (drawerOpen) {
-      openDrawerPanel();
-    } else if (drawerWasOpen) {
-      closeDrawerPanel();
+    if (navTargetToRefocus !== undefined) {
+      railHost.querySelector<HTMLElement>(`[data-nav-target="${navTargetToRefocus}"]`)?.focus();
     }
-    drawerWasOpen = drawerOpen;
   }
 
   render();
@@ -194,7 +143,7 @@ export async function mountPopup(root: HTMLElement): Promise<void> {
     render();
   });
 
-  if (screen === "main" && !drawerOpen) {
+  if (screen === "main") {
     screenHost.querySelector<HTMLElement>(".pz-power-button")?.focus();
   }
 }

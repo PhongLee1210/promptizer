@@ -1,5 +1,6 @@
-import { banner, headerSub, screenShell, sectionHeading, settingRow, toggle } from "../components";
-import { allCategoriesOff, hasConnectedCloudProvider, type SuggestCategory } from "../state-types";
+import { el } from "../dom";
+import { headerSub, screenShell, sectionHeading, settingRow, settingsGroup, toggle } from "../components";
+import { allCategoriesOff, hasConnectedCloudProvider, type PopupState, type SuggestCategory } from "../state-types";
 import type { Dispatch } from "../types";
 
 interface CategoryRow {
@@ -9,17 +10,14 @@ interface CategoryRow {
 }
 
 const CATEGORY_ROWS: CategoryRow[] = [
-  { id: "clarity", label: "Clarity", sublabel: "Reword vague or wordy parts" },
-  { id: "gap", label: "Gaps", sublabel: "Point out a missing audience, format or constraint" },
-  { id: "conflict", label: "Conflicts", sublabel: "Flag instructions that contradict each other" },
+  { id: "clarity", label: "Clarity", sublabel: "Vague or wordy parts" },
+  { id: "gap", label: "Gaps", sublabel: "Missing audience, format or limits" },
+  { id: "conflict", label: "Conflicts", sublabel: "Instructions that contradict" },
 ];
 
-export function renderSuggestionsScreen(dispatch: Dispatch): HTMLElement {
-  const state = dispatch.getState();
+function whenGroup(dispatch: Dispatch, state: PopupState): HTMLElement {
   const cloudConnected = hasConnectedCloudProvider(state);
-
-  const body: (Node | string)[] = [
-    sectionHeading("When"),
+  return settingsGroup(sectionHeading("When"), [
     settingRow({
       label: "Suggest as I type",
       sublabel: "Off: only when you click the badge",
@@ -36,10 +34,8 @@ export function renderSuggestionsScreen(dispatch: Dispatch): HTMLElement {
       }),
     }),
     settingRow({
-      label: "Allow as-you-type with cloud models",
-      sublabel: cloudConnected
-        ? "Sends drafts to your provider while you type. Uses your API quota."
-        : "No cloud model connected",
+      label: "Cloud models as you type",
+      sublabel: cloudConnected ? "Sends drafts to your provider. Uses your API quota." : "No cloud model connected",
       control: toggle({
         id: "pz-suggest-cloud-live",
         checked: state.suggest.cloudLive && cloudConnected,
@@ -50,34 +46,35 @@ export function renderSuggestionsScreen(dispatch: Dispatch): HTMLElement {
         },
       }),
     }),
-    sectionHeading("What"),
-  ];
+  ]);
+}
 
-  for (const row of CATEGORY_ROWS) {
-    body.push(
-      settingRow({
+function whatGroup(dispatch: Dispatch, state: PopupState): HTMLElement {
+  const notice = allCategoriesOff(state.suggest)
+    ? el("span", { class: "pz-caption pz-warning-text", role: "status" }, ["Only Refine all is available."])
+    : undefined;
+  const rows = CATEGORY_ROWS.map((row) =>
+    settingRow({
+      label: row.label,
+      sublabel: row.sublabel,
+      control: toggle({
+        id: `pz-suggest-${row.id}`,
+        checked: state.suggest.categories[row.id],
         label: row.label,
-        sublabel: row.sublabel,
-        control: toggle({
-          id: `pz-suggest-${row.id}`,
-          checked: state.suggest.categories[row.id],
-          label: row.label,
-          onChange: async (checked) => {
-            await dispatch.updateState((s) => ({
-              ...s,
-              suggest: { ...s.suggest, categories: { ...s.suggest.categories, [row.id]: checked } },
-            }));
-          },
-        }),
+        onChange: async (checked) => {
+          await dispatch.updateState((s) => ({
+            ...s,
+            suggest: { ...s.suggest, categories: { ...s.suggest.categories, [row.id]: checked } },
+          }));
+        },
       }),
-    );
-  }
+    }),
+  );
+  return settingsGroup(sectionHeading("What", undefined, notice), rows);
+}
 
-  if (allCategoriesOff(state.suggest)) {
-    body.push(banner({ kind: "info", text: "Only Refine all is available." }));
-  }
-
-  body.push(
+function displayGroup(dispatch: Dispatch, state: PopupState): HTMLElement {
+  return settingsGroup(sectionHeading("Display"), [
     settingRow({
       label: "Underline suggestions in the text",
       control: toggle({
@@ -89,10 +86,14 @@ export function renderSuggestionsScreen(dispatch: Dispatch): HTMLElement {
         },
       }),
     }),
-  );
+  ]);
+}
 
-  return screenShell(
-    headerSub({ title: "Suggestions", drawerOpen: dispatch.isDrawerOpen(), onMenuClick: () => dispatch.openDrawer() }),
-    body,
-  );
+export function renderSuggestionsScreen(dispatch: Dispatch): HTMLElement {
+  const state = dispatch.getState();
+  return screenShell(headerSub({ title: "Suggestions" }), [
+    whenGroup(dispatch, state),
+    whatGroup(dispatch, state),
+    displayGroup(dispatch, state),
+  ]);
 }

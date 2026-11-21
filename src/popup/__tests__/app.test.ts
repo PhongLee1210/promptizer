@@ -28,13 +28,9 @@ async function mount(): Promise<HTMLElement> {
   return root;
 }
 
-function openDrawer(root: HTMLElement): void {
-  root.querySelector<HTMLButtonElement>(".pz-menu-button")!.click();
-}
-
-function drawerItemLabelled(root: HTMLElement, label: string): HTMLButtonElement {
-  const items = [...root.querySelectorAll<HTMLButtonElement>(".pz-drawer-item")];
-  return items.find((item) => item.textContent?.includes(label))!;
+function navItemLabelled(root: HTMLElement, label: string): HTMLButtonElement {
+  const items = [...root.querySelectorAll<HTMLButtonElement>(".pz-nav-item")];
+  return items.find((item) => item.getAttribute("aria-label")?.startsWith(label))!;
 }
 
 describe("mountPopup", () => {
@@ -60,13 +56,13 @@ describe("mountPopup", () => {
     expect(document.activeElement).toBe(power);
   });
 
-  it("renders the brand mark as the packaged icon, not the old vector logo", async () => {
+  it("renders the brand mark as the packaged icon at the top of the nav rail", async () => {
     const root = await mount();
 
-    const brand = root.querySelector<HTMLImageElement>(".pz-header-main__brand .pz-brand-logo");
+    const brand = root.querySelector<HTMLImageElement>(".pz-nav-rail .pz-brand-logo");
     expect(brand?.tagName).toBe("IMG");
     expect(brand?.getAttribute("src")).toContain("/icon/32.png");
-    expect(root.querySelector(".pz-header-main__brand svg")).toBeNull();
+    expect(navItemLabelled(root, "Promptizer home").getAttribute("aria-current")).toBe("page");
   });
 
   it("pauses suggestions and reports it from the power button", async () => {
@@ -87,76 +83,39 @@ describe("mountPopup", () => {
     expect(root.textContent).not.toContain("Providers");
   });
 
-  it("opens the drawer from the hamburger, focuses its first item and closes it", async () => {
+  it("lists every section in the nav rail with an accessible name", async () => {
     const root = await mount();
 
-    openDrawer(root);
-
-    expect(root.querySelector(".pz-drawer")).not.toBeNull();
-    expect(root.querySelector(".pz-menu-button")?.getAttribute("aria-expanded")).toBe("true");
-    expect(root.textContent).toContain("Platforms");
-    expect(root.textContent).toContain("Models & keys");
-    expect(root.textContent).toContain("Suggestions");
-    expect(document.activeElement).toBe(root.querySelector(".pz-drawer-item"));
-
-    root.querySelector<HTMLButtonElement>(".pz-drawer__close")!.click();
-    expect(root.querySelector('.pz-drawer-root[data-open="true"]')).toBeNull();
-    await new Promise((resolve) => setTimeout(resolve, 200));
-    expect(root.querySelector(".pz-drawer-root")).toBeNull();
-    expect(document.activeElement).toBe(root.querySelector(".pz-menu-button"));
+    const labels = [...root.querySelectorAll(".pz-nav-item")].map((item) => item.getAttribute("aria-label"));
+    expect(labels).toEqual([
+      "Promptizer home",
+      "Platforms",
+      "Models & keys",
+      "Providers & keys",
+      "Suggestions",
+      "Setup guide, Ready",
+      "Help",
+      "Privacy",
+    ]);
   });
 
-  it("takes the main content out of the tab order while the drawer is open", async () => {
-    const root = await mount();
-    const screenHost = root.children[1] as HTMLElement;
-
-    openDrawer(root);
-    expect(screenHost.inert).toBe(true);
-
-    root.querySelector<HTMLButtonElement>(".pz-drawer__close")!.click();
-    expect(screenHost.inert).toBe(false);
-  });
-
-  it("closes the drawer on Escape", async () => {
+  it("navigates to the Platforms screen, marks it current and keeps focus on the rail", async () => {
     const root = await mount();
 
-    openDrawer(root);
-    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    navItemLabelled(root, "Platforms").focus();
+    navItemLabelled(root, "Platforms").click();
 
-    expect(root.querySelector('.pz-drawer-root[data-open="true"]')).toBeNull();
-    await new Promise((resolve) => setTimeout(resolve, 200));
-    expect(root.querySelector(".pz-drawer-root")).toBeNull();
-  });
-
-  it("closes the drawer when the backdrop is clicked", async () => {
-    const root = await mount();
-
-    openDrawer(root);
-    root.querySelector<HTMLElement>(".pz-drawer-backdrop")!.click();
-
-    await new Promise((resolve) => setTimeout(resolve, 200));
-    expect(root.querySelector(".pz-drawer-root")).toBeNull();
-  });
-
-  it("navigates to the Platforms screen and marks it current in the drawer", async () => {
-    const root = await mount();
-
-    openDrawer(root);
-    drawerItemLabelled(root, "Platforms").click();
-
-    expect(root.querySelector(".pz-drawer-root")).not.toBeNull();
     expect(root.querySelector(".pz-header-sub")?.textContent).toContain("Platforms");
     expect(root.querySelector<HTMLButtonElement>("#pz-platform-claude")).not.toBeNull();
-
-    openDrawer(root);
-    expect(drawerItemLabelled(root, "Platforms").getAttribute("aria-current")).toBe("page");
+    expect(navItemLabelled(root, "Platforms").getAttribute("aria-current")).toBe("page");
+    expect(navItemLabelled(root, "Promptizer home").getAttribute("aria-current")).toBeNull();
+    expect(document.activeElement).toBe(navItemLabelled(root, "Platforms"));
   });
 
   it("navigates to the Suggestions screen and keeps its switches", async () => {
     const root = await mount();
 
-    openDrawer(root);
-    drawerItemLabelled(root, "Suggestions").click();
+    navItemLabelled(root, "Suggestions").click();
 
     expect(root.querySelector("#pz-suggest-mode")?.getAttribute("aria-checked")).toBe("true");
     expect(root.querySelector("#pz-suggest-clarity")?.getAttribute("aria-checked")).toBe("true");
@@ -167,8 +126,7 @@ describe("mountPopup", () => {
   it("stores a suggestion category change under the current schema", async () => {
     const root = await mount();
 
-    openDrawer(root);
-    drawerItemLabelled(root, "Suggestions").click();
+    navItemLabelled(root, "Suggestions").click();
     root.querySelector<HTMLButtonElement>("#pz-suggest-gap")!.click();
     await Promise.resolve();
     await Promise.resolve();
@@ -180,7 +138,7 @@ describe("mountPopup", () => {
   it("opens the model screen from the main model card", async () => {
     const root = await mount();
 
-    root.querySelector<HTMLButtonElement>(".pz-card--link")!.click();
+    root.querySelector<HTMLButtonElement>(".pz-region-card__main")!.click();
 
     expect(root.querySelector(".pz-header-sub")?.textContent).toContain("Models & keys");
   });
@@ -188,8 +146,7 @@ describe("mountPopup", () => {
   it("toggles a platform from the Platforms screen", async () => {
     const root = await mount();
 
-    openDrawer(root);
-    drawerItemLabelled(root, "Platforms").click();
+    navItemLabelled(root, "Platforms").click();
 
     const claudeToggle = root.querySelector<HTMLButtonElement>("#pz-platform-claude")!;
     expect(claudeToggle.getAttribute("aria-checked")).toBe("true");
@@ -217,8 +174,7 @@ describe("mountPopup", () => {
     const create = stubLanguageModel("downloadable", 0.5);
     const root = await mount();
 
-    openDrawer(root);
-    drawerItemLabelled(root, "Setup guide").click();
+    navItemLabelled(root, "Setup guide").click();
     root.querySelector<HTMLButtonElement>(".pz-button--primary")!.click();
     await vi.waitFor(() => expect(root.textContent).toContain("Ready"));
 
@@ -236,11 +192,85 @@ describe("mountPopup", () => {
     expect(stored.popupState).toMatchObject({ nano: { status: "ready" } });
   });
 
-  it("reports the on-device model as ready in the drawer when it is available", async () => {
+  it("groups the model picker under provider legends with a hidden placeholder", async () => {
+    const root = await mount();
+    navItemLabelled(root, "Models & keys").click();
+    root.querySelector<HTMLButtonElement>(".pz-model-slot--empty")!.click();
+
+    const select = root.querySelector<HTMLSelectElement>(".pz-select")!;
+    const legends = [...select.querySelectorAll("optgroup > legend")].map((legend) => legend.textContent);
+    expect(legends).toContain("Anthropic");
+    expect(select.querySelector<HTMLOptionElement>('option[value=""]')!.hidden).toBe(true);
+    expect(select.closest(".pz-model-slot")!.querySelector(".pz-model-slot__header")).not.toBeNull();
+  });
+
+  it("tests a provider key in place and shows the rejection in the hint slot", async () => {
+    const root = await mount();
+    navItemLabelled(root, "Providers & keys").click();
+    const openAiRow = [...root.querySelectorAll<HTMLButtonElement>(".pz-provider-row--button")].find((row) =>
+      row.textContent?.includes("OpenAI"),
+    )!;
+    openAiRow.click();
+
+    const panel = root.querySelector<HTMLElement>(".pz-provider-panel")!;
+    const input = panel.querySelector<HTMLInputElement>("input")!;
+    expect(panel.querySelector("label")!.getAttribute("for")).toBe(input.id);
+
+    input.value = "short";
+    const save = panel.querySelector<HTMLButtonElement>(".pz-button--primary")!;
+    save.click();
+    expect(save.getAttribute("aria-busy")).toBe("true");
+    expect(save.textContent).toContain("Save & test");
+
+    await vi.waitFor(() => expect(input.getAttribute("aria-invalid")).toBe("true"));
+    expect(save.hasAttribute("aria-busy")).toBe(false);
+    expect(panel.querySelector(".pz-provider-panel__hint")!.textContent).toContain("didn't accept this key");
+    expect(input.value).toBe("short");
+
+    panel.querySelector<HTMLButtonElement>(".pz-button--text")!.click();
+    expect(root.querySelector(".pz-provider-panel")).toBeNull();
+  });
+
+  it("opens the key field when replacing a connected provider's key", async () => {
+    const root = await mount();
+    navItemLabelled(root, "Providers & keys").click();
+    [...root.querySelectorAll<HTMLButtonElement>(".pz-provider-row--button")]
+      .find((row) => row.textContent?.includes("OpenAI"))!
+      .click();
+    root.querySelector<HTMLInputElement>(".pz-provider-panel input")!.value = "test-key-1234";
+    root.querySelector<HTMLButtonElement>(".pz-provider-panel .pz-button--primary")!.click();
+    await vi.waitFor(() => expect(root.querySelector('[aria-label="Manage OpenAI"]')).not.toBeNull());
+    root.querySelector<HTMLButtonElement>('[aria-label="Manage OpenAI"]')!.click();
+    [...root.querySelectorAll<HTMLButtonElement>(".pz-button")]
+      .find((node) => node.textContent === "Replace key")!
+      .click();
+
+    const panel = root.querySelector<HTMLElement>(".pz-provider-panel")!;
+    expect(panel.querySelector("input")).not.toBeNull();
+    panel.querySelector<HTMLButtonElement>(".pz-button--text")!.click();
+    expect(root.querySelector(".pz-provider-panel")).toBeNull();
+  });
+
+  it("offers Turn all on in the Platforms header once every platform is off", async () => {
+    const root = await mount();
+    navItemLabelled(root, "Platforms").click();
+    expect(root.querySelector(".pz-header-sub .pz-button")).toBeNull();
+
+    const checkedToggles = () =>
+      root.querySelectorAll<HTMLButtonElement>('.pz-platform-row .pz-toggle[aria-checked="true"]');
+    while (checkedToggles().length > 0) {
+      const remaining = checkedToggles().length;
+      checkedToggles()[0]!.click();
+      await vi.waitFor(() => expect(checkedToggles().length).toBeLessThan(remaining));
+    }
+    await vi.waitFor(() => expect(root.querySelector(".pz-header-sub .pz-button")).not.toBeNull());
+    root.querySelector<HTMLButtonElement>(".pz-header-sub .pz-button")!.click();
+    await vi.waitFor(() => expect(root.querySelector(".pz-header-sub .pz-button")).toBeNull());
+  });
+
+  it("reports the on-device model as ready on the setup guide rail item", async () => {
     const root = await mount();
 
-    openDrawer(root);
-
-    expect(drawerItemLabelled(root, "Setup guide").textContent).toContain("Ready");
+    expect(navItemLabelled(root, "Setup guide").getAttribute("aria-label")).toContain("Ready");
   });
 });

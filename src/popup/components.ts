@@ -2,12 +2,16 @@ import { browser } from "wxt/browser";
 import { el, iconEl } from "./dom";
 import type { IconName } from "../utils/icons";
 
-function brandLogo(): HTMLImageElement {
+export function brandLogo(): HTMLImageElement {
   return el("img", { class: "pz-brand-logo", alt: "", src: browser.runtime.getURL("/icon/32.png") });
 }
 
 function isDisabled(node: HTMLElement): boolean {
   return node.getAttribute("aria-disabled") === "true";
+}
+
+function isBusy(node: HTMLElement): boolean {
+  return node.getAttribute("aria-busy") === "true";
 }
 
 export type StatusDotKind = "ready" | "standing-by" | "warning" | "error";
@@ -90,8 +94,9 @@ export function toggle(options: {
 
 export function button(options: {
   label: string;
-  variant?: "primary" | "outline" | "text" | "dashed";
+  variant?: "primary" | "outline" | "text" | "dashed" | "danger";
   iconName?: IconName;
+  compact?: boolean;
   disabled?: boolean;
   onClick?: () => void;
 }): HTMLButtonElement {
@@ -100,11 +105,22 @@ export function button(options: {
   if (options.iconName !== undefined) {
     children.push(iconEl(options.iconName, 16));
   }
-  children.push(options.label);
+  children.push(
+    el("span", { class: "pz-button__label" }, [options.label]),
+    el("span", { class: "pz-button__spinner", "aria-hidden": "true" }),
+  );
   const node = el(
     "button",
     {
-      class: `pz-button pz-button--${variant} pz-control${variant === "primary" ? " pz-control--filled" : ""}`,
+      class: [
+        "pz-button",
+        `pz-button--${variant}`,
+        "pz-control",
+        variant === "primary" ? "pz-control--filled" : "",
+        options.compact === true ? "pz-button--compact" : "",
+      ]
+        .filter(Boolean)
+        .join(" "),
       "aria-disabled": options.disabled === true ? "true" : undefined,
     },
     children,
@@ -112,13 +128,21 @@ export function button(options: {
   const onClick = options.onClick;
   if (onClick !== undefined) {
     node.addEventListener("click", () => {
-      if (isDisabled(node)) {
+      if (isDisabled(node) || isBusy(node)) {
         return;
       }
       onClick();
     });
   }
   return node;
+}
+
+export function setButtonBusy(node: HTMLButtonElement, busy: boolean): void {
+  if (busy) {
+    node.setAttribute("aria-busy", "true");
+  } else {
+    node.removeAttribute("aria-busy");
+  }
 }
 
 export function navRow(options: { label: string; value: string; onClick: () => void }): HTMLButtonElement {
@@ -136,7 +160,7 @@ export function settingRow(options: { label: string; sublabel?: string; control:
   if (options.sublabel !== undefined) {
     labelChildren.push(el("span", { class: "pz-caption pz-text-muted" }, [options.sublabel]));
   }
-  return el("div", { class: "pz-setting-row" }, [
+  return el("div", { class: `pz-setting-row${options.sublabel === undefined ? " pz-setting-row--single" : ""}` }, [
     el("div", { class: "pz-setting-row__label" }, labelChildren),
     options.control,
   ]);
@@ -169,86 +193,76 @@ export function liveRegion(): HTMLDivElement {
   return el("div", { class: "pz-visually-hidden", "aria-live": "polite", id: "pz-live-region" });
 }
 
-function menuButton(options: { drawerOpen: boolean; onMenuClick: () => void }): HTMLButtonElement {
-  const node = iconButton({
-    iconName: "menu",
-    label: "Settings menu",
-    extraClass: "pz-menu-button",
-    onClick: options.onMenuClick,
-  });
-  node.setAttribute("aria-expanded", String(options.drawerOpen));
-  return node;
+export function headerMain(options: { statusPillNode: HTMLElement; siteLabel?: string }): HTMLDivElement {
+  const children: Node[] = [options.statusPillNode];
+  if (options.siteLabel !== undefined) {
+    children.push(
+      el("span", { class: "pz-pill pz-header-main__site" }, [iconEl("globe", 14), el("span", {}, [options.siteLabel])]),
+    );
+  }
+  return el("div", { class: "pz-header-main" }, children);
 }
 
-export function headerMain(options: {
-  statusPillNode: HTMLElement;
-  drawerOpen: boolean;
-  onMenuClick: () => void;
-}): HTMLDivElement {
-  return el("div", { class: "pz-header-main" }, [
-    menuButton(options),
-    el("div", { class: "pz-header-main__brand" }, [brandLogo(), el("h1", { class: "pz-header" }, ["Promptizer"])]),
-    options.statusPillNode,
-  ]);
-}
-
-export function headerSub(options: {
-  title: string;
-  count?: string;
-  drawerOpen: boolean;
-  onMenuClick: () => void;
-}): HTMLDivElement {
-  const children: (Node | string)[] = [menuButton(options), el("h1", { class: "pz-header" }, [options.title])];
+export function headerSub(options: { title: string; count?: string; action?: HTMLElement }): HTMLDivElement {
+  const children: (Node | string)[] = [el("h1", { class: "pz-header" }, [options.title])];
+  const trailing: Node[] = [];
   if (options.count !== undefined) {
-    children.push(el("span", { class: "pz-caption pz-text-muted pz-header-sub__trailing" }, [options.count]));
+    trailing.push(el("span", { class: "pz-caption pz-text-muted" }, [options.count]));
+  }
+  if (options.action !== undefined) {
+    trailing.push(options.action);
+  }
+  if (trailing.length > 0) {
+    children.push(el("div", { class: "pz-header-sub__trailing" }, trailing));
   }
   return el("div", { class: "pz-header-sub" }, children);
 }
 
-export function drawerItem(options: {
-  iconName: IconName;
+export function navItem(options: {
+  iconNode: Element;
   label: string;
-  value?: string;
   current?: boolean;
-  external?: boolean;
   onClick: () => void;
 }): HTMLButtonElement {
-  const children: (Node | string)[] = [
-    iconEl(options.iconName, 20),
-    el("span", { class: "pz-drawer-item__label pz-body" }, [options.label]),
-  ];
-  if (options.value !== undefined) {
-    children.push(el("span", { class: "pz-caption pz-text-muted" }, [options.value]));
-  }
-  if (options.external === true) {
-    children.push(iconEl("arrow-right", 16));
-  }
   const node = el(
     "button",
     {
-      class: "pz-drawer-item pz-control",
+      class: "pz-nav-item pz-control",
+      "aria-label": options.label,
+      title: options.label,
       "aria-current": options.current === true ? "page" : undefined,
     },
-    children,
+    [options.iconNode],
   );
   node.addEventListener("click", options.onClick);
   return node;
 }
 
-export function cardLink(options: {
+export function regionCard(options: {
+  iconName: IconName;
+  title: string;
+  caption: (Node | string)[];
   label: string;
   onClick: () => void;
-  children: (Node | string)[];
-}): HTMLButtonElement {
-  const node = el("button", { class: "pz-card pz-card--link pz-control", "aria-label": options.label }, [
-    el("div", { class: "pz-card__head" }, [
-      el("p", { class: "pz-overline pz-text-muted" }, [options.label]),
-      iconEl("chevron-right", 18),
+  footer?: (Node | string)[];
+}): HTMLDivElement {
+  const main = el("button", { class: "pz-region-card__main pz-control", "aria-label": options.label }, [
+    el("span", { class: "pz-region-card__icon", "aria-hidden": "true" }, [iconEl(options.iconName, 20)]),
+    el("span", { class: "pz-region-card__info" }, [
+      el("span", { class: "pz-body-strong" }, [options.title]),
+      el("span", { class: "pz-caption pz-text-muted" }, options.caption),
     ]),
-    ...options.children,
+    el("span", { class: "pz-region-card__chevron" }, [iconEl("chevron-right", 20)]),
   ]);
-  node.addEventListener("click", options.onClick);
-  return node;
+  main.addEventListener("click", options.onClick);
+  const children: Node[] = [main];
+  if (options.footer !== undefined && options.footer.length > 0) {
+    children.push(
+      el("hr", { class: "pz-region-card__divider" }),
+      el("div", { class: "pz-region-card__footer" }, options.footer),
+    );
+  }
+  return el("div", { class: "pz-region-card" }, children);
 }
 
 export function screenShell(header: HTMLElement, body: (Node | string)[], modifier?: string): HTMLDivElement {
@@ -258,40 +272,57 @@ export function screenShell(header: HTMLElement, body: (Node | string)[], modifi
   ]);
 }
 
-export function sectionHeading(title: string, caption?: string): HTMLDivElement {
-  const children: (Node | string)[] = [el("p", { class: "pz-overline pz-text-muted" }, [title])];
+export function sectionHeading(title: string, caption?: string, trailing?: HTMLElement): HTMLDivElement {
+  const titleRow: Node[] = [el("p", { class: "pz-overline pz-text-muted" }, [title])];
+  if (trailing !== undefined) {
+    titleRow.push(trailing);
+  }
+  const children: Node[] = [el("div", { class: "pz-section-heading__row" }, titleRow)];
   if (caption !== undefined) {
     children.push(el("p", { class: "pz-caption pz-text-muted" }, [caption]));
   }
   return el("div", { class: "pz-section-heading" }, children);
 }
 
-export function drawerHeader(options: { onClose: () => void; onBrandClick: () => void }): HTMLDivElement {
-  const brand = el("button", { class: "pz-drawer__brand pz-control" }, [
-    el("span", { class: "pz-header" }, ["Promptizer"]),
-  ]);
-  brand.addEventListener("click", options.onBrandClick);
-  return el("div", { class: "pz-header-sub" }, [
-    iconButton({
-      iconName: "close",
-      label: "Close settings menu",
-      extraClass: "pz-drawer__close",
-      onClick: options.onClose,
-    }),
-    brand,
-  ]);
+export function settingsGroup(heading: HTMLElement, rows: HTMLElement[]): HTMLDivElement {
+  return el("div", { class: "pz-group" }, [heading, el("div", { class: "pz-list" }, rows)]);
 }
 
-export function emptyState(options: { illustration: string; text: string; action: HTMLElement }): HTMLDivElement {
-  return el("div", { class: "pz-empty-state" }, [
-    el("div", { class: "pz-empty-state__illustration", "aria-hidden": "true" }, [options.illustration]),
-    el("p", { class: "pz-body" }, [options.text]),
-    options.action,
-  ]);
+export type PowerStep = "off" | "busy" | "on";
+
+const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
+const POWER_ART_VIEWBOX = 200;
+const POWER_ART_CENTER = POWER_ART_VIEWBOX / 2;
+const POWER_RING_RADIUS = 74;
+const POWER_RIPPLE_RADIUS = 68;
+
+function svgCircle(className: string, radius: number): SVGCircleElement {
+  const circle = document.createElementNS(SVG_NAMESPACE, "circle");
+  circle.setAttribute("class", className);
+  circle.setAttribute("cx", String(POWER_ART_CENTER));
+  circle.setAttribute("cy", String(POWER_ART_CENTER));
+  circle.setAttribute("r", String(radius));
+  circle.setAttribute("pathLength", "100");
+  return circle;
+}
+
+function powerArt(step: PowerStep): SVGSVGElement {
+  const art = document.createElementNS(SVG_NAMESPACE, "svg");
+  art.setAttribute("class", "pz-power-art");
+  art.setAttribute("viewBox", `0 0 ${POWER_ART_VIEWBOX} ${POWER_ART_VIEWBOX}`);
+  art.setAttribute("aria-hidden", "true");
+  art.setAttribute("data-step", step);
+  art.append(
+    svgCircle("pz-power-art__ripple", POWER_RIPPLE_RADIUS),
+    svgCircle("pz-power-art__ring", POWER_RING_RADIUS),
+    svgCircle("pz-power-art__arc", POWER_RING_RADIUS),
+  );
+  return art;
 }
 
 export function powerButton(options: {
   on: boolean;
+  step: PowerStep;
   compact?: boolean;
   disabled?: boolean;
   onClick: () => void;
@@ -312,6 +343,7 @@ export function powerButton(options: {
       "aria-disabled": options.disabled === true ? "true" : undefined,
     },
     [
+      powerArt(options.step),
       iconEl("power", options.compact === true ? 26 : 30),
       el("span", { class: "pz-caption" }, [options.on ? "On" : "Off"]),
     ],

@@ -2,18 +2,19 @@ import { el } from "../dom";
 import {
   banner,
   button,
-  cardLink,
   footerNote,
   headerMain,
   powerButton,
+  regionCard,
   screenShell,
   settingRow,
   statusPill,
   toggle,
+  type PowerStep,
 } from "../components";
 import { deriveMainView, type MainView } from "../main-view";
 import type { Dispatch } from "../types";
-import type { ModelSlot, PopupState } from "../state-types";
+import type { ModelSlot, PlatformEntry, PopupState } from "../state-types";
 
 function modelStatusLabel(slot: ModelSlot): string {
   if (slot.status === "ready") {
@@ -39,13 +40,13 @@ function slotRow(slot: ModelSlot, prefix?: string): HTMLElement {
   ]);
 }
 
-function modelCard(dispatch: Dispatch, slots: ModelSlot[], expanded: boolean): HTMLElement {
-  const rows: HTMLElement[] = [];
+function modelCard(dispatch: Dispatch, inUse: ModelSlot, slots: ModelSlot[], expanded: boolean): HTMLElement {
+  const footer: (Node | string)[] = [];
   if (expanded) {
     slots.forEach((slot, index) => {
-      rows.push(slotRow(slot, `${index + 1}`));
+      footer.push(slotRow(slot, `${index + 1}`));
       if (slot.status === "downloading") {
-        rows.push(
+        footer.push(
           el("div", { class: "pz-progress-track" }, [
             el("div", { class: "pz-progress-fill", style: `width: ${slot.downloadPercent ?? 0}%` }),
           ]),
@@ -53,13 +54,19 @@ function modelCard(dispatch: Dispatch, slots: ModelSlot[], expanded: boolean): H
       }
     });
   } else {
-    rows.push(slotRow(slots[0]!));
-    const fallback = slots[1];
+    const fallback = slots.find((slot) => slot !== inUse);
     if (fallback !== undefined) {
-      rows.push(el("p", { class: "pz-caption pz-text-muted" }, [`If it fails: ${fallback.modelName}, then more`]));
+      footer.push(el("p", { class: "pz-caption pz-text-muted" }, [`If it fails: ${fallback.modelName}, then more`]));
     }
   }
-  return cardLink({ label: "Model", onClick: () => dispatch.goTo("models"), children: rows });
+  return regionCard({
+    iconName: inUse.device === "on-device" ? "device" : "cloud",
+    title: inUse.modelName,
+    caption: [modelStatusLabel(inUse)],
+    label: `Model: ${inUse.modelName}, ${modelStatusLabel(inUse)}`,
+    onClick: () => dispatch.goTo("models"),
+    footer,
+  });
 }
 
 function suggestsOnRequest(state: PopupState, view: MainView): boolean {
@@ -131,6 +138,78 @@ function statusPillFor(view: MainView): HTMLElement {
   return statusPill("Needs attention", "error");
 }
 
+function powerStepFor(view: MainView): PowerStep {
+  if (view.kind === "nano-downloading") {
+    return "busy";
+  }
+  return view.kind === "active" || view.kind === "backup" ? "on" : "off";
+}
+
+function siteForHostname(state: PopupState, hostname: string | undefined): PlatformEntry | undefined {
+  if (hostname === undefined) {
+    return undefined;
+  }
+  return state.platforms.find((p) => hostname === p.hostname || hostname.endsWith(`.${p.hostname}`));
+}
+
+function siteToggleRow(dispatch: Dispatch, site: PlatformEntry, powerOn: boolean): HTMLElement {
+  return settingRow({
+    label: `Suggest on ${site.label}`,
+    control: toggle({
+      id: "pz-site-toggle",
+      checked: site.enabled,
+      disabled: !powerOn,
+      label: `Suggest on ${site.label}`,
+      onChange: async (checked) => {
+        await dispatch.updateState((s) => ({
+          ...s,
+          platforms: s.platforms.map((p) => (p.id === site.id ? { ...p, enabled: checked } : p)),
+        }));
+      },
+    }),
+  });
+}
+
+function modelRegion(dispatch: Dispatch, state: PopupState, view: MainView): HTMLElement | undefined {
+  if (view.kind === "nano-downloading") {
+    return el("div", { class: "pz-card", role: "status" }, [
+      el("p", { class: "pz-overline pz-text-muted" }, ["Model"]),
+      el("p", { class: "pz-body" }, [`Downloading Gemini Nano ${view.percent}%`]),
+      el("div", { class: "pz-progress-track" }, [
+        el("div", { class: "pz-progress-fill", style: `width: ${view.percent}%` }),
+      ]),
+      el("p", { class: "pz-caption pz-text-muted" }, ["Keep Chrome open until this finishes."]),
+      button({ label: "Setup details", variant: "outline", onClick: () => dispatch.goTo("nano-setup") }),
+    ]);
+  }
+  if (view.kind === "nano-setup") {
+    return el("div", { class: "pz-card" }, [
+      el("p", { class: "pz-overline pz-text-muted" }, ["Model"]),
+      el("p", { class: "pz-body" }, [
+        view.status === "unsupported"
+          ? "Gemini Nano isn't enabled in this Chrome yet."
+          : "Gemini Nano still needs a one-time download.",
+      ]),
+      button({ label: "Show setup steps", onClick: () => dispatch.goTo("nano-setup") }),
+      button({ label: "Add a backup model", variant: "outline", onClick: () => dispatch.goTo("models") }),
+    ]);
+  }
+  if (view.kind === "primary-unavailable") {
+    return el("div", { class: "pz-card" }, [
+      el("p", { class: "pz-overline pz-text-muted" }, ["Model"]),
+      el("p", { class: "pz-body" }, ["Gemini Nano isn't available on this computer"]),
+      button({ label: "Add a backup model", onClick: () => dispatch.goTo("models") }),
+    ]);
+  }
+  if (view.kind === "backup") {
+    return modelCard(dispatch, view.slot, view.allSlots, true);
+  }
+  if (view.kind === "active") {
+    return modelCard(dispatch, view.slot, state.modelOrder, false);
+  }
+  return undefined;
+}
+
 export function renderMainScreen(dispatch: Dispatch): HTMLElement {
   const state = dispatch.getState();
   const hostname = dispatch.getActiveHostname();
@@ -138,9 +217,11 @@ export function renderMainScreen(dispatch: Dispatch): HTMLElement {
   const compact = view.kind === "backup" || view.kind === "all-failing";
   const powerOn = state.globalEnabled;
   const copy = heroCopy(state, view);
+  const site = view.kind === "unsupported" ? undefined : siteForHostname(state, hostname);
 
   const powerButtonNode = powerButton({
     on: powerOn,
+    step: powerStepFor(view),
     compact,
     onClick: async () => {
       await dispatch.updateState((s) => ({ ...s, globalEnabled: !s.globalEnabled }));
@@ -148,87 +229,34 @@ export function renderMainScreen(dispatch: Dispatch): HTMLElement {
     },
   });
 
-  const body: (Node | string)[] = [
-    el("div", { class: "pz-main-hero" }, [
-      powerButtonNode,
-      el("p", { class: "pz-title" }, [copy.title]),
-      el("p", { class: "pz-caption pz-text-muted" }, [copy.caption]),
-    ]),
-  ];
-
-  if (view.kind !== "unsupported") {
-    const site =
-      hostname === undefined
-        ? undefined
-        : state.platforms.find((p) => hostname === p.hostname || hostname.endsWith(`.${p.hostname}`));
-    if (site !== undefined) {
-      body.push(
-        settingRow({
-          label: `Suggest on ${site.label}`,
-          control: toggle({
-            id: "pz-site-toggle",
-            checked: site.enabled,
-            disabled: !powerOn,
-            label: `Suggest on ${site.label}`,
-            onChange: async (checked) => {
-              await dispatch.updateState((s) => ({
-                ...s,
-                platforms: s.platforms.map((p) => (p.id === site.id ? { ...p, enabled: checked } : p)),
-              }));
-            },
-          }),
-        }),
-      );
-    }
+  const region: HTMLElement[] = [];
+  if (site !== undefined) {
+    region.push(siteToggleRow(dispatch, site, powerOn));
+  }
+  const modelNode = modelRegion(dispatch, state, view);
+  if (modelNode !== undefined) {
+    region.push(modelNode);
   }
 
-  if (view.kind === "nano-downloading") {
-    body.push(
-      el("div", { class: "pz-card", role: "status" }, [
-        el("p", { class: "pz-overline pz-text-muted" }, ["Model"]),
-        el("p", { class: "pz-body" }, [`Downloading Gemini Nano ${view.percent}%`]),
-        el("div", { class: "pz-progress-track" }, [
-          el("div", { class: "pz-progress-fill", style: `width: ${view.percent}%` }),
-        ]),
-        el("p", { class: "pz-caption pz-text-muted" }, ["Keep Chrome open until this finishes."]),
-        button({ label: "Setup details", variant: "outline", onClick: () => dispatch.goTo("nano-setup") }),
-      ]),
-    );
-  } else if (view.kind === "nano-setup") {
-    body.push(
-      el("div", { class: "pz-card" }, [
-        el("p", { class: "pz-overline pz-text-muted" }, ["Model"]),
-        el("p", { class: "pz-body" }, [
-          view.status === "unsupported"
-            ? "Gemini Nano isn't enabled in this Chrome yet."
-            : "Gemini Nano still needs a one-time download.",
-        ]),
-        button({ label: "Show setup steps", onClick: () => dispatch.goTo("nano-setup") }),
-        button({ label: "Add a backup model", variant: "outline", onClick: () => dispatch.goTo("models") }),
-      ]),
-    );
-  } else if (view.kind === "primary-unavailable") {
-    body.push(
-      el("div", { class: "pz-card" }, [
-        el("p", { class: "pz-overline pz-text-muted" }, ["Model"]),
-        el("p", { class: "pz-body" }, ["Gemini Nano isn't available on this computer"]),
-        button({ label: "Add a backup model", onClick: () => dispatch.goTo("models") }),
-      ]),
-    );
-  } else if (view.kind === "backup") {
-    body.push(
-      modelCard(dispatch, view.allSlots, true),
+  const content: (Node | string)[] = [
+    el("div", { class: "pz-main-connect" }, [powerButtonNode]),
+    el("p", { class: "pz-main-status" }, [copy.title]),
+    el("p", { class: "pz-caption pz-text-muted" }, [copy.caption]),
+  ];
+  if (region.length > 0) {
+    content.push(el("div", { class: "pz-main-region" }, region));
+  }
+
+  if (view.kind === "backup") {
+    content.push(
       banner({
         kind: "warning",
         text: `While a cloud model is in use, your prompt text is sent to ${view.slot.providerLabel}.`,
       }),
     );
-  } else if (view.kind === "active") {
-    body.push(modelCard(dispatch, state.modelOrder, false));
   }
-
   if (view.kind === "all-failing") {
-    body.push(
+    content.push(
       banner({
         kind: "danger",
         text: "Couldn't reach any model. Prompts are being sent unchanged.",
@@ -236,17 +264,13 @@ export function renderMainScreen(dispatch: Dispatch): HTMLElement {
       }),
     );
   }
-
   if (!compact) {
-    body.push(footerNote("On-device suggestions never leave your computer."));
+    content.push(footerNote("On-device suggestions never leave your computer."));
   }
 
   return screenShell(
-    headerMain({
-      statusPillNode: statusPillFor(view),
-      drawerOpen: dispatch.isDrawerOpen(),
-      onMenuClick: () => dispatch.openDrawer(),
-    }),
-    body,
+    headerMain({ statusPillNode: statusPillFor(view), siteLabel: site?.label }),
+    [el("div", { class: "pz-main-content" }, content)],
+    "main",
   );
 }

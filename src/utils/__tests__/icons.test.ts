@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { icon, icons } from "../icons";
+import { BUILTIN_PLATFORMS } from "../../popup/platforms";
 
-const shippedIconCount = 51;
+const shippedIconCount = 57;
 
 describe("icons", () => {
   it("inlines every shipped icon with currentColor preserved", () => {
@@ -25,6 +26,12 @@ describe("icons", () => {
     expect(icons).toHaveProperty("replace");
     expect(icons).toHaveProperty("back");
     expect(icons).toHaveProperty("fwd");
+  });
+
+  it("ships a currentColor logo for every built-in platform", () => {
+    for (const platform of BUILTIN_PLATFORMS) {
+      expect(icons[platform.logo]).toContain('fill="currentColor"');
+    }
   });
 
   it("leaves the fixed-colour in-page badge out of the inline map", () => {
