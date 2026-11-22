@@ -34,13 +34,13 @@ after:   Make the contact button sticky on scroll while preserving the
 
 ## Why it is different
 
-|                               |                                                                                                         |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------- |
-| **On-device first**           | Chrome's built-in Gemini Nano runs the rewrite locally. Nothing leaves the machine in the default path. |
-| **Preview, never submit**     | The rewrite lands in an editable preview. Promptizer never presses send for you.                        |
-| **Intent preserved**          | Constraints, tone, and task stay. It cleans the wording, it does not invent requirements.               |
-| **No telemetry**              | No prompt logging, no page scraping, no analytics.                                                      |
-| **Zero runtime dependencies** | No UI framework, no third-party runtime JavaScript.                                                     |
+|                               |                                                                                               |
+| ----------------------------- | --------------------------------------------------------------------------------------------- |
+| **On-device only**            | Chrome's built-in Gemini Nano runs the rewrite locally. The extension makes no network calls. |
+| **Preview, never submit**     | The rewrite lands in an editable preview. Promptizer never presses send for you.              |
+| **Intent preserved**          | Constraints, tone, and task stay. It cleans the wording, it does not invent requirements.     |
+| **No telemetry**              | No prompt logging, no page scraping, no analytics.                                            |
+| **Zero runtime dependencies** | No UI framework, no third-party runtime JavaScript.                                           |
 
 ## How it works
 
@@ -70,8 +70,8 @@ make build-ext            # -> .output/chrome-mv3/
 ```
 
 1. Open `chrome://extensions` → enable **Developer mode** → **Load unpacked** → select `.output/chrome-mv3/`.
-2. Open Promptizer settings from the toolbar → **Check or download Gemini Nano** → wait for **Ready on this device**.
-3. On any site, type at least 8 characters into a text field, click the Promptizer chip, then **Replace** or **Dismiss**.
+2. Open Promptizer settings from the toolbar → **Setup guide** → **Download model** → wait for **Ready**.
+3. On any site, type into a text field, click the Promptizer chip, then **Replace** or **Dismiss**.
 
 ## Development
 
@@ -103,9 +103,10 @@ Build the zip locally with `pnpm exec wxt zip`.
 
 ## Privacy
 
-Only the prompt and context you explicitly select are processed. Gemini Nano keeps them on-device.
-A cloud provider only sees your prompt if you add that provider's API key yourself. No prompt
-logging, no page scraping, no automatic submission.
+Only the text you run an action on is processed, and Gemini Nano keeps it on-device — this build makes
+no network requests at all. Permissions are `storage` and `activeTab` only, with no host permissions,
+asserted on every build. Password, one-time-code and payment fields never get a chip, so their
+contents are never read. No prompt logging, no page scraping, no automatic submission.
 
 ## Contributing
 
