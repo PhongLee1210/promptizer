@@ -15,7 +15,7 @@
     "happy-dom": "^21.0.4",
     "prettier": "^3.10.1",
     "puppeteer": "^25.18.1",
-    "typescript": "^5.9.3",
+    "typescript": "^7.0.2",
     "vite": "^7.3.8",
     "vitest": "^3.2.7",
     "wxt": "^0.21.5"
