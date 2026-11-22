@@ -4,7 +4,7 @@ set -euo pipefail
 manifest="${1:-.output/chrome-mv3/manifest.json}"
 
 if [ ! -f "$manifest" ]; then
-  echo "assert-manifest: $manifest not found; run 'npx wxt build' first" >&2
+  echo "assert-manifest: $manifest not found; run 'pnpm exec wxt build' first" >&2
   exit 1
 fi
 
