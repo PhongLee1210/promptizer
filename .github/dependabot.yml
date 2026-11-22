@@ -1,0 +1,54 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Bangkok
+    open-pull-requests-limit: 5
+    versioning-strategy: increase
+    commit-message:
+      prefix: chore
+      include: scope
+    labels:
+      - dependencies
+    groups:
+      dev-tooling:
+        patterns:
+          - prettier
+          - typescript
+          - "@types/*"
+        update-types:
+          - minor
+          - patch
+      test-stack:
+        patterns:
+          - vitest
+          - happy-dom
+          - puppeteer
+        update-types:
+          - minor
+          - patch
+      build-stack:
+        patterns:
+          - wxt
+          - vite
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: ci
+    labels:
+      - dependencies
+    groups:
+      actions:
+        patterns:
+          - "*"
