@@ -7,7 +7,7 @@
 **Clearer prompts. Same intent.**
 
 Promptizer rewrites the prompt you are already typing into one clean, professional paragraph —
-on-device first, always as an editable preview, never auto-submitted.
+on-device, always as an editable preview, never auto-submitted.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Chrome 138+](https://img.shields.io/badge/Chrome-138%2B-4285F4?logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/ai/built-in)
@@ -75,39 +75,23 @@ make build-ext            # -> .output/chrome-mv3/
 
 ## Use the extension
 
-Focus any prose text field on any site and the chip appears inside it, bottom-right. Click it to open
-the action rail:
+Focus any prose field and the chip appears inside it. Click it for the action rail: **Refine prompt**
+(**Improve writing** in a plain textarea), **Fix grammar**, **Shorten**, **Translate** to Vietnamese or
+English, and **Change tone** to professional, friendly or direct.
 
-| Action              | What it does                                                          |
-| ------------------- | --------------------------------------------------------------------- |
-| **Refine prompt**   | Cleans up structure, clarity and grammar. Shown in chat composers.    |
-| **Improve writing** | Makes it more specific and actionable. Replaces Refine in a textarea. |
-| **Fix grammar**     | Grammar, spelling and punctuation only — wording and tone untouched.  |
-| **Shorten**         | As short as it can get while keeping the task and necessary context.  |
-| **Translate**       | **VI** Vietnamese · **EN** English.                                   |
-| **Change tone**     | **Professional** · **Friendly** · **Direct**.                         |
-| **Recent results**  | Reopens the last result. Appears once you have one.                   |
-| **Turn off**        | Disables Promptizer everywhere until you re-enable it in the popup.   |
+The result opens as an editable preview — copy it, edit it, tweak it with another action, or step back
+through the last ten. Only **Replace** writes to your field, and the chip offers an undo for six
+seconds afterwards. `Esc` leaves your text alone.
 
-The result opens as an editable preview. From there you can **Copy** it, **Edit** it inline, **Tweak**
-it by running another action on the result, **Regenerate** it, or step back through the last ten
-results. Only **Replace** writes to your field — and for six seconds afterwards the chip offers an
-undo. `Esc` dismisses at any point and leaves your text alone.
+The chip never appears on passwords, one-time codes or card fields, so it cannot read them.
 
-Promptizer never appears on passwords, one-time codes, card numbers, usernames or other non-prose
-fields, so it cannot read them.
-
-Full detail: [docs/features.md](docs/features.md).
+Every action and journey in detail: [docs/features.md](docs/features.md).
 
 ## Documentation
 
-| Document                                               | For                                     |
-| ------------------------------------------------------ | --------------------------------------- |
-| [docs/features.md](docs/features.md)                   | Every action, journey and privacy rule. |
-| [docs/architecture.md](docs/architecture.md)           | How the extension is put together.      |
-| [CONTRIBUTING.md](CONTRIBUTING.md)                     | Setup, style, tests, pull requests.     |
-| [CHANGELOG.md](CHANGELOG.md)                           | What changed in each version.           |
-| [docs/release-checklist.md](docs/release-checklist.md) | Cutting a release.                      |
+[Features](docs/features.md) · [Architecture](docs/architecture.md) ·
+[Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md) ·
+[Release checklist](docs/release-checklist.md)
 
 ## Development
 
@@ -153,6 +137,3 @@ dependency, renaming files, or touching global configuration. Full guide in
 ## License
 
 [MIT](LICENSE) © PhongLee1210
-
-Platform logos in `src/assets/icon-sources/logo-*.svg` come from [Lobe Icons](https://github.com/lobehub/lobe-icons)
-(MIT). Each logo is a trademark of its owner and is shown only to identify the supported site.
