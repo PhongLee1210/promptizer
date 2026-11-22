@@ -19,8 +19,10 @@ The rewrite is always shown as an editable preview. Nothing is submitted automat
 - Run binaries through `pnpm exec`, not `npx` or `./node_modules/.bin/`.
 - `pnpm.onlyBuiltDependencies` in `package.json` lists the packages allowed to run install scripts. pnpm blocks them
   by default; esbuild is listed because vite and vitest need its native binary.
-- Pin `vite` to `^7`. WXT accepts `^6.3.4 || ^7 || ^8`, but vitest 3 only accepts up to 7, and two vite copies in the
-  store produce unassignable plugin types in `vitest.config.ts`.
+- Pin `vite` to `^7`. wxt 0.21.5 accepts `^6.3.4 || ^7 || ^8.0.0-0` and vitest 3.2.7 accepts `^5 || ^6 || ^7`, so 7 is
+  the only major both allow, and two vite copies in the store produce unassignable plugin types in `vitest.config.ts`.
+  `.github/dependabot.yml` ignores vite majors to enforce this. Drop that ignore only once vitest is on 4 or later,
+  whose range widens to `^6 || ^7 || ^8`.
 - Chrome and Edge only. The automated checks run in Chrome. Load the extension unpacked from `.output/chrome-mv3/`.
 - One change per branch and pull request. Keep diffs scoped to it.
 - Commit messages are ONE line only. No blank line, no body, no bullet list, no trailing co-author or
