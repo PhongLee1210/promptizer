@@ -1,4 +1,5 @@
-- Product: local-first prompt refiner; whole-prompt rewrite/keep, preview-only, never auto-submit.
+- Product: local-first prompt refiner; whole-prompt rewrite, preview-only, never auto-submit.
+- Nine actions in `src/content/action-types.ts` (refine, improve, grammar, shorten, vi, en, pro, friendly, direct); each is a system instruction in `src/content/nano.ts`, all returning the same keep/refine JSON shape.
 - `src/` (WXT-built Chrome MV3 extension, on-device Gemini Nano only, no cloud fallback). The legacy hand-rolled `extension/` JS build and the Go CLI/Groq cloud-fallback backend (`cmd/promptrefine`, `internal/`) were both removed entirely — no longer supported. `src/` is the only codebase now.
 - Stable privacy invariant: only explicitly selected bounded prompt/context may leave host; never scan terminal/page/thread/files implicitly; never log prompt content.
 - Architecture/stack details: `mem:tech_stack`.

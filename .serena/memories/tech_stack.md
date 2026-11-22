@@ -1,3 +1,4 @@
 - `src/` is a WXT (Chrome MV3) extension in TypeScript, built with Vite, tested with Vitest; no UI framework, no runtime JS dependencies beyond WXT's own bundled helpers. No ESLint — Prettier + `tsc` only.
-- No legacy JS build, no Go backend, no cloud provider, no cache/daemon/service beyond the browser extension itself — Gemini Nano (on-device) is the only refine path.
+- No legacy JS build, no Go backend, no cache/daemon/service beyond the browser extension itself — Gemini Nano (on-device) is the only refine path.
+- `src/popup/provider-catalog.ts` lists cloud models (Anthropic, OpenAI, OpenRouter) but no cloud path exists: zero `fetch(` in `src/`, and the manifest ships no host permissions. Catalog is UI-only.
 - E2E coverage: Puppeteer suite in `e2e/` (`pnpm run test:e2e`) drives the real built extension in Chrome for Testing against a local fixture page, with a fake on-device Nano shim injected only for test runs.
