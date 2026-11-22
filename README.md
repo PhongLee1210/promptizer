@@ -73,6 +73,42 @@ make build-ext            # -> .output/chrome-mv3/
 2. Open Promptizer settings from the toolbar → **Setup guide** → **Download model** → wait for **Ready**.
 3. On any site, type into a text field, click the Promptizer chip, then **Replace** or **Dismiss**.
 
+## Use the extension
+
+Focus any prose text field on any site and the chip appears inside it, bottom-right. Click it to open
+the action rail:
+
+| Action              | What it does                                                          |
+| ------------------- | --------------------------------------------------------------------- |
+| **Refine prompt**   | Cleans up structure, clarity and grammar. Shown in chat composers.    |
+| **Improve writing** | Makes it more specific and actionable. Replaces Refine in a textarea. |
+| **Fix grammar**     | Grammar, spelling and punctuation only — wording and tone untouched.  |
+| **Shorten**         | As short as it can get while keeping the task and necessary context.  |
+| **Translate**       | **VI** Vietnamese · **EN** English.                                   |
+| **Change tone**     | **Professional** · **Friendly** · **Direct**.                         |
+| **Recent results**  | Reopens the last result. Appears once you have one.                   |
+| **Turn off**        | Disables Promptizer everywhere until you re-enable it in the popup.   |
+
+The result opens as an editable preview. From there you can **Copy** it, **Edit** it inline, **Tweak**
+it by running another action on the result, **Regenerate** it, or step back through the last ten
+results. Only **Replace** writes to your field — and for six seconds afterwards the chip offers an
+undo. `Esc` dismisses at any point and leaves your text alone.
+
+Promptizer never appears on passwords, one-time codes, card numbers, usernames or other non-prose
+fields, so it cannot read them.
+
+Full detail: [docs/features.md](docs/features.md).
+
+## Documentation
+
+| Document                                               | For                                     |
+| ------------------------------------------------------ | --------------------------------------- |
+| [docs/features.md](docs/features.md)                   | Every action, journey and privacy rule. |
+| [docs/architecture.md](docs/architecture.md)           | How the extension is put together.      |
+| [CONTRIBUTING.md](CONTRIBUTING.md)                     | Setup, style, tests, pull requests.     |
+| [CHANGELOG.md](CHANGELOG.md)                           | What changed in each version.           |
+| [docs/release-checklist.md](docs/release-checklist.md) | Cutting a release.                      |
+
 ## Development
 
 ```bash
@@ -111,7 +147,8 @@ contents are never read. No prompt logging, no page scraping, no automatic submi
 ## Contributing
 
 One change per branch and pull request. Run `make verify` before opening it. Ask before adding a
-dependency, renaming files, or touching global configuration.
+dependency, renaming files, or touching global configuration. Full guide in
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

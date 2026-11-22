@@ -32,7 +32,7 @@ The rewrite is always shown as an editable preview. Nothing is submitted automat
   genuinely required.
 - There is no limit on file or function length, so prefer extending an existing file over splitting it.
 - No third-party runtime JavaScript dependencies beyond the extension framework's own bundled helpers, and no UI
-  framework. WXT, Vite, Vitest, Puppeteer and Prettier are the permitted dev dependencies.
+  framework. WXT, Vite, Vitest, happy-dom, Puppeteer, TypeScript and Prettier are the permitted dev dependencies.
 - Pure functions get Vitest unit tests under the neighbouring `__tests__/` directory. Anything that needs a real
   browser is verified by loading `.output/chrome-mv3/` unpacked and exercising it by hand.
 - Formatting is Prettier's: 2 spaces, semicolons, double quotes, trailing commas, `printWidth` 120. Configured in
