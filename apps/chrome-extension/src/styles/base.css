@@ -1,4 +1,4 @@
-@import "./tokens.css";
+@import "@promptizer/ui/tokens.css";
 
 @font-face {
   font-family: "Inter";

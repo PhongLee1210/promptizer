@@ -4,8 +4,10 @@
 
 Promptizer rewrites a messy prompt into one clean paragraph, keeping the original task and intent.
 
-- `src/` — WXT-built Chrome MV3 extension that works on any site with a recognized text composer, using on-device
-  Gemini Nano.
+- `apps/chrome-extension/` — WXT-built Chrome MV3 extension that works on any site with a recognized text composer,
+  using on-device Gemini Nano.
+- `packages/` — `ui` (design tokens), `config` (shared tsconfig baseline), `shared` (shared types and constants),
+  `i18n` (typed en dictionary). Source-only packages: `exports` point at `.ts` and `.css`, no build step.
 
 The rewrite is always shown as an editable preview. Nothing is submitted automatically.
 
@@ -19,11 +21,15 @@ The rewrite is always shown as an editable preview. Nothing is submitted automat
 - Run binaries through `pnpm exec`, not `npx` or `./node_modules/.bin/`.
 - `pnpm.onlyBuiltDependencies` in `package.json` lists the packages allowed to run install scripts. pnpm blocks them
   by default; esbuild is listed because vite and vitest need its native binary.
+- The repo is a pnpm workspace (`pnpm-workspace.yaml`): run everything from the root, per-app commands go through
+  `pnpm -C apps/chrome-extension`. Shared dependency versions live in the workspace catalog so exactly one copy of
+  each tool exists across apps. Checks fan out through Turborepo; `make verify` stays the human entry point.
 - Pin `vite` to `^7`. wxt 0.21.5 accepts `^6.3.4 || ^7 || ^8.0.0-0` and vitest 3.2.7 accepts `^5 || ^6 || ^7`, so 7 is
   the only major both allow, and two vite copies in the store produce unassignable plugin types in `vitest.config.ts`.
   `.github/dependabot.yml` ignores vite majors to enforce this. Drop that ignore only once vitest is on 4 or later,
   whose range widens to `^6 || ^7 || ^8`.
-- Chrome and Edge only. The automated checks run in Chrome. Load the extension unpacked from `.output/chrome-mv3/`.
+- Chrome and Edge only. The automated checks run in Chrome. Load the extension unpacked from
+  `apps/chrome-extension/.output/chrome-mv3/`.
 - One change per branch and pull request. Keep diffs scoped to it.
 - Commit messages are ONE line only. No blank line, no body, no bullet list, no trailing co-author or
   generator footer.
@@ -32,16 +38,18 @@ The rewrite is always shown as an editable preview. Nothing is submitted automat
   genuinely required.
 - There is no limit on file or function length, so prefer extending an existing file over splitting it.
 - No third-party runtime JavaScript dependencies beyond the extension framework's own bundled helpers, and no UI
-  framework. WXT, Vite, Vitest, happy-dom, Puppeteer, TypeScript and Prettier are the permitted dev dependencies.
+  framework. WXT, Vite, Vitest, happy-dom, Puppeteer, TypeScript, Prettier and Turborepo are the permitted dev
+  dependencies. Workspace packages under `packages/` are first-party code, not dependencies.
 - Pure functions get Vitest unit tests under the neighbouring `__tests__/` directory. Anything that needs a real
-  browser is verified by loading `.output/chrome-mv3/` unpacked and exercising it by hand.
+  browser is verified by loading `apps/chrome-extension/.output/chrome-mv3/` unpacked and exercising it by hand.
 - Formatting is Prettier's: 2 spaces, semicolons, double quotes, trailing commas, `printWidth` 120. Configured in
   `.prettierrc.json`; `.prettierignore` keeps it out of generated output, vendored agent directories and `docs/`.
 - Use `import type` for type-only imports.
 - No comments in the code. Names and structure carry the meaning.
 - Never log, commit or expose credentials. Never print or commit `.env`. Mask password, payment-card and
   one-time-code values wherever page content is returned.
-- Do not edit `.output/**`, `.wxt/**` or `src/utils/icons.ts`. All three are produced by the build.
+- Do not edit `apps/chrome-extension/.output/**`, `apps/chrome-extension/.wxt/**` or
+  `apps/chrome-extension/src/utils/icons.ts`. All three are produced by the build.
 
 ## Verify
 

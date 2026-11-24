@@ -6,5 +6,5 @@ node_modules/
 bin/
 docs/
 pnpm-lock.yaml
-src/utils/icons.ts
+apps/chrome-extension/src/utils/icons.ts
 .agents/

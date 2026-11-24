@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-assets="$root/docs/promptizer-package-v2/assets"
-package="$root/docs/promptizer-package-v2"
-runtime_icons="$root/public/icon"
+repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+app="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+assets="$repo/docs/promptizer-package-v2/assets"
+package="$repo/docs/promptizer-package-v2"
+runtime_icons="$app/public/icon"
 
 if ! command -v rsvg-convert > /dev/null; then
   echo "generate-icons: rsvg-convert not found; install with 'brew install librsvg'" >&2
