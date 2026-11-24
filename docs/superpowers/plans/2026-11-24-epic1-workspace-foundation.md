@@ -88,7 +88,7 @@ pnpm 10.34 workspaces with `catalog:`, Turborepo 2 (pin `^2` at the latest 2.x a
 
 **Files:**
 - Create: `pnpm-workspace.yaml`, `turbo.json`
-- Modify: `package.json`, `Makefile`, `.gitignore`
+- Modify: `package.json`, `.gitignore`
 
 **Interfaces:** none. The repo stays a single package this task; the extension still lives at the root.
 
@@ -132,10 +132,13 @@ Add `"turbo": "^2"` to `devDependencies`. Keep every existing script and dev dep
 Run: `pnpm install`
 Expected: one lockfile; no warning naming `turbo` as an ignored build script. If pnpm does flag it, add `"turbo"` to `pnpm.onlyBuiltDependencies` and re-run — nothing else goes in that list.
 
-- [ ] **Step 5: Prove the root-level check runs through turbo**
+- [ ] **Step 5: Prove the workspace and pipeline parse**
 
 Run: `pnpm exec turbo run typecheck test build`
-Expected: all three pass, executing the root's own scripts (the only workspace member today). `.turbo/` appears; add it to `.gitignore`.
+Expected: turbo starts, reads `pnpm-workspace.yaml` and `turbo.json`, and reports `0 packages` —
+Turborepo 2 deliberately excludes the workspace root from task runs, and no member app exists yet.
+This validates the wiring; the across-all-apps proof lands in Task 2, when the extension is a real
+member. Add `.turbo/` to `.gitignore` (created once tasks actually run).
 
 - [ ] **Step 6: Keep `make verify` the human entry, unchanged in meaning**
 
