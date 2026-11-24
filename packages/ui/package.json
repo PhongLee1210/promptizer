@@ -1,0 +1,7 @@
+{
+  "name": "@promptizer/ui",
+  "private": true,
+  "exports": {
+    "./tokens.css": "./tokens.css"
+  }
+}

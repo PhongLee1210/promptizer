@@ -415,17 +415,16 @@ Add `"@promptizer/ui": "workspace:*"` to the app's `dependencies`.
 
 `chip.ts` and `translate-bubble.ts`: `import designTokens from "@promptizer/ui/tokens.css?inline";`
 `base.css` line 1: `@import "@promptizer/ui/tokens.css";`
-`tokens.test.ts`: replace the `readFileSync` for `tokensCss` with `import tokensCss from "@promptizer/ui/tokens.css?inline";` — the other file reads (`base.css`, `states.css`, `popup.css`, `chip.ts`, `rail.ts`, `result-window.ts`) keep resolving from the app.
+`tokens.test.ts`: resolve the package subpath and read it — `readFileSync(createRequire(import.meta.url).resolve("@promptizer/ui/tokens.css"), "utf8")`. Vitest's CSS pipeline hands back an empty string for `?inline` imports, so file-content assertions cannot import the CSS; the other file reads (`base.css`, `states.css`, `popup.css`, `chip.ts`, `rail.ts`, `result-window.ts`) keep resolving from the app.
 
 - [ ] **Step 3: Extend the resolution proof**
 
 Add to `workspace-packages.test.ts`:
 
 ```ts
-import uiTokens from "@promptizer/ui/tokens.css?inline";
-
 it("resolves @promptizer/ui tokens from the extension app", () => {
-  expect(uiTokens).toContain("--pz-neutral-0");
+  const tokensCss = readFileSync(createRequire(import.meta.url).resolve("@promptizer/ui/tokens.css"), "utf8");
+  expect(tokensCss).toContain("--pz-neutral-0");
 });
 ```
 

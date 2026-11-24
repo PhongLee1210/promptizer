@@ -1,4 +1,4 @@
-import designTokens from "../styles/tokens.css?inline";
+import designTokens from "@promptizer/ui/tokens.css?inline";
 import { icon } from "../utils/icons";
 import { PANEL_GAP, placePanel } from "./anchor";
 import {

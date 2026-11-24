@@ -11,7 +11,8 @@
     "typecheck": "wxt prepare && tsc --noEmit"
   },
   "dependencies": {
-    "@promptizer/shared": "workspace:*"
+    "@promptizer/shared": "workspace:*",
+    "@promptizer/ui": "workspace:*"
   },
   "devDependencies": {
     "happy-dom": "catalog:",

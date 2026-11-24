@@ -44,6 +44,9 @@ importers:
       '@promptizer/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@promptizer/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
     devDependencies:
       happy-dom:
         specifier: 'catalog:'
@@ -67,6 +70,8 @@ importers:
   packages/config: {}
 
   packages/shared: {}
+
+  packages/ui: {}
 
 packages:
 

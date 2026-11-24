@@ -1,5 +1,5 @@
 import { browser } from "wxt/browser";
-import designTokens from "../styles/tokens.css?inline";
+import designTokens from "@promptizer/ui/tokens.css?inline";
 import { icon } from "../utils/icons";
 import { RAIL_STYLE } from "./rail";
 import { RESULT_WINDOW_STYLE } from "./result-window";

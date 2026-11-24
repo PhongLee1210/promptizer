@@ -1,9 +1,10 @@
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const stylesDir = resolve(__dirname, "..");
-const tokensCss = readFileSync(resolve(stylesDir, "tokens.css"), "utf8");
+const tokensCss = readFileSync(createRequire(import.meta.url).resolve("@promptizer/ui/tokens.css"), "utf8");
 const baseCss = readFileSync(resolve(stylesDir, "base.css"), "utf8");
 const statesCss = readFileSync(resolve(stylesDir, "states.css"), "utf8");
 const popupCss = readFileSync(resolve(stylesDir, "popup.css"), "utf8");
