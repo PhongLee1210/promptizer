@@ -11,6 +11,7 @@
     "typecheck": "wxt prepare && tsc --noEmit"
   },
   "dependencies": {
+    "@promptizer/i18n": "workspace:*",
     "@promptizer/shared": "workspace:*",
     "@promptizer/ui": "workspace:*"
   },
