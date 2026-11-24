@@ -604,13 +604,23 @@ From a fresh clone: `pnpm install && make verify && pnpm run test:e2e`. All gree
 
 Load `apps/chrome-extension/.output/chrome-mv3/` unpacked in Chrome: the chip appears on a recognized composer, one rewrite works, the popup opens, the action rail behaves. Optionally repeat in Edge. Nothing differs from the pre-epic build.
 
-- [ ] **Step 3: Push the branch and confirm CI**
+- [x] **Step 3: Push the branch and confirm CI**
 
 ```bash
 git push -u origin feature/workspace-foundation
 ```
 
 CI green: format, typecheck, unit tests, build with manifest assertion, artifact upload from the new path, E2E under xvfb.
+
+Verification follow-up (2026-11-24):
+
+- Confirmed commit `ccbeabd01fc56588509800df8475b8d0a2a3f5f0` on PR [#7](https://github.com/PhongLee1210/promptizer/pull/7). Both jobs in [CI run 45399945123](https://github.com/PhongLee1210/promptizer/actions/runs/45399945123) passed, including the corrected app-scoped Puppeteer install and extension artifact upload.
+- Fresh local `pnpm exec turbo run typecheck test build --force` passed with Node 22.22.2: 375 extension tests and 3 i18n tests, typecheck, production build, and manifest assertion. All four tasks executed without cache hits.
+- Local `pnpm run test:e2e` passed all 30 checks across 10 scenarios. The sandbox initially blocked the localhost test server; the approved run outside the sandbox passed. A subsequent production build removed the test shim from the unpacked bundle.
+- Formatted the untracked exported session Markdown because it was the only file failing the root formatting check.
+- Final root `make verify` passed with Node 22.22.2 after formatting the session export.
+- The default shell uses Node 26.13.1, where 18 popup tests fail because `localStorage` is undefined. Node 22, matching CI, passes without source changes; use the installed Node 22 for verification.
+- Manual Journey A remains unverified: browser access reported its host unavailable, and native Chrome control timed out. Automated E2E uses a fake Nano implementation and does not establish a real on-device rewrite or a manual popup smoke result. Step 2 remains open.
 
 ---
 
