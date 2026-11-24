@@ -10,6 +10,9 @@
     "test:e2e": "./e2e/with-test-build.sh",
     "typecheck": "wxt prepare && tsc --noEmit"
   },
+  "dependencies": {
+    "@promptizer/shared": "workspace:*"
+  },
   "devDependencies": {
     "happy-dom": "catalog:",
     "puppeteer": "catalog:",

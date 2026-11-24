@@ -40,6 +40,10 @@ importers:
         version: 2.11.13
 
   apps/chrome-extension:
+    dependencies:
+      '@promptizer/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
     devDependencies:
       happy-dom:
         specifier: 'catalog:'
@@ -59,6 +63,10 @@ importers:
       wxt:
         specifier: 'catalog:'
         version: 0.21.5(esbuild@0.28.2)(eslint@10.15.0(jiti@2.7.0))(rolldown@1.2.19)(rollup@4.68.3)(typescript@5.9.3)(vite@7.3.8(@types/node@26.6.6)(jiti@2.7.0)(lightningcss@1.33.0))
+
+  packages/config: {}
+
+  packages/shared: {}
 
 packages:
 
