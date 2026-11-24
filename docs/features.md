@@ -162,6 +162,29 @@ friends register the change instead of overwriting it on the next render:
   a cancelable `beforeinput` and let the framework handle it; only if nothing intercepts does it set
   `textContent` directly and restore the caret.
 
+## Translate selected text (behind a build flag)
+
+This feature is built only when `WXT_FEATURE_TRANSLATE_ON_PAGE=true` is present at build time. Release
+and CI builds leave it off, and a disabled build contains none of its code.
+
+- **Trigger** — select text on a page and a small button appears next to the selection. Clicking it
+  opens a bubble with the translation. Pressing Escape or clicking outside closes the bubble.
+- **No button** when the selection is empty, longer than 1500 characters, inside an editable field or
+  composer (the chip owns those), inside Promptizer's own UI, or when the mouse was released on a link,
+  button or other control that the selection does not cover. The popup's master switch turns the
+  feature off too.
+- **Languages** — English and Vietnamese only. The source language is detected automatically and the
+  target is the other one. Text in any other language, or detected with low confidence, is not
+  translated.
+- **Read-only** — the bubble shows the translation with **Copy** and **Close**. It never writes into
+  the page and never feeds the chip or the result window.
+- **No fallbacks** — there is no cloud path. If the browser cannot translate, the bubble says so.
+- **Privacy** — translation runs on-device through Chrome's Translator and LanguageDetector APIs.
+  Selected text is not logged, stored or sent anywhere.
+- **Edge** — support for the Translator and LanguageDetector APIs in Edge is inconsistently
+  documented. The feature ships regardless. Where the APIs are absent, Edge users see the
+  "unavailable" bubble, so the feature is Chrome-only in practice.
+
 ## Popup screens
 
 | Screen           | What it does                                                                        |

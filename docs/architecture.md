@@ -140,6 +140,19 @@ but not yet read at runtime. It is finished UI over an unfinished path. Specific
 
 The popup paints from a warm local cache before its stored state resolves, so it never flashes empty.
 
+## Translating selected text
+
+Behind the build-time flag `WXT_FEATURE_TRANSLATE_ON_PAGE`, three content modules add on-page
+translation: `translator.ts` wraps the browser's Translator and LanguageDetector APIs,
+`translate-bubble.ts` draws the button and the bubble in a closed shadow root, and
+`selection-translate.ts` listens for selections and wires the two together. The entrypoint loads them
+with a dynamic `import()` inside the flag check, so a disabled build does not contain them.
+
+They live in the content script because those APIs are not available in workers; there is no
+background entrypoint to host them anyway. Creating a translator requires user activation, so it
+happens inside the button's click handler and is never prewarmed on page load. The chip and the
+translate button never share a target: the chip owns editable fields, translation owns the rest.
+
 ## Guardrails
 
 Several invariants are enforced by the build rather than by review:
