@@ -48,13 +48,21 @@ Use Serena as the primary tool for understanding project structure, navigating c
 
 ### 5. Maintain Memory
 
-- Create memories only for valuable, reusable project knowledge.
+- Create memories only for stable, non-obvious project knowledge that avoids costly rediscovery.
+- Never mention internal documentation (docs, specs, plans, `AGENTS.md`) or planning (roadmap, status, progress, next steps, future work).
 - Prefer updating existing memories over creating duplicates.
-- Keep memories concise, structured, and easy to discover.
-- Maintain a useful `core` entry point and use `mem:` references.
-- Split, merge, rename, or remove memories when their organization becomes ineffective.
+- Delete outdated or wrong lines instead of archiving them.
 - Update memories when important architecture, conventions, or technical decisions change.
-- Keep project-specific and global knowledge in their appropriate scopes.
+
+#### Organizing memories
+
+- Keep the set minimal: `core` plus a few focused memories, flat by default.
+- `core` is the entry point: a few stable invariants plus `mem:` references saying when to read each memory.
+- Group into topic folders (`topic/name`) only when a topic needs several memories.
+- Use short, descriptive names for what a memory covers, such as `tech_stack`.
+- Write dense, terse bullets. Memories do not say when to read them; the referring memory does.
+- Use `rename_memory` for renames so `mem:` references stay valid, and run `serena memories check` after moves or deletions.
+- Merge or delete memories that overlap, shrink to a line or two, or stop being true.
 
 ## CHECK LIST
 
@@ -67,6 +75,6 @@ Use Serena as the primary tool for understanding project structure, navigating c
 - [ ] Have I checked diagnostics and run relevant tests?
 - [ ] Have I reviewed the final changes?
 - [ ] Is there genuinely useful knowledge worth saving or updating?
-- [ ] Are memories accurate, concise, and free from duplication?
+- [ ] Are memories accurate, concise, project-scoped, and free from duplication, docs references, and planning?
 
 **Core principle:** Understand before modifying. Use semantic intelligence for precision, tests for correctness, and persistent memory to eliminate repeated discovery. Let the task determine the workflow rather than following unnecessary fixed tool sequences.

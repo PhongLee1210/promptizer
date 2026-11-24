@@ -26,6 +26,11 @@ Keep guidance durable and generalizable, not task-local.
 
 Add or update memories only with stable, non-obvious project conventions that avoid complex rediscovery in the future.
 Do not add: quick-read facts; generic language/framework knowledge; one-off task notes; volatile line-level details; behavior likely to change soon.
+Never mention internal documentation (docs, specs, plans, AGENTS.md) or planning (roadmap, status, progress, next steps, future work). Delete outdated lines instead of archiving them.
+
+## Scope
+
+Project-scoped only. Keep the set minimal: `core` as entry point plus a few focused memories.
 
 ## Maintenance Actions
 

@@ -1,5 +1,5 @@
 - Product: local-first prompt refiner; whole-prompt rewrite, editable preview, never auto-submit.
-- Monorepo foundation is implemented: `apps/chrome-extension/` contains the existing extension; `packages/` holds shared first-party code. Dashboard, backend and sync are future work.
-- The legacy JS extension and Go/Groq backend were removed. Gemini Nano runs on-device; no cloud fallback.
+- Monorepo: `apps/` contains the promptizer applications (extension, dashboard, web,...); `packages/` holds shared first-party code.
+- Primary Gemini Nano runs on-device.
 - Stable privacy invariant: only explicitly selected bounded prompt/context may leave host; never scan terminal/page/thread/files implicitly; never log prompt content.
-- For workspace commands, package boundaries and verification caveats, read `mem:tech_stack`.
+- Workspace caveats (Node version, E2E limits, Puppeteer install scope): `mem:tech_stack`.
