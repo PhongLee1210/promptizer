@@ -92,7 +92,7 @@ pnpm 10.34 workspaces with `catalog:`, Turborepo 2 (pin `^2` at the latest 2.x a
 
 **Interfaces:** none. The repo stays a single package this task; the extension still lives at the root.
 
-- [ ] **Step 1: Create `pnpm-workspace.yaml`**
+- [x] **Step 1: Create `pnpm-workspace.yaml`**
 
 ```yaml
 packages:
@@ -110,7 +110,7 @@ catalog:
 
 The globs match nothing yet; pnpm still installs the root package and produces one lockfile. Versions are today's root versions, moved verbatim into the catalog.
 
-- [ ] **Step 2: Create `turbo.json`**
+- [x] **Step 2: Create `turbo.json`**
 
 ```json
 {
@@ -123,16 +123,16 @@ The globs match nothing yet; pnpm still installs the root package and produces o
 }
 ```
 
-- [ ] **Step 3: Add Turborepo to the root manifest**
+- [x] **Step 3: Add Turborepo to the root manifest**
 
 Add `"turbo": "^2"` to `devDependencies`. Keep every existing script and dev dependency untouched — the root package is still the extension app this task. Switch the catalog-able entries (`prettier`) to `"catalog:"`.
 
-- [ ] **Step 4: Install and check for blocked scripts**
+- [x] **Step 4: Install and check for blocked scripts**
 
 Run: `pnpm install`
 Expected: one lockfile; no warning naming `turbo` as an ignored build script. If pnpm does flag it, add `"turbo"` to `pnpm.onlyBuiltDependencies` and re-run — nothing else goes in that list.
 
-- [ ] **Step 5: Prove the workspace and pipeline parse**
+- [x] **Step 5: Prove the workspace and pipeline parse**
 
 Run: `pnpm exec turbo run typecheck test build`
 Expected: turbo starts, reads `pnpm-workspace.yaml` and `turbo.json`, and reports `0 packages` —
@@ -140,11 +140,11 @@ Turborepo 2 deliberately excludes the workspace root from task runs, and no memb
 This validates the wiring; the across-all-apps proof lands in Task 2, when the extension is a real
 member. Add `.turbo/` to `.gitignore` (created once tasks actually run).
 
-- [ ] **Step 6: Keep `make verify` the human entry, unchanged in meaning**
+- [x] **Step 6: Keep `make verify` the human entry, unchanged in meaning**
 
 The Makefile targets still run the direct commands this task; they switch to the turbo delegates in Task 2. Run `make verify` and expect green, identical to before the scaffold.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add pnpm-workspace.yaml turbo.json package.json Makefile .gitignore pnpm-lock.yaml
@@ -162,7 +162,7 @@ git commit -m "chore: scaffold pnpm workspace root with turbo"
 
 **Interfaces:** the extension's public behavior is untouched. WXT's project root becomes `apps/chrome-extension/`; its generated dirs (`.wxt/`, `.output/`) and all app-relative paths (`srcDir: "src"`, `public/`, `modules/` auto-discovery) follow automatically.
 
-- [ ] **Step 1: `git mv` the extension into its app slot**
+- [x] **Step 1: `git mv` the extension into its app slot**
 
 ```bash
 mkdir -p apps
@@ -173,7 +173,7 @@ rm -rf .wxt .output
 
 The generated dirs are deleted, not moved; the app recreates them on next `wxt prepare` / build.
 
-- [ ] **Step 2: Create the app manifest `apps/chrome-extension/package.json`**
+- [x] **Step 2: Create the app manifest `apps/chrome-extension/package.json`**
 
 ```json
 {
@@ -201,7 +201,7 @@ The generated dirs are deleted, not moved; the app recreates them on next `wxt p
 
 `build` absorbs `assert-manifest.sh` so the assertion is part of any build invocation, from Make, CI or turbo.
 
-- [ ] **Step 3: Slim the root `package.json` to the orchestrator**
+- [x] **Step 3: Slim the root `package.json` to the orchestrator**
 
 ```json
 {
@@ -227,7 +227,7 @@ The generated dirs are deleted, not moved; the app recreates them on next `wxt p
 
 Root scripts keep the exact names CI already calls (`typecheck`, `test`, `build`, `format:check`, `test:e2e`), so workflow edits stay path-only.
 
-- [ ] **Step 4: Point the Makefile at the root scripts**
+- [x] **Step 4: Point the Makefile at the root scripts**
 
 ```make
 .PHONY: icons typecheck test-ext build-ext format format-check verify clean
@@ -256,19 +256,19 @@ clean:
 	rm -rf ./dist
 ```
 
-- [ ] **Step 5: Fix the anchored ignore patterns**
+- [x] **Step 5: Fix the anchored ignore patterns**
 
 In `.gitignore` and `.prettierignore`: `src/utils/icons.ts` → `apps/chrome-extension/src/utils/icons.ts`. The any-depth patterns (`node_modules/`, `.output/`, `.wxt/`, `bin/`, `.turbo/`) need no change.
 
-- [ ] **Step 6: Fix CI paths**
+- [x] **Step 6: Fix CI paths**
 
 `.github/workflows/ci.yml`: delete the separate "Assert built manifest" step (now inside `build`); change the artifact `path:` to `apps/chrome-extension/.output/chrome-mv3`. Every other step calls root scripts by name and stays as-is. Job names keep their meaning ("Extension quality").
 
-- [ ] **Step 7: Fix release paths**
+- [x] **Step 7: Fix release paths**
 
 `.github/workflows/release.yml`: the version check reads `require("./apps/chrome-extension/package.json").version`; the build becomes `pnpm -C apps/chrome-extension run zip`; the zip path becomes `cp "apps/chrome-extension/.output/promptizer-${version}-chrome.zip" dist/`.
 
-- [ ] **Step 8: Fix dependabot directories**
+- [x] **Step 8: Fix dependabot directories**
 
 `.github/dependabot.yml`: the npm entry's `directory: /` becomes
 
@@ -281,11 +281,11 @@ In `.gitignore` and `.prettierignore`: `src/utils/icons.ts` → `apps/chrome-ext
 
 Groups, schedules and the vite major-ignore stay unchanged.
 
-- [ ] **Step 9: Audit shell scripts and the E2E harness for root-relative paths**
+- [x] **Step 9: Audit shell scripts and the E2E harness for root-relative paths**
 
 `e2e/with-test-build.sh`, `e2e/harness.mjs` and `scripts/*.sh` now run with `apps/chrome-extension` as cwd (turbo and `pnpm -C` both set it). Fix any path that still assumes the repo root — resolve from the script's own location or the app root. Read each file before assuming; do not blind-replace.
 
-- [ ] **Step 10: Install, verify from the root, run E2E from the new location**
+- [x] **Step 10: Install, verify from the root, run E2E from the new location**
 
 ```bash
 pnpm install
@@ -295,7 +295,7 @@ pnpm run test:e2e
 
 Expected: one lockfile with two importers (root + app); typecheck, unit tests, formatting, build with manifest assertion, and the Puppeteer E2E suite all green.
 
-- [ ] **Step 11: Commit**
+- [x] **Step 11: Commit**
 
 ```bash
 git add -A
@@ -339,11 +339,11 @@ export const PRODUCT_NAME = "Promptizer";
 
 Adopted by the first Epic 2 app; the extension keeps extending `./.wxt/tsconfig.json`.
 
-- [ ] **Step 1: Create `packages/config`**
+- [x] **Step 1: Create `packages/config`**
 
 `package.json`: `{ "name": "@promptizer/config", "private": true }` plus the tsconfig above. No exports, no behavior.
 
-- [ ] **Step 2: Create `packages/shared`**
+- [x] **Step 2: Create `packages/shared`**
 
 `package.json`:
 
@@ -356,7 +356,7 @@ Adopted by the first Epic 2 app; the extension keeps extending `./.wxt/tsconfig.
 }
 ```
 
-- [ ] **Step 3: Prove resolution from the extension app**
+- [x] **Step 3: Prove resolution from the extension app**
 
 `apps/chrome-extension/src/__tests__/workspace-packages.test.ts` (grown by Tasks 4 and 5):
 
@@ -371,7 +371,7 @@ it("resolves @promptizer/shared from the extension app", () => {
 
 Add `"@promptizer/shared": "workspace:*"` to the app's `dependencies`.
 
-- [ ] **Step 4: Run and commit**
+- [x] **Step 4: Run and commit**
 
 Run: `pnpm exec turbo run typecheck test build`
 Expected: green; the new test passes.
@@ -392,7 +392,7 @@ git commit -m "chore: add config and shared packages"
 
 **Interfaces:** the token contract is unchanged — same names, same values, same `:where(:root, :host)` dual scoping. Only the path changes.
 
-- [ ] **Step 1: Move the file and declare the package**
+- [x] **Step 1: Move the file and declare the package**
 
 ```bash
 mkdir -p packages/ui
@@ -411,13 +411,13 @@ git mv apps/chrome-extension/src/styles/tokens.css packages/ui/tokens.css
 
 Add `"@promptizer/ui": "workspace:*"` to the app's `dependencies`.
 
-- [ ] **Step 2: Update the four consumers**
+- [x] **Step 2: Update the four consumers**
 
 `chip.ts` and `translate-bubble.ts`: `import designTokens from "@promptizer/ui/tokens.css?inline";`
 `base.css` line 1: `@import "@promptizer/ui/tokens.css";`
 `tokens.test.ts`: resolve the package subpath and read it — `readFileSync(createRequire(import.meta.url).resolve("@promptizer/ui/tokens.css"), "utf8")`. Vitest's CSS pipeline hands back an empty string for `?inline` imports, so file-content assertions cannot import the CSS; the other file reads (`base.css`, `states.css`, `popup.css`, `chip.ts`, `rail.ts`, `result-window.ts`) keep resolving from the app.
 
-- [ ] **Step 3: Extend the resolution proof**
+- [x] **Step 3: Extend the resolution proof**
 
 Add to `workspace-packages.test.ts`:
 
@@ -428,18 +428,18 @@ it("resolves @promptizer/ui tokens from the extension app", () => {
 });
 ```
 
-- [ ] **Step 4: Verify tokens still reach both consumers**
+- [x] **Step 4: Verify tokens still reach both consumers**
 
 Run: `pnpm exec turbo run typecheck test build`
 Expected: green, including the full `tokens.test.ts` contract suite.
 Run: `grep -c "pz-neutral-97" apps/chrome-extension/.output/chrome-mv3/**/*.css` (or the equivalent directory grep)
 Expected: nonzero — the tokens are present in the built CSS.
 
-- [ ] **Step 5: Manual shadow-root spot check**
+- [x] **Step 5: Manual shadow-root spot check**
 
 Load `apps/chrome-extension/.output/chrome-mv3/` unpacked; the chip and the translate bubble render with correct colors (they inject `tokens.css` inline into closed shadow roots).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages apps/chrome-extension pnpm-lock.yaml
@@ -467,7 +467,7 @@ export function createTranslator(locale: Locale): (key: string) => string;
 
 `t(key)` returns the dictionary entry or the key itself when missing. No `chrome.i18n` bridging, no locale detection, no pluralization — D4.
 
-- [ ] **Step 1: Create the package**
+- [x] **Step 1: Create the package**
 
 `package.json`:
 
@@ -482,7 +482,7 @@ export function createTranslator(locale: Locale): (key: string) => string;
 }
 ```
 
-- [ ] **Step 2: Write the failing tests**
+- [x] **Step 2: Write the failing tests**
 
 ```ts
 it("translates a known key", () => {
@@ -500,16 +500,16 @@ it("ships exactly one locale: en", () => {
 
 Run: `pnpm -C packages/i18n run test` — expect FAIL (module not found), then implement and expect PASS.
 
-- [ ] **Step 3: Extend the extension-side resolution proof**
+- [x] **Step 3: Extend the extension-side resolution proof**
 
 Add `createTranslator` / `en` from `@promptizer/i18n` to `workspace-packages.test.ts` with the known-key assertion, and `"@promptizer/i18n": "workspace:*"` to the app's `dependencies`.
 
-- [ ] **Step 4: Verify through the pipeline**
+- [x] **Step 4: Verify through the pipeline**
 
 Run: `pnpm exec turbo run typecheck test build`
 Expected: green; turbo discovers the i18n `test` task on its own (script present, no config needed).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages apps/chrome-extension/src/__tests__/workspace-packages.test.ts apps/chrome-extension/package.json pnpm-lock.yaml
@@ -528,15 +528,15 @@ release checklist turned out to describe the old single-package release flow and
 
 **Interfaces:** none.
 
-- [ ] **Step 1: Update AGENTS.md**
+- [x] **Step 1: Update AGENTS.md**
 
 Apply the four approved repo-rule changes from Global Constraints: the permitted dev-deps list gains Turborepo; root-relative paths gain the `apps/chrome-extension/` prefix (unpacked load path, `src/utils/icons.ts`, `.output`, `.wxt`); the repo-layout paragraph becomes the Architecture diagram; the workspace rules (catalog, `pnpm -C`, turbo) are stated where the old single-app text stood.
 
-- [ ] **Step 2: Update the remaining contributor docs**
+- [x] **Step 2: Update the remaining contributor docs**
 
 `README.md` and `CONTRIBUTING.md`: setup (`corepack install -g pnpm@10`, `pnpm install`), verify (`make verify`), tests (`pnpm run test:e2e`), unpacked load from `apps/chrome-extension/.output/chrome-mv3/`. `docs/architecture.md`: the repository-layout section. `docs/features.md`: only loading-path references.
 
-- [ ] **Step 3: Prove zero stale paths**
+- [x] **Step 3: Prove zero stale paths**
 
 ```bash
 grep -rn "\.output/chrome-mv3\|src/styles/tokens\|scripts/assert-manifest\|wxt zip" \
@@ -545,11 +545,11 @@ grep -rn "\.output/chrome-mv3\|src/styles/tokens\|scripts/assert-manifest\|wxt z
 
 Expected: no live-document hit referencing the old root paths. `docs/superpowers/**` and `.serena/**` are historical records and are excluded by design.
 
-- [ ] **Step 4: Newcomer walkthrough**
+- [x] **Step 4: Newcomer walkthrough**
 
 Follow README setup from a clean clone in `/private/var/folders/qb/p9r5ly7n209c2wcbnh26n1wm0000gp/T/opencode`: `corepack install -g pnpm@10`, `pnpm install`, `make verify` — lands green with the extension built at `apps/chrome-extension/.output/chrome-mv3/`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add AGENTS.md README.md CONTRIBUTING.md docs/architecture.md docs/features.md
@@ -565,13 +565,13 @@ git commit -m "docs: point contributor docs at workspace layout"
 
 **Interfaces:** none.
 
-- [ ] **Step 1: Delete the directory**
+- [x] **Step 1: Delete the directory**
 
 ```bash
 rm -rf bin
 ```
 
-- [ ] **Step 2: Prove nothing references it**
+- [x] **Step 2: Prove nothing references it**
 
 ```bash
 grep -rni "promptrefine\|PROMPTREFINE\|GROQ" --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=docs --exclude-dir=.serena .
@@ -579,18 +579,16 @@ grep -rni "promptrefine\|PROMPTREFINE\|GROQ" --exclude-dir=node_modules --exclud
 
 Expected: empty. `.env.example` already carries only `WXT_FEATURE_TRANSLATE_ON_PAGE`; `docs/superpowers/**` and `.serena/**` are historical records.
 
-- [ ] **Step 3: Workspace still green**
+- [x] **Step 3: Workspace still green**
 
 Run: `make verify` — green.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Record the outcome — no commit**
 
-`bin/` is untracked, so the commit covers any touched references only:
-
-```bash
-git add -A
-git commit -m "chore: remove stale promptrefine binary" --allow-empty
-```
+`bin/` was never tracked, and the only remaining textual matches are records, not references:
+`CHANGELOG.md`'s entry describing the already-removed Go backend. The moved local `.env` turned out
+to hold nothing but the stale `GROQ_API_KEY` for that removed backend; the file is deleted locally
+(untracked, never committed). Nothing tracked changes, so the task leaves no commit.
 
 ---
 
@@ -598,7 +596,7 @@ git commit -m "chore: remove stale promptrefine binary" --allow-empty
 
 **Files:** none (verification only; fixes, if any, become their own commits).
 
-- [ ] **Step 1: Clean-clone verify**
+- [x] **Step 1: Clean-clone verify**
 
 From a fresh clone: `pnpm install && make verify && pnpm run test:e2e`. All green from the root, including turbo cache misses (clean clone = cold cache).
 
