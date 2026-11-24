@@ -62,7 +62,7 @@ Gemini Nano runs the rewrite entirely on-device. No hosted backend, no cloud fal
 
 ## Install
 
-Requirements: Chrome 138+, Node.js, [pnpm](https://pnpm.io) 10, `jq`.
+Requirements: Chrome 138+, Node.js 22, [pnpm](https://pnpm.io) 10, `jq`.
 
 ```bash
 pnpm install
@@ -95,6 +95,11 @@ Every action and journey in detail: [docs/features.md](docs/features.md).
 [Release checklist](docs/release-checklist.md)
 
 ## Development
+
+The monorepo foundation is in place: the extension lives in `apps/chrome-extension/`, and `packages/`
+holds shared design tokens, types, translations and configuration. Run checks from the repository root.
+The dashboard, backend and account sync are future work. See [Contributing](CONTRIBUTING.md#where-things-live)
+for the layout.
 
 ```bash
 pnpm -C apps/chrome-extension dev  # WXT dev server with hot reload
