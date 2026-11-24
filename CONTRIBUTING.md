@@ -13,6 +13,7 @@ Requirements: Chrome 138+, Node.js 22, [pnpm](https://pnpm.io) 10, `jq`.
 ```bash
 corepack install -g pnpm@10     # stay on 10 — pnpm 11+ breaks the corepack shim
 pnpm install
+pnpm -C apps/chrome-extension exec puppeteer browsers install chrome
 pnpm -C apps/chrome-extension dev  # WXT dev server with hot reload
 ```
 

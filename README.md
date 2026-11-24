@@ -101,6 +101,9 @@ holds shared design tokens, types, translations and configuration. Run checks fr
 The dashboard, backend and account sync are future work. See [Contributing](CONTRIBUTING.md#where-things-live)
 for the layout.
 
+Before the first E2E run, install Chrome for Testing:
+`pnpm -C apps/chrome-extension exec puppeteer browsers install chrome`.
+
 ```bash
 pnpm -C apps/chrome-extension dev  # WXT dev server with hot reload
 pnpm run test         # Puppeteer E2E suite
