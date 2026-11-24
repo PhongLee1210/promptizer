@@ -14,11 +14,11 @@ and publishes the GitHub release. Nothing is created by hand in the GitHub UI.
 ## Tag and push
 
 ```bash
-pnpm version 0.2.0                   # bumps package.json, commits, creates tag v0.2.0
+pnpm -C apps/chrome-extension version 0.2.0  # bumps the version, commits, creates tag v0.2.0
 git push origin main --follow-tags
 ```
 
-First release only, where `package.json` already holds the version:
+First release only, where `apps/chrome-extension/package.json` already holds the version:
 
 ```bash
 git tag -a v0.1.0 -m "Promptizer v0.1.0"
@@ -36,7 +36,7 @@ git push origin v0.1.0
 
 | Failure                            | Cause                                     | Fix                                                                       |
 | ---------------------------------- | ----------------------------------------- | ------------------------------------------------------------------------- |
-| `tag vX does not match package.json` | Tagged without bumping                    | Delete the tag, use `pnpm version`                                        |
+| `tag vX does not match the extension package version` | Tagged without bumping | Delete the tag, use `pnpm -C apps/chrome-extension version`             |
 | `assert-manifest` fails            | Manifest drifted from the shipped contract | Fix `wxt.config.ts`, retag                                                |
 | Release published with bad assets  | —                                         | `gh release delete v0.2.0 --cleanup-tag`, fix, retag                      |
 

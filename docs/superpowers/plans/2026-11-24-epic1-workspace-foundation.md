@@ -521,7 +521,10 @@ git commit -m "feat: add i18n package with en dictionary"
 ### Task 6: Contributor docs point at the new layout — T-1.1.5 · 1h · ⇉
 
 **Files:**
-- Modify: `AGENTS.md`, `README.md`, `CONTRIBUTING.md`, `docs/architecture.md`, `docs/features.md` (only where it names loading paths)
+- Modify: `AGENTS.md`, `README.md`, `CONTRIBUTING.md`, `docs/release-checklist.md`
+
+`docs/architecture.md` and `docs/features.md` carry no repository paths and stay untouched; the
+release checklist turned out to describe the old single-package release flow and joins this task.
 
 **Interfaces:** none.
 

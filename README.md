@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="public/icon/128.png" alt="Promptizer" width="96" height="96">
+<img src="apps/chrome-extension/public/icon/128.png" alt="Promptizer" width="96" height="96">
 
 # Promptizer
 
@@ -66,10 +66,11 @@ Requirements: Chrome 138+, Node.js, [pnpm](https://pnpm.io) 10, `jq`.
 
 ```bash
 pnpm install
-make build-ext            # -> .output/chrome-mv3/
+make build-ext            # -> apps/chrome-extension/.output/chrome-mv3/
 ```
 
-1. Open `chrome://extensions` → enable **Developer mode** → **Load unpacked** → select `.output/chrome-mv3/`.
+1. Open `chrome://extensions` → enable **Developer mode** → **Load unpacked** → select
+   `apps/chrome-extension/.output/chrome-mv3/`.
 2. Open Promptizer settings from the toolbar → **Setup guide** → **Download model** → wait for **Ready**.
 3. On any site, type into a text field, click the Promptizer chip, then **Replace** or **Dismiss**.
 
@@ -96,7 +97,7 @@ Every action and journey in detail: [docs/features.md](docs/features.md).
 ## Development
 
 ```bash
-pnpm dev              # WXT dev server with hot reload
+pnpm -C apps/chrome-extension dev  # WXT dev server with hot reload
 pnpm run test         # vitest
 pnpm run test:e2e     # Puppeteer E2E suite against a real built extension
 make verify           # vitest + typecheck + prettier + build
@@ -107,10 +108,10 @@ Always pnpm — never `npm install`, never `npx`. Full working rules in [AGENTS.
 
 ## Releases
 
-`package.json` holds the version. The tag must match it, or the release build fails.
+`apps/chrome-extension/package.json` holds the version. The tag must match it, or the release build fails.
 
 ```bash
-pnpm version 0.2.0            # bumps package.json, commits, creates tag v0.2.0
+pnpm -C apps/chrome-extension version 0.2.0  # bumps the version, commits, creates tag v0.2.0
 git push origin main --follow-tags
 ```
 
@@ -119,7 +120,7 @@ extension, writes `checksums.txt`, and publishes the GitHub release. Notes are
 [.github/RELEASE.md](.github/RELEASE.md)
 followed by the changelog GitHub generates from merged pull requests.
 
-Build the zip locally with `pnpm exec wxt zip`.
+Build the zip locally with `pnpm -C apps/chrome-extension run zip`.
 
 ## Privacy
 
