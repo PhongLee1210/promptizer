@@ -1,8 +1,9 @@
 - pnpm 10 workspace with Turborepo. Run commands from the repository root; scope extension commands with `pnpm -C apps/chrome-extension`.
-- Extension: WXT, TypeScript, Vite 7, Vitest and Puppeteer. No UI framework or third-party runtime JS beyond WXT helpers.
+- Extension: WXT, TypeScript, Vite 7 and Puppeteer. No UI framework or third-party runtime JS beyond WXT helpers.
 - Shared packages are source-only: `config` (tsconfig), `shared` (types/constants), `ui` (design tokens), `i18n` (typed English dictionary). They need no separate build.
 - Dependency versions use the workspace catalog. Keep pnpm on 10 and Vite on 7; see AGENTS.md for constraints.
-- Use Node 22, matching CI. Node 26 causes popup unit tests to fail because `localStorage` is undefined.
-- `make verify` checks types, unit tests, formatting and build; `pnpm run test:e2e` runs Chrome scenarios. E2E uses fake Nano, so a real on-device rewrite still needs a manual smoke test.
+- Use Node 22, matching CI.
+- Testing is E2E-first: extend the small existing Puppeteer journeys; avoid duplicate coverage. Unit tests and Vitest were removed. Add unit tests or test frameworks only when explicitly requested.
+- `make verify` checks types, formatting, build and E2E; `pnpm test` or `pnpm run test:e2e` runs Chrome scenarios. E2E uses fake Nano, so real on-device rewrites still need a manual smoke test.
 - Load the unpacked extension from `apps/chrome-extension/.output/chrome-mv3/`. Puppeteer browser installation must also be app-scoped.
 - Monorepo foundation and browser extension. Product behavior remains preview-only; dashboard, backend and account sync are not implemented yet.

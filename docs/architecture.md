@@ -159,9 +159,9 @@ Several invariants are enforced by the build rather than by review:
 
 - The shipped manifest is asserted on every build and release: Manifest V3, Chrome 138 minimum, no
   broad host permissions, no offscreen documents. Permissions are storage and active-tab only.
-- Raw colour values fail a test. Every colour, elevation and radius goes through a design token.
-- Unit tests cover the pure logic and the UI components; a Puppeteer suite exercises a real unpacked
-  build with a stubbed model, so it stays deterministic and offline.
+- Every colour, elevation and radius goes through a design token; check this during review.
+- A small Puppeteer E2E suite exercises user journeys against a real unpacked build with a stubbed
+  model, so it stays deterministic and offline. Real on-device model behavior needs a manual smoke test.
 - Releases are tag-driven, and a tag that does not match the declared version fails the build.
 
 For what the extension does from a user's point of view — the nine actions, the journeys, the field

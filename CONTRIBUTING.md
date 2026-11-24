@@ -13,6 +13,7 @@ Requirements: Chrome 138+, Node.js 22, [pnpm](https://pnpm.io) 10, `jq`.
 ```bash
 corepack install -g pnpm@10     # stay on 10 — pnpm 11+ breaks the corepack shim
 pnpm install
+pnpm -C apps/chrome-extension exec puppeteer browsers install chrome
 pnpm -C apps/chrome-extension dev  # WXT dev server with hot reload
 ```
 
@@ -25,18 +26,18 @@ Developer mode on. Chrome and Edge only.
 ## Before you open a pull request
 
 ```bash
-make verify        # typecheck + unit tests + format check + build + manifest assertion
+make verify        # typecheck + format check + build + manifest assertion + E2E
 pnpm run test:e2e  # Puppeteer suite against a real build
 ```
 
-`make verify` must pass. Run the e2e suite too whenever you touch anything in `src/content/`.
+`make verify` must pass and includes the E2E suite. Use `pnpm run test:e2e` to run browser journeys separately.
 
 ## Ask first
 
 Open an issue before you:
 
 - add a dependency — there are **no** third-party runtime dependencies and no UI framework; WXT, Vite,
-  Vitest, Puppeteer, Prettier and Turborepo are the permitted dev dependencies;
+  Puppeteer, TypeScript, Prettier and Turborepo are the permitted dev dependencies;
 - rename or move files;
 - change global configuration (`wxt.config.ts`, `tsconfig.json`, `pnpm-workspace.yaml`, `turbo.json`, CI
   workflows, the Makefile);
@@ -83,8 +84,8 @@ inlined. Run `make icons` after changing the toolbar PNG sources.
 
 ## Tests
 
-- Pure functions get Vitest unit tests in the neighbouring `__tests__/` directory. `happy-dom` covers
-  the DOM components.
+- E2E is the primary test strategy. Extend existing browser journeys for user-visible behavior. Keep the suite
+  small and avoid duplicate coverage; add unit tests or another test framework only when explicitly requested.
 - Anything needing a real browser goes in `apps/chrome-extension/e2e/tests/*.mjs`. Gemini Nano is
   stubbed by `e2e/shim/e2e-fake-nano.content.ts`, so the suite is deterministic and offline.
 - Anything that cannot be automated is verified by loading `apps/chrome-extension/.output/chrome-mv3/`

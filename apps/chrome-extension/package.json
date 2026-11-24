@@ -6,7 +6,7 @@
     "dev": "wxt",
     "build": "wxt build && bash scripts/assert-manifest.sh",
     "zip": "wxt zip && bash scripts/assert-manifest.sh",
-    "test": "vitest run",
+    "test": "pnpm run test:e2e",
     "test:e2e": "./e2e/with-test-build.sh",
     "typecheck": "wxt prepare && tsc --noEmit"
   },
@@ -16,11 +16,9 @@
     "@promptizer/ui": "workspace:*"
   },
   "devDependencies": {
-    "happy-dom": "catalog:",
     "puppeteer": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
-    "vitest": "catalog:",
     "wxt": "catalog:"
   }
 }

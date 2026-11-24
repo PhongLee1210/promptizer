@@ -2,6 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+**Current status (2026-11-24):** Foundation implementation merged in PR #7. Automated verification
+passes; Task 8 Step 2 (manual Journey A with real Gemini Nano) remains open. Follow-up testing
+cleanup removes unit tests and Vitest; `make verify` now runs types, formatting, build and E2E.
+The original steps below remain the historical implementation record.
+
 **Goal:** Reorganize the repository into a pnpm workspace orchestrated by Turborepo, move the extension unchanged into `apps/chrome-extension/`, and stand up four shared packages (`ui`, `config`, `shared`, `i18n`). Nothing user-visible changes. Epic 1 is the regression guard for the whole MVP: a never-signed-in user must notice nothing.
 
 **Parent plan:** `docs/superpowers/plans/2026-11-24-promptizer-mvp.md` (product plan) · `docs/superpowers/plans/2026-11-24-promptizer-mvp-task-breakdown.md` (task T-1.1.1 through T-1.1.7)
