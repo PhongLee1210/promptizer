@@ -28,8 +28,6 @@ updates:
           - patch
       test-stack:
         patterns:
-          - vitest
-          - happy-dom
           - puppeteer
         update-types:
           - minor

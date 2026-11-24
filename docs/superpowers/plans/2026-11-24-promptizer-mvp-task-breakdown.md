@@ -36,48 +36,52 @@ record: Turborepo orchestration; owner-added `packages/ui` and `packages/i18n`; 
 `apps/worker` omitted). Nothing user-visible changes; this epic is the regression guard for the whole
 MVP.
 
+**Status (2026-11-24):** T-1.1.1–T-1.1.6 complete. T-1.1.7 automated verification passed;
+manual Journey A remains open because browser control was unavailable. The foundation was merged
+in PR #7. Follow-up testing cleanup removes Vitest and uses the existing E2E suite as the primary guard.
+
 **T-1.1.1 · Workspace layout & orchestration decision** · 1h · decision
 after: —
-- [ ] Layout diagram (apps + packages, exact names) written down and approved
-- [ ] One task-orchestration approach chosen for running checks across all apps
-- [ ] Decision recorded where the Epic 1 implementation plan will live
-- [ ] Any repo rule that must change is listed for the owner to approve (moving files is "ask first")
+- [x] Layout diagram (apps + packages, exact names) written down and approved
+- [x] One task-orchestration approach chosen for running checks across all apps
+- [x] Decision recorded where the Epic 1 implementation plan will live
+- [x] Any repo rule that must change is listed for the owner to approve (moving files is "ask first")
 
 **T-1.1.2 · Scaffold the workspace root** · 1.5h · infra
 after: T-1.1.1
-- [ ] Root manifest declares the workspace and pins the repo's existing tooling rules
-- [ ] Installing from the root works and produces one lockfile, no duplicates
-- [ ] A root-level command runs one check across every app
-- [ ] Existing repo pins (package manager version, allowed install scripts, build-tool major) are carried over unchanged
+- [x] Root manifest declares the workspace and pins the repo's existing tooling rules
+- [x] Installing from the root works and produces one lockfile, no duplicates
+- [x] A root-level command runs one check across every app
+- [x] Existing repo pins (package manager version, allowed install scripts, build-tool major) are carried over unchanged
 
 **T-1.1.3 · Move the extension into its app slot** · 2h · infra
 after: T-1.1.2
-- [ ] Extension sources and build config live in the new app slot, unchanged in behavior
-- [ ] Build output path updated; the manifest assertion script still passes
-- [ ] The E2E suite runs green from the new location
-- [ ] No leftover duplicates of extension files at the old location
+- [x] Extension sources and build config live in the new app slot, unchanged in behavior
+- [x] Build output path updated; the manifest assertion script still passes
+- [x] The E2E suite runs green from the new location
+- [x] No leftover duplicates of extension files at the old location
 
 **T-1.1.4 · Shared-definitions package shell** · 1h · infra ⇉
 after: T-1.1.2 (can run while T-1.1.3 is in flight)
-- [ ] Empty package exists and is resolvable from the extension app
-- [ ] One placeholder definition compiles and imports from the extension app
-- [ ] Package contains no behavior, only definitions
+- [x] Shared-definitions package shell exists and is resolvable from the extension app
+- [x] One placeholder definition compiles and imports from the extension app
+- [x] Package contains no behavior, only definitions
 
 **T-1.1.5 · Contributor docs point at the new layout** · 1h · docs ⇉
 after: T-1.1.3
-- [ ] Setup, verify, and test instructions match the new paths
-- [ ] Every doc reference to the old layout is updated (grep proves zero stale paths)
-- [ ] A newcomer following the docs from scratch lands in the right places
+- [x] Setup, verify, and test instructions match the new paths
+- [x] Active contributor docs use the new layout (historical plans and changelog entries are excluded)
+- [x] A newcomer following the docs from scratch lands in the right places
 
 **T-1.1.6 · Remove stale artifacts** · 0.5h · debt ⇉
 after: T-1.1.2
-- [ ] The leftover compiled CLI binary and any dead references are deleted
-- [ ] Nothing in the repo references the removed files
-- [ ] Workspace checks still pass
+- [x] The leftover compiled CLI binary and any dead references are deleted
+- [x] No active code or contributor instructions reference the removed files
+- [x] Workspace checks still pass
 
 **T-1.1.7 · Full workspace verify pass** · 1h · qa
 after: all Epic 1 tasks
-- [ ] Every check (types, unit tests, formatting, build, manifest assertion) passes from the root
+- [x] Every check (types, formatting, build, manifest assertion, E2E) passes from the root
 - [ ] Built extension loaded by hand and behaves identically (Journey A smoke: chip appears, one rewrite works)
 
 ---

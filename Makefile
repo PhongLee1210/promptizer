@@ -18,7 +18,7 @@ format:
 format-check:
 	pnpm run format:check
 
-verify: typecheck test-ext format-check build-ext
+verify: typecheck format-check build-ext test-ext
 
 clean:
 	rm -rf ./dist

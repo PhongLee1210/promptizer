@@ -12,10 +12,8 @@ Fix the oldest open Dependabot PR in this repo, or PR #$ARGUMENTS if a number wa
 3. `gh pr checkout <number>`, then `pnpm install --frozen-lockfile`.
    If the lockfile is out of sync, run `pnpm install` and include the updated
    `pnpm-lock.yaml` in the fix commit.
-4. Establish the baseline by running, in order:
-   `pnpm run typecheck`, `pnpm test`, `pnpm run build`, `bash scripts/assert-manifest.sh`.
-   Skip `pnpm run test:e2e` unless the failure is plausibly browser-related — it needs a
-   Puppeteer Chrome download and takes minutes.
+4. Establish the baseline with `make verify` (typecheck, formatting, build, manifest assertion and E2E).
+   Install Chrome first if needed: `pnpm -C apps/chrome-extension exec puppeteer browsers install chrome`.
 5. If everything already passes, do not push. Comment on the PR that CI is green and stop.
 6. Otherwise fix the source, config, or tests so the new dependency version works.
    Constraints:

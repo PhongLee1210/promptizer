@@ -9,7 +9,7 @@
     "test": "pnpm exec turbo run test",
     "test:e2e": "pnpm -C apps/chrome-extension run test:e2e",
     "typecheck": "pnpm exec turbo run typecheck",
-    "verify": "pnpm run typecheck && pnpm run test && pnpm run format:check && pnpm run build"
+    "verify": "pnpm run typecheck && pnpm run format:check && pnpm run build && pnpm run test"
   },
   "devDependencies": {
     "prettier": "catalog:",

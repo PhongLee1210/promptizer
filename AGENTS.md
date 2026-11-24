@@ -20,14 +20,12 @@ The rewrite is always shown as an editable preview. Nothing is submitted automat
   with `MODULE_NOT_FOUND` on those versions.
 - Run binaries through `pnpm exec`, not `npx` or `./node_modules/.bin/`.
 - `pnpm.onlyBuiltDependencies` in `package.json` lists the packages allowed to run install scripts. pnpm blocks them
-  by default; esbuild is listed because vite and vitest need its native binary.
+  by default; esbuild is listed because Vite needs its native binary.
 - The repo is a pnpm workspace (`pnpm-workspace.yaml`): run everything from the root, per-app commands go through
   `pnpm -C apps/chrome-extension`. Shared dependency versions live in the workspace catalog so exactly one copy of
   each tool exists across apps. Checks fan out through Turborepo; `make verify` stays the human entry point.
-- Pin `vite` to `^7`. wxt 0.21.5 accepts `^6.3.4 || ^7 || ^8.0.0-0` and vitest 3.2.7 accepts `^5 || ^6 || ^7`, so 7 is
-  the only major both allow, and two vite copies in the store produce unassignable plugin types in `vitest.config.ts`.
-  `.github/dependabot.yml` ignores vite majors to enforce this. Drop that ignore only once vitest is on 4 or later,
-  whose range widens to `^6 || ^7 || ^8`.
+- Keep `vite` on `^7` across the workspace to avoid duplicate Vite versions and incompatible plugin types.
+  `.github/dependabot.yml` ignores Vite major upgrades.
 - Chrome and Edge only. The automated checks run in Chrome. Load the extension unpacked from
   `apps/chrome-extension/.output/chrome-mv3/`.
 - One change per branch and pull request. Keep diffs scoped to it.
@@ -38,10 +36,12 @@ The rewrite is always shown as an editable preview. Nothing is submitted automat
   genuinely required.
 - There is no limit on file or function length, so prefer extending an existing file over splitting it.
 - No third-party runtime JavaScript dependencies beyond the extension framework's own bundled helpers, and no UI
-  framework. WXT, Vite, Vitest, happy-dom, Puppeteer, TypeScript, Prettier and Turborepo are the permitted dev
+  framework. WXT, Vite, Puppeteer, TypeScript, Prettier and Turborepo are the permitted dev
   dependencies. Workspace packages under `packages/` are first-party code, not dependencies.
-- Pure functions get Vitest unit tests under the neighbouring `__tests__/` directory. Anything that needs a real
-  browser is verified by loading `apps/chrome-extension/.output/chrome-mv3/` unpacked and exercising it by hand.
+- E2E is the primary test strategy. Extend the existing Puppeteer journeys instead of adding unit tests or test
+  frameworks unless explicitly requested. Keep tests focused on user-visible behavior and avoid duplicate coverage.
+  Real on-device model behavior is verified by loading `apps/chrome-extension/.output/chrome-mv3/` unpacked.
+  Prefer a small test suite that is easy to maintain.
 - Formatting is Prettier's: 2 spaces, semicolons, double quotes, trailing commas, `printWidth` 120. Configured in
   `.prettierrc.json`; `.prettierignore` keeps it out of generated output, vendored agent directories and `docs/`.
 - Use `import type` for type-only imports.
@@ -54,7 +54,7 @@ The rewrite is always shown as an editable preview. Nothing is submitted automat
 ## Verify
 
 ```bash
-make verify        # typecheck, vitest, prettier, build
+make verify        # typecheck, prettier, build, E2E
 make format        # prettier --write
 make format-check  # prettier --check
 pnpm run test:e2e  # Puppeteer E2E suite
