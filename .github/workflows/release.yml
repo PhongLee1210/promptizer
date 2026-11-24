@@ -31,14 +31,13 @@ jobs:
       - name: Build release assets
         run: |
           version="${VERSION#v}"
-          test "$version" = "$(node -p 'require("./package.json").version')" \
-            || { echo "tag $VERSION does not match package.json version"; exit 1; }
+          test "$version" = "$(node -p 'require("./apps/chrome-extension/package.json").version')" \
+            || { echo "tag $VERSION does not match the extension package version"; exit 1; }
 
-          pnpm exec wxt zip
-          bash scripts/assert-manifest.sh
+          pnpm -C apps/chrome-extension run zip
 
           mkdir -p dist
-          cp ".output/promptizer-${version}-chrome.zip" dist/
+          cp "apps/chrome-extension/.output/promptizer-${version}-chrome.zip" dist/
           cd dist && sha256sum * > checksums.txt
 
       - name: Publish release

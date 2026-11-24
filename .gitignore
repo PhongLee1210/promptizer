@@ -13,7 +13,7 @@ node_modules/
 .output/
 .wxt/
 
-src/utils/icons.ts
+apps/chrome-extension/src/utils/icons.ts
 
 .agents/
 .claude/skills/design-taste-frontend

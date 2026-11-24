@@ -6,37 +6,58 @@ settings:
 
 catalogs:
   default:
+    happy-dom:
+      specifier: ^21.0.4
+      version: 21.0.4
     prettier:
       specifier: ^3.10.1
       version: 3.10.1
+    puppeteer:
+      specifier: ^25.18.1
+      version: 25.18.1
+    typescript:
+      specifier: ^5.9.3
+      version: 5.9.3
+    vite:
+      specifier: ^7.3.8
+      version: 7.3.8
+    vitest:
+      specifier: ^3.2.7
+      version: 3.2.7
+    wxt:
+      specifier: ^0.21.5
+      version: 0.21.5
 
 importers:
 
   .:
     devDependencies:
-      happy-dom:
-        specifier: ^21.0.4
-        version: 21.0.4
       prettier:
         specifier: 'catalog:'
         version: 3.10.1
-      puppeteer:
-        specifier: ^25.18.1
-        version: 25.18.1
       turbo:
         specifier: ^2.11.13
         version: 2.11.13
+
+  apps/chrome-extension:
+    devDependencies:
+      happy-dom:
+        specifier: 'catalog:'
+        version: 21.0.4
+      puppeteer:
+        specifier: 'catalog:'
+        version: 25.18.1
       typescript:
-        specifier: ^5.9.3
+        specifier: 'catalog:'
         version: 5.9.3
       vite:
-        specifier: ^7.3.8
+        specifier: 'catalog:'
         version: 7.3.8(@types/node@26.6.6)(jiti@2.7.0)(lightningcss@1.33.0)
       vitest:
-        specifier: ^3.2.7
+        specifier: 'catalog:'
         version: 3.2.7(@types/node@26.6.6)(happy-dom@21.0.4)(jiti@2.7.0)(lightningcss@1.33.0)
       wxt:
-        specifier: ^0.21.5
+        specifier: 'catalog:'
         version: 0.21.5(esbuild@0.28.2)(eslint@10.15.0(jiti@2.7.0))(rolldown@1.2.19)(rollup@4.68.3)(typescript@5.9.3)(vite@7.3.8(@types/node@26.6.6)(jiti@2.7.0)(lightningcss@1.33.0))
 
 packages:

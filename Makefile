@@ -1,24 +1,22 @@
-.PHONY: icons test-ext typecheck format format-check verify clean
+.PHONY: icons typecheck test-ext build-ext format format-check verify clean
 
 icons:
-	bash scripts/generate-icons.sh
+	pnpm -C apps/chrome-extension exec bash scripts/generate-icons.sh
 
 typecheck:
-	pnpm exec wxt prepare
-	pnpm exec tsc --noEmit
+	pnpm run typecheck
 
 test-ext:
-	pnpm exec vitest run
+	pnpm run test
 
 build-ext:
-	pnpm exec wxt build
-	bash scripts/assert-manifest.sh
+	pnpm run build
 
 format:
-	pnpm exec prettier --write .
+	pnpm run format
 
 format-check:
-	pnpm exec prettier --check .
+	pnpm run format:check
 
 verify: typecheck test-ext format-check build-ext
 
