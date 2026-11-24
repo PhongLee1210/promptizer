@@ -9,5 +9,8 @@ export default defineContentScript({
     }
     document.documentElement.setAttribute("data-promptizer-active", "");
     startChipController();
+    if (import.meta.env.WXT_FEATURE_TRANSLATE_ON_PAGE === "true") {
+      void import("../content/selection-translate").then((module) => module.startSelectionTranslate());
+    }
   },
 });
