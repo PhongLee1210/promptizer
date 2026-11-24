@@ -1,6 +1,16 @@
 import { icon, type IconName } from "../utils/icons";
 import type { ActionId } from "./action-types";
 import { currentResult, type ChipState } from "./chip-state";
+import {
+  LOADING_STYLE,
+  SlowHintTimer,
+  applySettleIn,
+  createBusyLabel,
+  createProgressBar,
+  createShimmerLines,
+  createSlowHint,
+  updateProgressBar,
+} from "./loading-ui";
 import { ACTION_COPY, PREPARING_CAPTION, PREPARING_TITLE } from "./present-result";
 
 export interface ResultWindowCallbacks {
@@ -17,6 +27,9 @@ export interface ResultWindowCallbacks {
   onRetry: () => void;
   onClose: () => void;
 }
+
+const SKELETON_LINE_WIDTHS = ["92%", "78%", "54%"] as const;
+const PREPARING_MODEL_NAME = "Gemini Nano";
 
 const TWEAK_LEAVES: ActionId[] = ["shorten", "grammar", "pro", "friendly", "direct", "vi", "en"];
 
@@ -35,7 +48,7 @@ export const WINDOW_STYLE = `
   }
   .pz-win[data-open="true"] {
     display: flex;
-    animation: pz-win-pop 140ms ease-out;
+    animation: pz-win-pop var(--pz-dur-base) var(--pz-ease-out);
   }
   @keyframes pz-win-pop {
     from {
@@ -143,8 +156,10 @@ export const WINDOW_STYLE = `
   .pz-win__body--busy {
     display: flex;
     flex-direction: column;
-    gap: 9px;
-    padding-top: 14px;
+    gap: 6px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    overflow: hidden;
   }
   .pz-win__prep {
     display: flex;
@@ -152,54 +167,11 @@ export const WINDOW_STYLE = `
     gap: 8px;
     padding-top: 12px;
   }
-  .pz-win__prep-line {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 8px;
-    font-size: 12px;
-  }
-  .pz-win__prep-pct {
-    font-variant-numeric: tabular-nums;
-    color: var(--pz-color-text-brand-strong);
-  }
   .pz-win__prep-note {
+    margin: 0;
     font-size: 11px;
     line-height: 1.4;
     color: var(--pz-color-text-base-subdued);
-  }
-  .pz-win__bar-track {
-    height: 4px;
-    border-radius: var(--pz-radius-half);
-    background: var(--pz-color-fill-track-default);
-    overflow: hidden;
-  }
-  .pz-win__bar-fill {
-    height: 100%;
-    background: var(--pz-color-fill-brand-default);
-    transition: width 240ms ease-out;
-  }
-  .pz-win__bar-fill[data-indeterminate="true"] {
-    width: 40%;
-    animation: pz-win-slide 1.4s ease-in-out infinite;
-  }
-  @keyframes pz-win-slide {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(250%); }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .pz-win__bar-fill {
-      transition: none;
-    }
-    .pz-win__bar-fill[data-indeterminate="true"] {
-      animation: none;
-    }
-  }
-  .pz-win__sk {
-    height: 10px;
-    border-radius: 5px;
-    background: var(--pz-color-fill-skeleton-default);
-    animation: pz-win-sk 1.1s ease-in-out infinite;
   }
   button.pz-win__btn {
     all: unset;
@@ -242,11 +214,9 @@ export const WINDOW_STYLE = `
       background: var(--pz-color-text-brand-strong);
     }
   }
-  @keyframes pz-win-sk {
-    0%, 100% { opacity: 0.35; }
-    50% { opacity: 0.8; }
-  }
 `;
+
+export const RESULT_WINDOW_STYLE = WINDOW_STYLE + LOADING_STYLE;
 
 function button(
   iconName: IconName | null,
@@ -274,6 +244,10 @@ export class ResultWindow {
   private readonly topBar: HTMLDivElement;
   private readonly bodyWrap: HTMLDivElement;
   private readonly bottomBar: HTMLDivElement;
+  private readonly slowHintTimer = new SlowHintTimer();
+  private wasBusy = false;
+  private busyBody: HTMLElement | null = null;
+  private preparingBar: HTMLElement | null = null;
 
   constructor(private readonly callbacks: ResultWindowCallbacks) {
     this.element = document.createElement("div");
@@ -297,6 +271,14 @@ export class ResultWindow {
   }
 
   render(state: ChipState): void {
+    if (
+      state.view.kind === "preparing" &&
+      this.preparingBar !== null &&
+      updateProgressBar(this.preparingBar, state.view.percent)
+    ) {
+      return;
+    }
+    this.preparingBar = null;
     const open =
       state.view.kind === "loading" ||
       state.view.kind === "preparing" ||
@@ -304,6 +286,12 @@ export class ResultWindow {
       state.view.kind === "editing" ||
       state.view.kind === "tweak" ||
       state.view.kind === "error";
+    const isBusy = state.view.kind === "loading" || state.view.kind === "preparing";
+    const settlesIn = this.wasBusy && !isBusy;
+    this.wasBusy = isBusy;
+    this.slowHintTimer.cancel();
+    this.busyBody = null;
+    this.bottomBar.classList.remove("pz-settle");
     this.element.dataset.open = String(open);
     this.topBar.replaceChildren();
     this.bottomBar.replaceChildren();
@@ -311,20 +299,32 @@ export class ResultWindow {
     if (!open) {
       return;
     }
+    if (state.view.kind === "loading") {
+      this.slowHintTimer.start(() => this.showSlowHint());
+    }
 
     switch (state.view.kind) {
       case "loading":
         this.renderLoading(state.view.action);
-        return;
+        break;
       case "preparing":
         this.renderPreparing(state.view.percent);
-        return;
+        break;
       case "error":
         this.renderError(state.view.action, state.view.message);
-        return;
+        break;
       default:
         this.renderResult(state);
     }
+    if (settlesIn) {
+      this.settleInContent();
+    }
+  }
+
+  destroy(): void {
+    this.slowHintTimer.cancel();
+    this.preparingBar = null;
+    this.busyBody = null;
   }
 
   focusPrimary(): void {
@@ -335,10 +335,23 @@ export class ResultWindow {
     this.element.querySelector<HTMLButtonElement>('[data-tip="Try again"]')?.focus();
   }
 
+  private showSlowHint(): void {
+    this.busyBody?.append(createSlowHint());
+  }
+
+  private settleInContent(): void {
+    const content = [this.bodyWrap.firstElementChild, this.bottomBar];
+    content.forEach((element, step) => {
+      if (element instanceof HTMLElement) {
+        applySettleIn(element, step);
+      }
+    });
+  }
+
   private renderLoading(action: ActionId): void {
     const title = document.createElement("span");
     title.className = "pz-win__title";
-    title.textContent = ACTION_COPY[action].busyLabel;
+    title.append(createBusyLabel(ACTION_COPY[action].busyLabel));
     const trailing = document.createElement("span");
     trailing.className = "pz-win__trailing";
     trailing.append(button("close", null, "Close", this.callbacks.onClose, "muted"));
@@ -347,13 +360,9 @@ export class ResultWindow {
     const body = document.createElement("div");
     body.className = "pz-win__body pz-win__body--busy";
     body.setAttribute("role", "status");
-    for (const width of ["92%", "78%", "54%"]) {
-      const bar = document.createElement("span");
-      bar.className = "pz-win__sk";
-      bar.style.width = width;
-      body.append(bar);
-    }
+    body.append(createShimmerLines(SKELETON_LINE_WIDTHS));
     this.bodyWrap.append(body);
+    this.busyBody = body;
   }
 
   private renderPreparing(percent: number): void {
@@ -367,37 +376,12 @@ export class ResultWindow {
 
     const body = document.createElement("div");
     body.className = "pz-win__body pz-win__prep";
-    body.setAttribute("role", "progressbar");
-    body.setAttribute("aria-valuemin", "0");
-    body.setAttribute("aria-valuemax", "100");
-    body.setAttribute("aria-valuenow", String(percent));
-    body.setAttribute("aria-label", PREPARING_TITLE);
-
-    const line = document.createElement("div");
-    line.className = "pz-win__prep-line";
-    const label = document.createElement("span");
-    label.textContent = "Gemini Nano";
-    const value = document.createElement("span");
-    value.className = "pz-win__prep-pct";
-    value.textContent = `${percent}%`;
-    line.append(label, value);
-
-    const track = document.createElement("div");
-    track.className = "pz-win__bar-track";
-    const fill = document.createElement("div");
-    fill.className = "pz-win__bar-fill";
-    if (percent === 0) {
-      fill.dataset.indeterminate = "true";
-    } else {
-      fill.style.width = `${percent}%`;
-    }
-    track.append(fill);
-
     const note = document.createElement("p");
     note.className = "pz-win__prep-note";
     note.textContent = PREPARING_CAPTION;
-
-    body.append(line, track, note);
+    const bar = createProgressBar(percent, PREPARING_MODEL_NAME);
+    this.preparingBar = bar;
+    body.append(bar, note);
     this.bodyWrap.append(body);
   }
 

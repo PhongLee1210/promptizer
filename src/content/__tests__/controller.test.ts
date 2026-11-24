@@ -671,7 +671,7 @@ describe("startChipController", () => {
     expect(prepareModel).toHaveBeenCalledTimes(1);
     report!(60);
     expect(trigger().dataset.progress).toBe("60");
-    expect(winNode().querySelector(".pz-win__prep-pct")?.textContent).toBe("60%");
+    expect(winNode().querySelector(".pz-load__progress-pct")?.textContent).toBe("60%");
 
     finishDownload!("available");
     await vi.advanceTimersByTimeAsync(1);

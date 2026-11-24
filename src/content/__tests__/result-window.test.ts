@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { SLOW_HINT_TEXT, SLOW_OPERATION_HINT_MS } from "../loading-ui";
 import { ResultWindow, type ResultWindowCallbacks } from "../result-window";
 import { initialChipState, reduceChipState, type ChipState, type Outcome } from "../chip-state";
 
@@ -28,6 +29,15 @@ function withResult(outcome: Outcome = OK, action: "refine" = "refine"): ChipSta
     action,
     source: "text",
     outcome,
+  });
+}
+
+function loadingState(): ChipState {
+  return reduceChipState(initialChipState, {
+    type: "action-selected",
+    action: "grammar",
+    source: "text",
+    hasText: true,
   });
 }
 
@@ -203,11 +213,13 @@ describe("ResultWindow", () => {
     };
     win.render(preparing);
 
-    const body = win.node().querySelector(".pz-win__prep")!;
+    const body = win.node().querySelector('[role="progressbar"]')!;
     expect(win.node().dataset.open).toBe("true");
     expect(body.getAttribute("aria-valuenow")).toBe("42");
-    expect(win.node().querySelector(".pz-win__prep-pct")?.textContent).toBe("42%");
-    expect(win.node().querySelector<HTMLElement>(".pz-win__bar-fill")?.style.width).toBe("42%");
+    expect(win.node().querySelector(".pz-load__progress-pct")?.textContent).toBe("42%");
+    expect(
+      win.node().querySelector<HTMLElement>(".pz-load__progress-fill")?.style.getPropertyValue("--pz-load-progress"),
+    ).toBe("0.42");
     expect(labels(win)).toEqual(["Close"]);
   });
 
@@ -217,6 +229,52 @@ describe("ResultWindow", () => {
       view: { kind: "preparing", action: "refine", source: "text", percent: 0 },
     });
 
-    expect(win.node().querySelector<HTMLElement>(".pz-win__bar-fill")?.dataset.indeterminate).toBe("true");
+    expect(win.node().querySelector<HTMLElement>(".pz-load__progress-fill")?.dataset.indeterminate).toBe("true");
+  });
+
+  it("labels the busy title with the plain verb and animated dots", () => {
+    win.render(loadingState());
+    const title = win.node().querySelector(".pz-win__title")!;
+    expect(title.textContent).toBe("Fixing grammar");
+    expect(title.querySelector('.pz-load__dots[aria-hidden="true"]')).not.toBeNull();
+  });
+
+  it("shows three shimmer lines at the brief widths while loading", () => {
+    win.render(loadingState());
+    const lines = [...win.node().querySelectorAll<HTMLElement>(".pz-load__line")];
+    expect(lines.map((line) => line.style.width)).toEqual(["92%", "78%", "54%"]);
+  });
+
+  it("settles the result in after a busy state but not on later re-renders", () => {
+    win.render(loadingState());
+    win.render(withResult());
+    expect(win.node().querySelector(".pz-win__body.pz-settle")).not.toBeNull();
+    win.render({ ...withResult(), copied: true });
+    expect(win.node().querySelector(".pz-settle")).toBeNull();
+  });
+
+  describe("slow hint", () => {
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+
+    function hintText(): string | undefined {
+      return win.node().querySelector(".pz-load__hint")?.textContent ?? undefined;
+    }
+
+    it("appears after the threshold while still loading", () => {
+      win.render(loadingState());
+      vi.advanceTimersByTime(SLOW_OPERATION_HINT_MS - 1);
+      expect(hintText()).toBeUndefined();
+      vi.advanceTimersByTime(1);
+      expect(hintText()).toBe(SLOW_HINT_TEXT);
+    });
+
+    it("never appears once the view left the busy state", () => {
+      win.render(loadingState());
+      vi.advanceTimersByTime(SLOW_OPERATION_HINT_MS - 1);
+      win.render(withResult());
+      vi.advanceTimersByTime(SLOW_OPERATION_HINT_MS * 2);
+      expect(hintText()).toBeUndefined();
+    });
   });
 });
