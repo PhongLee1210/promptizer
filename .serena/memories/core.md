@@ -3,3 +3,4 @@
 - Primary Gemini Nano runs on-device.
 - Stable privacy invariant: only explicitly selected bounded prompt/context may leave host; never scan terminal/page/thread/files implicitly; never log prompt content.
 - Workspace caveats (Node version, E2E limits, Puppeteer install scope): `mem:tech_stack`.
+- Web app device-split rendering (mobile/desktop route trees, proxy rewrite, bundle isolation rules): `mem:web_device_split`.
