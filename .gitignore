@@ -21,3 +21,4 @@ apps/chrome-extension/src/utils/icons.ts
 skills-lock.json
 apps/web/.next/
 apps/web/next-env.d.ts
+apps/web/*.tsbuildinfo
