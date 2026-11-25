@@ -1107,3 +1107,15 @@ body {
 .pz-steps-fold > summary:focus-visible {
   box-shadow: 0 0 0 2px var(--pz-color-border-focus-default);
 }
+
+.pz-account-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pz-space-3);
+}
+
+.pz-account-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pz-space-3);
+}

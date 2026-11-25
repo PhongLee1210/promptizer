@@ -9,6 +9,7 @@ import { renderPlatformsScreen } from "./screens/platforms";
 import { renderProvidersScreen } from "./screens/providers";
 import { renderSuggestionsScreen } from "./screens/suggestions";
 import { renderNanoSetupScreen } from "./screens/nano-setup";
+import { renderAccountScreen } from "./screens/account";
 import { nanoAvailability, prepareNano, type NanoAvailability } from "../content/nano";
 import type { NanoSetupStatus, NanoState } from "./state-types";
 import type { Dispatch, PopupScreen } from "./types";
@@ -20,6 +21,7 @@ const SCREENS: Record<PopupScreen, (dispatch: Dispatch) => HTMLElement> = {
   providers: renderProvidersScreen,
   suggestions: renderSuggestionsScreen,
   "nano-setup": renderNanoSetupScreen,
+  account: renderAccountScreen,
 };
 
 function nanoStatusFor(availability: NanoAvailability): NanoSetupStatus {
