@@ -8,7 +8,7 @@
  *   dark block  :where(:root,:host),[data-pz-mode=dark] -> primitive ramps + semantic colours
  *
  * The selectors include :host so the same sheet resolves inside the content-script shadow roots.
- * Promptizer ships dark only; a light block would slot in after the dark one.
+ * The extension ships dark only; the dashboard also uses the light block via [data-pz-mode=light].
  */
 
 /* ===== promptizer / mode: base ===== */
@@ -178,6 +178,45 @@
   --pz-color-text-warning-default: var(--pz-yellow-30);
 
   color-scheme: dark;
+}
+
+/* ===== promptizer / mode: light ===== */
+[data-pz-mode="light"] {
+  --pz-blue-20: #1d57c4;
+  --pz-blue-40: #2f6fe4;
+  --pz-blue-90: #e5eefe;
+  --pz-blue-100: #ffffff;
+  --pz-green-20: #1b7f55;
+  --pz-green-40: #1fa971;
+  --pz-green-100: #e3f6ec;
+  --pz-neutral-0: #14161a;
+  --pz-neutral-10: #3a3f48;
+  --pz-neutral-20: #5b6270;
+  --pz-neutral-30: #d3d7de;
+  --pz-neutral-40: #d8dce3;
+  --pz-neutral-60: #8b93a1;
+  --pz-neutral-80: #eef0f4;
+  --pz-neutral-85: #ffffff;
+  --pz-neutral-90: #e6e9ee;
+  --pz-neutral-95: #ffffff;
+  --pz-neutral-97: #f6f7f9;
+  --pz-neutral-100: #eceef2;
+  --pz-red-30: #c2362b;
+  --pz-red-100: #fdecea;
+  --pz-yellow-30: #9a6a00;
+  --pz-yellow-100: #fdf3dc;
+  --pz-white-0: #ffffff;
+
+  --pz-alpha-light-10: rgb(0 0 0 / 0.06);
+  --pz-alpha-light-12: rgb(0 0 0 / 0.08);
+  --pz-alpha-light-18: rgb(0 0 0 / 0.12);
+  --pz-alpha-brand-16: rgb(47 111 228 / 0.14);
+
+  --pz-elevation-base-low: 0 1px 3px rgb(20 22 26 / 0.12);
+  --pz-elevation-base-medium: 0 8px 24px rgb(20 22 26 / 0.14);
+  --pz-elevation-panel-leading: 8px 0 24px rgb(20 22 26 / 0.12);
+
+  color-scheme: light;
 }
 
 @media (prefers-reduced-motion: reduce) {
