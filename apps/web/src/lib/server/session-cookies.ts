@@ -1,3 +1,4 @@
+import { CLIENT_KIND_HEADER, EXTENSION_CLIENT_KIND } from "@promptizer/shared";
 import type { AuthSession } from "@promptizer/shared";
 
 export const ACCESS_COOKIE = "promptizer_access";
@@ -55,4 +56,16 @@ export function readAccessToken(request: Request): string | undefined {
 
 export function readRefreshTokenCookie(request: Request): string | undefined {
   return readCookie(request, REFRESH_COOKIE);
+}
+
+function callerKeepsSessionInCookies(request: Request): boolean {
+  return request.headers.get(CLIENT_KIND_HEADER) !== EXTENSION_CLIENT_KIND;
+}
+
+export function sessionCookiesFor(request: Request, session: AuthSession): string[] {
+  return callerKeepsSessionInCookies(request) ? buildSessionCookies(session) : [];
+}
+
+export function clearedSessionCookiesFor(request: Request): string[] {
+  return callerKeepsSessionInCookies(request) ? buildClearedSessionCookies() : [];
 }

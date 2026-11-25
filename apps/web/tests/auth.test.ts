@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { after, describe, test } from "node:test";
+import { CLIENT_KIND_HEADER, EXTENSION_CLIENT_KIND } from "@promptizer/shared";
 import type { AuthErrorBody, AuthSession, AuthUser } from "@promptizer/shared";
 import { POST as changePassword } from "../src/app/api/auth/change-password/route.ts";
 import { GET as me } from "../src/app/api/auth/me/route.ts";
@@ -59,6 +60,28 @@ describe(
       assert.ok(
         cookies.some((cookie) => cookie.startsWith("promptizer_refresh=") && cookie.includes("Path=/api/auth")),
       );
+    });
+
+    test("extension callers get tokens in the body but never touch dashboard cookies", async () => {
+      const email = uniqueEmail();
+      await registerAccount(email);
+      const extensionHeaders = { [CLIENT_KIND_HEADER]: EXTENSION_CLIENT_KIND };
+      const signedIn = await signIn(jsonRequest("/api/auth/sign-in", { email, password: PASSWORD }, extensionHeaders));
+      assert.equal(signedIn.status, 200);
+      assert.deepEqual(signedIn.headers.getSetCookie(), []);
+      const session = (await signedIn.json()) as AuthSession;
+      const signedOut = await signOut(
+        new Request(`${ORIGIN}/api/auth/sign-out`, {
+          method: "POST",
+          headers: { ...bearer(session), ...extensionHeaders },
+        }),
+      );
+      assert.deepEqual(signedOut.headers.getSetCookie(), []);
+      const rejected = await me(
+        new Request(`${ORIGIN}/api/auth/me`, { headers: { ...bearer(session), ...extensionHeaders } }),
+      );
+      assert.equal(rejected.status, 401);
+      assert.deepEqual(rejected.headers.getSetCookie(), []);
     });
 
     test("register sends no email: the account is confirmed without a confirmation mail", async () => {

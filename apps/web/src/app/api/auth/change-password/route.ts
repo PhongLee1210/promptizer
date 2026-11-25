@@ -1,8 +1,8 @@
-import { changePassword } from "../../../../lib/server/accounts.ts";
-import { authenticate } from "../../../../lib/server/authenticate.ts";
-import { failureResponse, readJsonBody } from "../../../../lib/server/http.ts";
-import { sessionResponse } from "../../../../lib/server/session-responses.ts";
-import { validateChangePassword } from "../../../../lib/server/validation.ts";
+import { changePassword } from "@/lib/server/accounts.ts";
+import { authenticate } from "@/lib/server/authenticate.ts";
+import { failureResponse, readJsonBody } from "@/lib/server/http.ts";
+import { sessionResponse } from "@/lib/server/session-responses.ts";
+import { validateChangePassword } from "@/lib/server/validation.ts";
 
 export async function POST(request: Request): Promise<Response> {
   const caller = await authenticate(request);
@@ -13,5 +13,5 @@ export async function POST(request: Request): Promise<Response> {
   if (!input.ok) {
     return failureResponse(input.failure);
   }
-  return sessionResponse(await changePassword(caller.value.user, input.value), 200);
+  return sessionResponse(request, await changePassword(caller.value.user, input.value), 200);
 }

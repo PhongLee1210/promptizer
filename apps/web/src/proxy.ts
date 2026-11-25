@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { CLIENT_KIND_HEADER } from "@promptizer/shared";
 import { classifyDevice, isMobileSplitRoute } from "@/lib/device";
 import type { DeviceClass } from "@/lib/device";
 
 const ALLOWED_METHODS = "GET, POST, OPTIONS";
-const ALLOWED_HEADERS = "Authorization, Content-Type";
+const ALLOWED_HEADERS = `Authorization, Content-Type, ${CLIENT_KIND_HEADER}`;
 const MOBILE_PREFIX = "/m";
 
 function resolveDeviceClass(request: NextRequest): DeviceClass {
