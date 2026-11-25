@@ -19,3 +19,5 @@ apps/chrome-extension/src/utils/icons.ts
 .claude/skills/design-taste-frontend
 .claude/skills/light-ui-ux/
 skills-lock.json
+apps/web/.next/
+apps/web/next-env.d.ts
