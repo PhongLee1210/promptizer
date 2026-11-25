@@ -1,6 +1,6 @@
 import type { PopupState } from "./state-types";
 
-export type PopupScreen = "main" | "platforms" | "models" | "providers" | "suggestions" | "nano-setup";
+export type PopupScreen = "main" | "platforms" | "models" | "providers" | "suggestions" | "nano-setup" | "account";
 
 export interface Dispatch {
   getState(): PopupState;

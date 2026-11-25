@@ -19,6 +19,7 @@ const SETTINGS_DESTINATIONS: ScreenDestination[] = [
   { screen: "models", iconName: "device", label: "Models & keys" },
   { screen: "providers", iconName: "key", label: "Providers & keys" },
   { screen: "suggestions", iconName: "sliders", label: "Suggestions" },
+  { screen: "account", iconName: "friendly", label: "Account" },
 ];
 
 function openInTab(url: string): void {
