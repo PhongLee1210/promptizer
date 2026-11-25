@@ -13,6 +13,7 @@ export interface SessionManager {
   signIn(email: string, password: string): Promise<AuthClientResult<AuthUser>>;
   signOut(): Promise<void>;
   currentUser(): Promise<AuthUser | undefined>;
+  confirmedUser(): Promise<AuthUser | undefined>;
   getAccessToken(): Promise<AuthClientResult<string | undefined>>;
 }
 
@@ -38,6 +39,21 @@ export function createSessionManager(
     return renewed;
   }
 
+  async function getAccessToken(): Promise<AuthClientResult<string | undefined>> {
+    const session = await store.load();
+    if (!session) {
+      return { ok: true, value: undefined };
+    }
+    if (!isExpiringSoon(session, Math.floor(now() / 1000))) {
+      return { ok: true, value: session.accessToken };
+    }
+    const renewed = await renew(session);
+    if (!renewed.ok) {
+      return renewed as { ok: false; error: AuthClientError };
+    }
+    return { ok: true, value: renewed.value?.accessToken };
+  }
+
   return {
     async signIn(email, password) {
       const result = await client.signIn(email, password);
@@ -60,19 +76,27 @@ export function createSessionManager(
       return (await store.load())?.user;
     },
 
-    async getAccessToken() {
-      const session = await store.load();
-      if (!session) {
-        return { ok: true, value: undefined };
+    getAccessToken,
+
+    async confirmedUser() {
+      const stored = await store.load();
+      const token = await getAccessToken();
+      if (!token.ok) {
+        return stored?.user;
       }
-      if (!isExpiringSoon(session, Math.floor(now() / 1000))) {
-        return { ok: true, value: session.accessToken };
+      if (token.value === undefined) {
+        return undefined;
       }
-      const renewed = await renew(session);
-      if (!renewed.ok) {
-        return renewed as { ok: false; error: AuthClientError };
+      const confirmation = await client.me(token.value);
+      if (confirmation.ok) {
+        return confirmation.value;
       }
-      return { ok: true, value: renewed.value?.accessToken };
+      if (confirmation.error.kind !== "unauthenticated") {
+        return stored?.user;
+      }
+      const current = await store.load();
+      const renewed = current ? await renew(current) : undefined;
+      return renewed?.ok ? renewed.value?.user : stored?.user;
     },
   };
 }

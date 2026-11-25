@@ -113,3 +113,76 @@ test("sign-out wipes credentials even when the server is unreachable", async () 
   assert.equal(store.current, undefined);
   assert.equal(await manager.currentUser(), undefined);
 });
+
+function routedFetch(routes: Record<string, () => Response>): typeof fetch {
+  return async (input) => {
+    const path = new URL(String(input)).pathname;
+    const route = routes[path];
+    if (!route) throw new TypeError("offline");
+    return route();
+  };
+}
+
+const unauthenticatedResponse = () =>
+  new Response(JSON.stringify({ code: "unauthenticated", message: "Please sign in again." }), { status: 401 });
+
+test("confirmed user is the server's answer for a live session", async () => {
+  const store = memoryStore(sessionExpiringAt(NOW_SECONDS + 3600));
+  const client = createAuthClient(
+    "https://api.test",
+    routedFetch({
+      "/api/auth/me": () => new Response(JSON.stringify({ id: "user-1", email: "ada@example.com", name: "Ada L" })),
+    }),
+  );
+  const user = await createSessionManager(client, store, () => NOW_SECONDS * 1000).confirmedUser();
+  assert.equal(user?.name, "Ada L");
+});
+
+test("confirmed user clears a session the server has revoked", async () => {
+  const store = memoryStore(sessionExpiringAt(NOW_SECONDS + 3600));
+  const client = createAuthClient(
+    "https://api.test",
+    routedFetch({ "/api/auth/me": unauthenticatedResponse, "/api/auth/refresh": unauthenticatedResponse }),
+  );
+  const user = await createSessionManager(client, store, () => NOW_SECONDS * 1000).confirmedUser();
+  assert.equal(user, undefined);
+  assert.equal(store.current, undefined);
+});
+
+test("confirmed user renews a rejected access token when the refresh token still works", async () => {
+  const renewedSession = sessionExpiringAt(NOW_SECONDS + 3600, "access-2");
+  const store = memoryStore(sessionExpiringAt(NOW_SECONDS + 3600));
+  const client = createAuthClient(
+    "https://api.test",
+    routedFetch({
+      "/api/auth/me": unauthenticatedResponse,
+      "/api/auth/refresh": () => new Response(JSON.stringify(renewedSession)),
+    }),
+  );
+  const user = await createSessionManager(client, store, () => NOW_SECONDS * 1000).confirmedUser();
+  assert.equal(user?.email, "ada@example.com");
+  assert.equal(store.current?.accessToken, "access-2");
+});
+
+test("confirmed user keeps the stored session while the server is unreachable", async () => {
+  const store = memoryStore(sessionExpiringAt(NOW_SECONDS + 3600));
+  const client = createAuthClient("https://api.test", failingFetch);
+  const user = await createSessionManager(client, store, () => NOW_SECONDS * 1000).confirmedUser();
+  assert.equal(user?.email, "ada@example.com");
+  assert.equal(store.current?.accessToken, "access-1");
+});
+
+test("every request identifies itself as the extension so the server keeps cookies out of it", async () => {
+  const seenHeaders: Headers[] = [];
+  const recordingFetch: typeof fetch = async (_input, init) => {
+    seenHeaders.push(new Headers(init?.headers));
+    return new Response("{}", { status: 200 });
+  };
+  const client = createAuthClient("https://api.test", recordingFetch);
+  await client.signIn("a@b.co", "pw");
+  await client.refresh("refresh-1");
+  await client.me("access-1");
+  await client.signOut("access-1");
+  assert.equal(seenHeaders.length, 4);
+  assert.ok(seenHeaders.every((headers) => headers.get("X-Promptizer-Client") === "extension"));
+});

@@ -76,7 +76,7 @@ function renderSignedIn(dispatch: Dispatch, user: AuthUser): HTMLElement[] {
 
 export function renderAccountScreen(dispatch: Dispatch): HTMLElement {
   const body = el("div", { class: "pz-account-body" });
-  void accountSession.currentUser().then((user) => {
+  void accountSession.confirmedUser().then((user) => {
     body.replaceChildren(...(user === undefined ? renderSignedOut(dispatch) : renderSignedIn(dispatch, user)));
   });
   return screenShell(headerSub({ title: "Account" }), [body]);

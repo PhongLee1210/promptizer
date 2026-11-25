@@ -5,7 +5,7 @@ const ACCESS_TOKEN_LIFETIME_SECONDS = 3600;
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "Authorization, Content-Type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 const SIGNED_IN_USER = { id: "user-1", email: "ada@example.com", name: "Ada" };
 
@@ -38,6 +38,10 @@ async function mockAuthApi(page, state) {
         headers: json,
         body: JSON.stringify({ code: "invalid_credentials", message: "Email or password is incorrect." }),
       });
+      return;
+    }
+    if (url.pathname.endsWith("/me")) {
+      request.respond({ status: 200, headers: json, body: JSON.stringify(SIGNED_IN_USER) });
       return;
     }
     if (url.pathname.endsWith("/sign-in")) {

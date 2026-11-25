@@ -1,4 +1,5 @@
-import type { AuthErrorBody, AuthFieldErrors, AuthSession } from "@promptizer/shared";
+import { CLIENT_KIND_HEADER, EXTENSION_CLIENT_KIND } from "@promptizer/shared";
+import type { AuthErrorBody, AuthFieldErrors, AuthSession, AuthUser } from "@promptizer/shared";
 
 export type AuthClientError =
   | { kind: "invalid_credentials"; message: string }
@@ -12,6 +13,7 @@ export interface AuthClient {
   signIn(email: string, password: string): Promise<AuthClientResult<AuthSession>>;
   refresh(refreshToken: string): Promise<AuthClientResult<AuthSession>>;
   signOut(accessToken: string): Promise<AuthClientResult<null>>;
+  me(accessToken: string): Promise<AuthClientResult<AuthUser>>;
 }
 
 const RETRYABLE_ERROR: AuthClientError = {
@@ -65,14 +67,21 @@ export function createAuthClient(apiOrigin: string, fetchImplementation: typeof 
   }
 
   const readSession = (response: Response) => response.json() as Promise<AuthSession>;
-  const jsonHeaders = { "Content-Type": "application/json" };
+  const clientHeaders = { [CLIENT_KIND_HEADER]: EXTENSION_CLIENT_KIND };
+  const jsonHeaders = { "Content-Type": "application/json", ...clientHeaders };
+  const bearerHeaders = (accessToken: string) => ({ Authorization: `Bearer ${accessToken}`, ...clientHeaders });
 
   return {
     signIn: (email, password) =>
       send("/api/auth/sign-in", { headers: jsonHeaders, body: JSON.stringify({ email, password }) }, readSession),
     refresh: (refreshToken) =>
       send("/api/auth/refresh", { headers: jsonHeaders, body: JSON.stringify({ refreshToken }) }, readSession),
-    signOut: (accessToken) =>
-      send("/api/auth/sign-out", { headers: { Authorization: `Bearer ${accessToken}` } }, async () => null),
+    me: (accessToken) =>
+      send(
+        "/api/auth/me",
+        { method: "GET", headers: bearerHeaders(accessToken) },
+        (response) => response.json() as Promise<AuthUser>,
+      ),
+    signOut: (accessToken) => send("/api/auth/sign-out", { headers: bearerHeaders(accessToken) }, async () => null),
   };
 }
