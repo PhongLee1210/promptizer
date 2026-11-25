@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "node --env-file-if-exists=.env --test \"tests/**/*.test.ts\"",
+    "test": "node --import ./tests/alias-loader.mjs --env-file-if-exists=.env --test \"tests/**/*.test.ts\"",
     "typecheck": "tsc --noEmit",
     "test:e2e": "pnpm run build && node --env-file-if-exists=.env e2e/run.mjs"
   },
