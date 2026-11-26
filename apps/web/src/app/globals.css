@@ -102,4 +102,10 @@
     @apply bg-background font-sans text-foreground antialiased;
   }
 
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="menuitem"]:not([data-disabled]),
+  summary {
+    cursor: pointer;
+  }
 }
