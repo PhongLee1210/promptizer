@@ -10,7 +10,8 @@ interface AuthCardProps {
 
 export function AuthCard({ title, description, children, footer }: AuthCardProps) {
   return (
-    <main className="flex min-h-svh items-center justify-center p-6">
+    <main className="flex min-h-svh flex-col items-center justify-center gap-6 bg-muted p-6 md:p-10">
+      <span className="text-xl font-semibold tracking-tight">Promptizer</span>
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle className="text-xl">{title}</CardTitle>

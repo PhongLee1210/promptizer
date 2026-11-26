@@ -1,0 +1,5 @@
+- apps/web theme mirrors shadcn-ui new-york-v4 defaults: neutral oklch scale, --radius 0.625rem, border oklch(0.922 0 0) light / white 10% dark, input white 15% dark, ring/primary keep brand blue (light primary oklch(0.55 0.2 262), dark primary lighter oklch(0.7 0.15 258)).
+- Tokens live only in apps/web/src/app/globals.css (:root = light, [data-pz-mode="dark"] = dark); components/ui/* are untouched upstream shadcn output, so restyle through tokens, not by editing them.
+- packages/ui/tokens.css (--pz-*) is extension-only now; web uses it just for the font fallback var.
+- Desktop shell uses Sidebar variant="inset" (dashboard-01 look); content gap is gap-4 md:gap-6, padding p-4 md:p-6; auth pages use bg-muted with a centered max-w-sm card.
+- Light/dark switch is data-pz-mode on <html> (pre-paint script), Tailwind dark variant is bound to it.

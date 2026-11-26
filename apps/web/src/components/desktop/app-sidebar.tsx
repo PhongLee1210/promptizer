@@ -73,7 +73,7 @@ export function AppSidebar() {
   const closeMobileSidebar = () => setOpenMobile(false);
 
   return (
-    <Sidebar collapsible="offcanvas">
+    <Sidebar collapsible="offcanvas" variant="inset">
       <SidebarHeader className="gap-3 p-3">
         <Link
           href="/prompts"
