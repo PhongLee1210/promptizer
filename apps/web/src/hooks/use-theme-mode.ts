@@ -1,19 +1,14 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { usePreferencesStore } from "@/stores/preferences/preferences-provider";
 
 export type ThemeMode = "light" | "dark";
 
-function subscribe(onChange: () => void): () => void {
-  const observer = new MutationObserver(onChange);
-  observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-pz-mode"] });
-  return () => observer.disconnect();
-}
-
-function readMode(): ThemeMode {
-  return document.documentElement.getAttribute("data-pz-mode") === "light" ? "light" : "dark";
-}
-
 export function useThemeMode(): ThemeMode {
-  return useSyncExternalStore(subscribe, readMode, () => "dark");
+  return usePreferencesStore((state) => state.resolvedThemeMode);
+}
+
+export function useSetThemeMode(): (mode: ThemeMode) => void {
+  const setPreference = usePreferencesStore((state) => state.setPreference);
+  return (mode) => setPreference("theme_mode", mode);
 }

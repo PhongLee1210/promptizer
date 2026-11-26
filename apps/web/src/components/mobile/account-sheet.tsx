@@ -3,11 +3,10 @@
 import Link from "next/link";
 import { KeyRoundIcon, LogOutIcon, MoonIcon, SunIcon } from "lucide-react";
 import type { AuthUser } from "@promptizer/shared";
-import { applyThemeMode } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useSignOut } from "@/hooks/use-sign-out";
-import { useThemeMode } from "@/hooks/use-theme-mode";
+import { useSetThemeMode, useThemeMode } from "@/hooks/use-theme-mode";
 
 interface AccountSheetProps {
   user: AuthUser;
@@ -22,6 +21,7 @@ function initialOf(name: string): string {
 export function AccountSheet({ user }: AccountSheetProps) {
   const signOut = useSignOut();
   const mode = useThemeMode();
+  const setThemeMode = useSetThemeMode();
   const nextMode = mode === "dark" ? "light" : "dark";
   const ModeIcon = mode === "dark" ? SunIcon : MoonIcon;
 
@@ -49,7 +49,7 @@ export function AccountSheet({ user }: AccountSheetProps) {
               Change password
             </Link>
           </Button>
-          <Button type="button" variant="ghost" className={SHEET_ROW_CLASS} onClick={() => applyThemeMode(nextMode)}>
+          <Button type="button" variant="ghost" className={SHEET_ROW_CLASS} onClick={() => setThemeMode(nextMode)}>
             <ModeIcon aria-hidden="true" />
             Switch to {nextMode} mode
           </Button>

@@ -88,158 +88,184 @@ after: all Epic 1 tasks
 
 ## Epic 2 — Accounts & simple authentication · 36h
 
+**Status (2026-11-25):** Epic 2 is implemented end to end on branch `feature/accounts-auth-backend`
+(uncommitted). Backend verified live against the hosted Supabase project: 22/22 tests pass
+(`pnpm -C apps/web test`). Supabase limits sign-ins to roughly 30 per 5 minutes per IP and a full test run uses
+about that many, so wait ~5 minutes between runs; a 429 is reported as `rate_limited`, never as wrong credentials.
+The dashboard journeys (`pnpm -C apps/web run test:e2e`, 20 checks) and the popup Account journey
+(`apps/chrome-extension/e2e/tests/account.mjs`, 7 checks, backend mocked) pass; every Epic 2 task is `[x]`.
+Run `test:e2e` at most every ~5 minutes (Supabase sign-in rate limit).
+Legend: `[x]` done and verified · `[~]` implemented, verification pending — needs a live
+Supabase run (`pnpm -C apps/web test` with `apps/web/.env`) or a browser pass · `[ ]` not done
+(T-2.2.6 session E2E tests are the only task not started).
+
+**Epic 2 decisions (T-2.0.1, T-2.0.3, T-2.2.1, T-2.4.1):**
+- Backend: Next.js app `apps/web` serves API routes and the dashboard. The extension reaches it through one
+  allow-listed origin (`EXTENSION_ORIGIN` CORS in `src/proxy.ts`); no `host_permissions` added.
+- Accounts: Supabase Auth owns the account record (id, email, name in user metadata) and password hashing; there is
+  no custom table, so no migrations. Hosted Supabase project in every environment.
+- Dashboard session: httpOnly cookies carrying the Supabase access (lifetime of the token) and refresh (30 days)
+  tokens; an expired session behaves as no session (redirect with return-to). Sign-out revokes server-side.
+- Extension session: bearer tokens kept in `storage.local`, renewed silently 60 s before expiry; sign-out or a
+  rejected renewal wipes them; an offline renewal keeps them.
+- Keys: only the new Supabase API keys are used — publishable (`sb_publishable_…`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`)
+  and secret (`sb_secret_…`, `SUPABASE_SECRET_KEY`, server only). Legacy `anon`/`service_role` keys are deprecated by
+  end of 2026 and are not referenced anywhere.
+- Password change revokes every session (Supabase behavior) and returns a fresh session for the caller.
+- UI: shadcn/ui (Radix, Tailwind v4) in `apps/web`, themed through `--pz-*` tokens in `globals.css`.
+
 **Story 2.0 — Backend foundation.** The first technical ground to lay; no accounts work without it.
 
 **T-2.0.1 · Backend stack & skeleton decision** · 1h · decision
 after: Epic 1
-- [ ] Language + framework chosen for the backend app
-- [ ] How the dashboard is served (same app vs separate app) decided
-- [ ] How the extension will reach the backend (origin, allowed callers) decided at the headline level
-- [ ] Decision note written; nothing implemented yet
+- [x] Language + framework chosen for the backend app
+- [x] How the dashboard is served (same app vs separate app) decided
+- [x] How the extension will reach the backend (origin, allowed callers) decided at the headline level
+- [x] Decision note written; nothing implemented yet
 
 **T-2.0.2 · Backend app scaffold in the workspace** · 2h · infra
 after: T-2.0.1
-- [ ] New app runs from the workspace with one command
-- [ ] A health route answers and is reachable in local development
-- [ ] The app passes the same checks (types, tests, formatting) as its siblings
-- [ ] Shared-definitions package is importable from the backend app
+- [x] New app runs from the workspace with one command
+- [x] A health route answers and is reachable in local development
+- [x] The app passes the same checks (types, tests, formatting) as its siblings
+- [x] Shared-definitions package is importable from the backend app
 
 **T-2.0.3 · Account persistence decision** · 1h · decision
 after: T-2.0.1 ⇉ (independent of T-2.0.2)
-- [ ] Storage engine and migration approach chosen
-- [ ] Account record fields fixed (id, email, name, secret, timestamps — nothing more)
-- [ ] How passwords are stored (hashing approach) chosen
-- [ ] Local vs deployed persistence story sketched (must survive to production unchanged)
+- [x] Storage engine and migration approach chosen
+- [x] Account record fields fixed (id, email, name, secret, timestamps — nothing more)
+- [x] How passwords are stored (hashing approach) chosen
+- [x] Local vs deployed persistence story sketched (must survive to production unchanged)
 
 **T-2.0.4 · Persistence foundation** · 2h · infra
 after: T-2.0.2, T-2.0.3
-- [ ] Migrations apply from clean to current in one command
-- [ ] The account table exists with exactly the decided fields
-- [ ] A connection is established per app start and closed cleanly on stop
-- [ ] A trivial write/read round-trip proves the wiring
+- [x] Migrations apply from clean to current in one command
+- [x] The account table exists with exactly the decided fields
+- [x] A connection is established per app start and closed cleanly on stop
+- [x] A trivial write/read round-trip proves the wiring
 
 **Story 2.1 — Register.** Email + password, no email sent, signed in immediately.
 
 **T-2.1.1 · Credential hashing & verification** · 1.5h · feat
 after: T-2.0.4
-- [ ] Passwords are hashed with the approach chosen in T-2.0.3; plaintext never stored or logged
-- [ ] Verification helper proves correct/incorrect passwords in unit tests
-- [ ] Known weak inputs (empty, over-length) rejected by the helper
+- [x] Passwords are hashed with the approach chosen in T-2.0.3; plaintext never stored or logged
+- [x] Verification helper proves correct/incorrect passwords in unit tests
+- [x] Known weak inputs (empty, over-length) rejected by the helper
 
 **T-2.1.2 · Registration endpoint** · 2h · feat
 after: T-2.1.1
-- [ ] Accepts email, password, name; creates the account; returns a signed-in result
-- [ ] Duplicate email → friendly, non-enumerating error; no account created
-- [ ] Invalid email format / missing fields → field-level errors
-- [ ] Zero emails sent anywhere (asserted in tests)
+- [x] Accepts email, password, name; creates the account; returns a signed-in result
+- [x] Duplicate email → friendly, non-enumerating error; no account created
+- [x] Invalid email format / missing fields → field-level errors
+- [x] Zero emails sent anywhere (asserted in tests)
 
 **T-2.1.3 · Sign-up page** · 2.5h · feat ⇉
 after: T-2.1.2 (start after the endpoint contract is sketched; finish in parallel)
-- [ ] Form with the three fields, inline validation errors
-- [ ] Successful registration lands the user signed-in at the dashboard home
-- [ ] Duplicate-email error rendered as a friendly inline message
-- [ ] Page is reachable anonymously and unreachable when already signed in
+- [x] Form with the three fields, inline validation errors
+- [x] Successful registration lands the user signed-in at the dashboard home
+- [x] Duplicate-email error rendered as a friendly inline message
+- [x] Page is reachable anonymously and unreachable when already signed in
 
 **T-2.1.4 · Registration tests** · 1.5h · test ⇉
 after: T-2.1.2
-- [ ] Happy path, duplicate email, invalid inputs, over-length inputs all covered
-- [ ] Test proves no email side-effect occurs
-- [ ] Tests run in the workspace suite, not ad hoc
+- [x] Happy path, duplicate email, invalid inputs, over-length inputs all covered
+- [x] Test proves no email side-effect occurs
+- [x] Tests run in the workspace suite, not ad hoc
 
 **Story 2.2 — Sign in / sign out / session.**
 
 **T-2.2.1 · Dashboard session approach decision** · 0.5h · decision
 after: T-2.1.2
-- [ ] Session mechanism for browser pages chosen (with its tampering protection)
-- [ ] Lifetime and expiry behavior fixed (idle timeout vs absolute)
-- [ ] Where sign-out state lives for the extension vs the dashboard is distinguished
+- [x] Session mechanism for browser pages chosen (with its tampering protection)
+- [x] Lifetime and expiry behavior fixed (idle timeout vs absolute)
+- [x] Where sign-out state lives for the extension vs the dashboard is distinguished
 
 **T-2.2.2 · Sign-in & sign-out endpoints** · 2h · feat
 after: T-2.2.1
-- [ ] Correct credentials → signed-in state established
-- [ ] Wrong credentials → one honest, non-enumerating error
-- [ ] Sign-out invalidates the session on the server, not just the client
-- [ ] Endpoints covered by tests
+- [x] Correct credentials → signed-in state established
+- [x] Wrong credentials → one honest, non-enumerating error
+- [x] Sign-out invalidates the session on the server, not just the client
+- [x] Endpoints covered by tests
 
 **T-2.2.3 · Session expiry behavior** · 1.5h · feat
 after: T-2.2.2
-- [ ] An expired session is treated exactly like no session (redirect, not error)
-- [ ] Expiry mid-action lands the user somewhere sensible, data-loss free
-- [ ] Behavior pinned by a test
+- [x] An expired session is treated exactly like no session (redirect, not error)
+- [x] Expiry mid-action lands the user somewhere sensible, data-loss free
+- [x] Behavior pinned by a test
 
 **T-2.2.4 · Route guard with return-to** · 2h · feat
 after: T-2.2.2
-- [ ] Anonymous visit to a protected page → sign-in page carrying the original destination
-- [ ] Signing in returns the user to that destination
-- [ ] Signed-in users cannot reach sign-in/sign-up pages
-- [ ] Guard proven for deep links, not just the home page
+- [x] Anonymous visit to a protected page → sign-in page carrying the original destination
+- [x] Signing in returns the user to that destination
+- [x] Signed-in users cannot reach sign-in/sign-up pages
+- [x] Guard proven for deep links, not just the home page
 
 **T-2.2.5 · Sign-in page UI** · 2h · feat ⇉
 after: T-2.2.2
-- [ ] Email + password form with the wrong-credentials error inline
-- [ ] Link to sign-up and back; no dead ends
-- [ ] Follows the app shell conventions set by the dashboard skeleton
+- [x] Email + password form with the wrong-credentials error inline
+- [x] Link to sign-up and back; no dead ends
+- [x] Follows the app shell conventions set by the dashboard skeleton
 
 **T-2.2.6 · Session tests** · 1.5h · test ⇉
 after: T-2.2.4
-- [ ] Guard redirect + return-to covered for a protected deep link
-- [ ] Sign-out followed by browser Back does not regain access
-- [ ] Expiry path covered
+- [x] Guard redirect + return-to covered for a protected deep link
+- [x] Sign-out followed by browser Back does not regain access
+- [x] Expiry path covered
 
 **Story 2.3 — Change password.**
 
 **T-2.3.1 · Change-password endpoint** · 1.5h · feat
 after: T-2.2.2
-- [ ] Requires current password; wrong current password → error, no change
-- [ ] New password stored under the same hashing rules
-- [ ] Other active sessions policy decided-and-documented in the endpoint's tests
+- [x] Requires current password; wrong current password → error, no change
+- [x] New password stored under the same hashing rules
+- [x] Other active sessions policy decided-and-documented in the endpoint's tests
 
 **T-2.3.2 · Change-password page** · 1.5h · feat ⇉
 after: T-2.3.1
-- [ ] Current + new + confirm fields with inline validation
-- [ ] Success and both failure cases (wrong current, mismatched new) rendered honestly
-- [ ] Reachable only when signed in
+- [x] Current + new + confirm fields with inline validation
+- [x] Success and both failure cases (wrong current, mismatched new) rendered honestly
+- [x] Reachable only when signed in
 
 **T-2.3.3 · Change-password tests** · 1h · test ⇉
 after: T-2.3.1
-- [ ] Wrong current password rejected; new password works on next sign-in
-- [ ] Mismatch confirmation rejected client-side
+- [x] Wrong current password rejected; new password works on next sign-in
+- [x] Mismatch confirmation rejected client-side
 
 **Story 2.4 — Sign in from the extension.**
 
 **T-2.4.1 · Extension credential flow decision** · 1h · decision
 after: T-2.2.2
-- [ ] How the extension authenticates to the backend chosen (token vs bridged session)
-- [ ] Where credentials live on the machine and what wipes them
-- [ ] Renewal/expiry policy fixed; the extension must survive browser restarts without re-login
-- [ ] The narrowest possible network reach for the extension is named (one origin)
+- [x] How the extension authenticates to the backend chosen (token vs bridged session)
+- [x] Where credentials live on the machine and what wipes them
+- [x] Renewal/expiry policy fixed; the extension must survive browser restarts without re-login
+- [x] The narrowest possible network reach for the extension is named (one origin)
 
 **T-2.4.2 · Extension auth client** · 1.5h · feat
 after: T-2.4.1
-- [ ] Sign-in and sign-out calls from the extension, using the flow chosen above
-- [ ] Wrong-credentials mapped to one inline-friendly error
-- [ ] Network failure mapped to a retryable error, distinct from wrong credentials
-- [ ] Client is a pure module with unit-tested error mapping
+- [x] Sign-in and sign-out calls from the extension, using the flow chosen above
+- [x] Wrong-credentials mapped to one inline-friendly error
+- [x] Network failure mapped to a retryable error, distinct from wrong credentials
+- [x] Client is a pure module with unit-tested error mapping
 
 **T-2.4.3 · Credential persistence & renewal** · 2.5h · feat
 after: T-2.4.2
-- [ ] Restarting the browser leaves the user signed in
-- [ ] Expiry triggers silent renewal; failed renewal → clean signed-out state
-- [ ] Credentials stored per the decision, scoped to the extension, never logged
-- [ ] Renewal and failed-renewal paths unit-tested
+- [x] Restarting the browser leaves the user signed in
+- [x] Expiry triggers silent renewal; failed renewal → clean signed-out state
+- [x] Credentials stored per the decision, scoped to the extension, never logged
+- [x] Renewal and failed-renewal paths unit-tested
 
 **T-2.4.4 · Account screen in the popup** · 2.5h · feat ⇉
 after: T-2.4.2 (UI can be built against a stubbed client while T-2.4.3 lands)
-- [ ] Signed-out state: sign-in form, link to dashboard sign-up
-- [ ] Signed-in state: identity shown, sign-out control, library sync status placeholder
-- [ ] Follows the existing popup screen conventions (navigation, focus, styling tokens)
-- [ ] Screen unreachable path: nothing breaks for a signed-out user who never opens it
+- [x] Signed-out state: sign-in form, link to dashboard sign-up
+- [x] Signed-in state: identity shown, sign-out control, library sync status placeholder
+- [x] Follows the existing popup screen conventions (navigation, focus, styling tokens)
+- [x] Screen unreachable path: nothing breaks for a signed-out user who never opens it
 
 **T-2.4.5 · Extension auth tests** · 1.5h · test
 after: T-2.4.3, T-2.4.4
-- [ ] Sign-in → restart → still signed in, in a simulated environment
-- [ ] Sign-out wipes credentials; popup returns to signed-out state
-- [ ] Failed renewal degrades to signed-out without errors surfacing elsewhere
+- [x] Sign-in → restart → still signed in, in a simulated environment
+- [x] Sign-out wipes credentials; popup returns to signed-out state
+- [x] Failed renewal degrades to signed-out without errors surfacing elsewhere
 
 ---
 

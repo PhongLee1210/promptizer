@@ -444,6 +444,30 @@ async function desktopShellJourney(browser) {
   }
 }
 
+async function themeJourney(browser) {
+  const context = await browser.createBrowserContext();
+  const page = await context.newPage();
+  try {
+    await page.goto(`${BASE_URL}/sign-in`);
+    const initial = await page.evaluate(() => ({ ...document.documentElement.dataset }));
+    check("promptizer preset is applied", initial.themePreset === "promptizer", String(initial.themePreset));
+    await page.setCookie({ name: "theme_mode", value: "dark", url: BASE_URL });
+    await page.reload();
+    const stored = await page.evaluate(() => ({
+      mode: document.documentElement.dataset.themeMode,
+      dark: document.documentElement.classList.contains("dark"),
+    }));
+    check("stored dark mode applies before first paint", stored.mode === "dark" && stored.dark, JSON.stringify(stored));
+    const requestedHosts = await page.evaluate(() =>
+      performance.getEntriesByType("resource").map((entry) => new URL(entry.name).host),
+    );
+    const thirdParty = requestedHosts.filter((host) => host !== new URL(BASE_URL).host);
+    check("no third-party requests", thirdParty.length === 0, thirdParty.join(","));
+  } finally {
+    await context.close();
+  }
+}
+
 const MINIMUM_TAP_TARGET_PX = 44;
 
 async function mobileShellJourney(browser) {
@@ -502,6 +526,7 @@ try {
   await waitForServer();
   browser = await puppeteer.launch({ headless: true, args: SANDBOX_ARGS, defaultViewport: DESKTOP_VIEWPORT });
   const page = await browser.newPage();
+  await journey("theme", () => themeJourney(browser));
   await journey("anonymous guard", () => anonymousJourney(page));
   await journey("registration", () => registrationJourney(page));
   await journey("duplicate registration", () => duplicateRegistrationJourney(browser));
