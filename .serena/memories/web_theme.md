@@ -1,5 +1,7 @@
-- apps/web theme mirrors shadcn-ui new-york-v4 defaults: neutral oklch scale, --radius 0.625rem, border oklch(0.922 0 0) light / white 10% dark, input white 15% dark, ring/primary keep brand blue (light primary oklch(0.55 0.2 262), dark primary lighter oklch(0.7 0.15 258)).
-- Tokens live only in apps/web/src/app/globals.css (:root = light, [data-pz-mode="dark"] = dark); components/ui/* are untouched upstream shadcn output, so restyle through tokens, not by editing them.
-- packages/ui/tokens.css (--pz-*) is extension-only now; web uses it just for the font fallback var.
-- Desktop shell uses Sidebar variant="inset" (dashboard-01 look); content gap is gap-4 md:gap-6, padding p-4 md:p-6; auth pages use bg-muted with a centered max-w-sm card.
-- Light/dark switch is data-pz-mode on <html> (pre-paint script), Tailwind dark variant is bound to it.
+- apps/web UI is adapted from the MIT next-shadcn-admin-dashboard template; components/ui/* are template output, restyle through tokens/presets, never edit them (sonner is the one patched file: reads theme from the preferences store instead of next-themes).
+- Theme = preferences store (src/stores/preferences, zustand) + registry in src/lib/preferences/preferences-config.ts. Attributes on <html>: data-theme-mode (light|dark|system, default system), data-theme-preset, data-content-layout, data-navbar-style, data-sidebar-variant, data-sidebar-collapsible; resolved dark mode is the `.dark` class. Persisted in client cookies; src/scripts/theme-boot.tsx applies them before paint.
+- Brand colour lives only in src/styles/presets/promptizer.css (light primary oklch(0.55 0.2 262), dark oklch(0.7 0.15 258)) and the matching entry in THEME_PRESET_OPTIONS (theme.ts, hand-maintained; the template generator script is not vendored). New preset = new css file + entry + import in globals.css.
+- Font is Inter via next/font (--font-inter); the template font preference was removed.
+- Desktop shell: components/desktop/app-shell.tsx (server, reads sidebar_state cookie and preferences) with sidebar/ and header/ parts; nav items in src/navigation/sidebar/sidebar-items.ts; header search is components/global-search.tsx (prompt search, `/` shortcut), not the template command palette.
+- Mobile uses the same tokens; its theme toggle goes through useSetThemeMode (hooks/use-theme-mode.ts).
+- Packs feature does not exist; only prompts and auth/account remain.
