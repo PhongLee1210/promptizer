@@ -33,10 +33,10 @@ test("desktop, tablet and missing user agents classify as desktop", () => {
 });
 
 test("only registered routes are rewritten for mobile", () => {
-  for (const route of ["/", "/prompts", "/prompts/new", "/packs", "/account/password"]) {
+  for (const route of ["/", "/prompts", "/prompts/new", "/account/password"]) {
     assert.equal(isMobileSplitRoute(route), true, route);
   }
-  for (const route of ["/sign-in", "/sign-up", "/m/prompts", "/prompts/unknown", "/api/auth/me"]) {
+  for (const route of ["/sign-in", "/sign-up", "/packs", "/m/prompts", "/prompts/unknown", "/api/auth/me"]) {
     assert.equal(isMobileSplitRoute(route), false, route);
   }
 });

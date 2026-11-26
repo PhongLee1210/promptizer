@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
 
 const PREVIEW_LINE_COUNT = 4;
 const PREVIEW_LINE_CLAMP_CLASS = "line-clamp-4";
@@ -8,13 +7,12 @@ interface PromptCardProps {
   id: string;
   title: string;
   previewText: string;
-  packName?: string;
   updatedAt: Date;
 }
 
 const updatedAtFormatter = new Intl.DateTimeFormat("en", { dateStyle: "medium" });
 
-export function PromptCard({ id, title, previewText, packName, updatedAt }: PromptCardProps) {
+export function PromptCard({ id, title, previewText, updatedAt }: PromptCardProps) {
   return (
     <Link
       href={`/prompts/${id}`}
@@ -25,8 +23,7 @@ export function PromptCard({ id, title, previewText, packName, updatedAt }: Prom
       <p className={`${PREVIEW_LINE_CLAMP_CLASS} grow text-sm whitespace-pre-line text-muted-foreground`}>
         {previewText}
       </p>
-      <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-        {packName ? <Badge variant="outline">{packName}</Badge> : <span />}
+      <div className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
         <time dateTime={updatedAt.toISOString()}>{updatedAtFormatter.format(updatedAt)}</time>
       </div>
     </Link>

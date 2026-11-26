@@ -438,6 +438,11 @@ async function desktopShellJourney(browser) {
     await page.click('[data-sidebar="menu-button"][href="/prompts/new"]');
     await waitForPath(page, "/prompts/new");
 
+    const packsResponse = await page.goto(`${BASE_URL}/packs`);
+    check("packs route no longer exists", packsResponse?.status() === 404, String(packsResponse?.status()));
+
+    await page.goto(`${BASE_URL}${SIGNED_IN_LANDING_PATH}`);
+    await waitForText(page, "No prompts yet");
     await page.click('button[aria-label^="Current theme"]');
     const modeAfter = await page.evaluate(() => document.documentElement.dataset.themeMode);
     check("theme switcher cycles from system to light", modeAfter === "light", String(modeAfter));
@@ -509,7 +514,7 @@ async function mobileShellJourney(browser) {
     check("mobile has no duplicate new-prompt button in the page header", layout.newPromptActions === 0);
     check(
       "mobile tabs are tappable",
-      layout.tabHeights.length === 3 && layout.tabHeights.every((height) => height >= MINIMUM_TAP_TARGET_PX),
+      layout.tabHeights.length === 2 && layout.tabHeights.every((height) => height >= MINIMUM_TAP_TARGET_PX),
       layout.tabHeights.join(","),
     );
 
