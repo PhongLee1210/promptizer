@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronRightIcon, FileTextIcon, LayersIcon, PlusIcon } from "lucide-react";
+import { BrandLogo } from "@/components/brand-logo";
 import { Button } from "@/components/ui/button";
 import {
   Sidebar,
@@ -75,12 +76,7 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="offcanvas" variant="inset">
       <SidebarHeader className="gap-3 p-3">
-        <Link
-          href="/prompts"
-          className="rounded-md px-2 py-1 text-base font-semibold tracking-tight focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-        >
-          Promptizer
-        </Link>
+        <BrandLogo className="px-2 py-1" onNavigate={closeMobileSidebar} />
         <Button asChild className="w-full justify-start">
           <Link href="/prompts/new" onClick={closeMobileSidebar}>
             <PlusIcon aria-hidden="true" />

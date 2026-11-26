@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import type { AuthUser } from "@promptizer/shared";
 import type { LucideIcon } from "lucide-react";
 import { FileTextIcon, LayersIcon, PlusIcon } from "lucide-react";
+import { BrandLogo } from "@/components/brand-logo";
 import { AccountSheet } from "@/components/mobile/account-sheet";
 import { HeaderSearch } from "@/components/mobile/header-search";
 
@@ -63,7 +64,7 @@ export function MobileShell({ user, children }: MobileShellProps) {
   return (
     <div className="flex h-dvh flex-col">
       <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center justify-between gap-1 border-b bg-background px-3 pt-[env(safe-area-inset-top)] box-content">
-        <span className="text-sm font-semibold">Promptizer</span>
+        <BrandLogo />
         <div className="flex items-center gap-1">
           <HeaderSearch />
           <AccountSheet user={user} />
