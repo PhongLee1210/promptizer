@@ -430,15 +430,33 @@ async function desktopShellJourney(browser) {
     const sidebar = await page.evaluate(() => ({
       newPromptActions: [...document.querySelectorAll("a")].filter((link) => link.textContent.trim() === "New prompt")
         .length,
-      packsGroupLabels: [...document.querySelectorAll('[data-sidebar="group-label"]')].length,
+      navLabels: [...document.querySelectorAll('[data-sidebar="menu-button"]')].map((item) => item.textContent.trim()),
     }));
     check("desktop shows a single new-prompt action", sidebar.newPromptActions === 1, String(sidebar.newPromptActions));
-    check("packs live under the prompt packs menu item", sidebar.packsGroupLabels === 0);
+    check("sidebar lists prompt navigation only", !sidebar.navLabels.some((label) => /pack/i.test(label)));
 
-    await page.click('button[aria-label="Collapse packs"]');
-    await page.waitForSelector('button[aria-label="Expand packs"]');
-    const packsHidden = await page.$eval("#sidebar-packs-list", (list) => list.inert);
-    check("packs list collapses", packsHidden);
+    await page.click('[data-sidebar="menu-button"][href="/prompts/new"]');
+    await waitForPath(page, "/prompts/new");
+
+    await page.click('button[aria-label^="Current theme"]');
+    const modeAfter = await page.evaluate(() => document.documentElement.dataset.themeMode);
+    check("theme switcher cycles from system to light", modeAfter === "light", String(modeAfter));
+
+    await page.click('button[data-sidebar="trigger"]');
+    await page.waitForFunction(() => document.cookie.includes("sidebar_state=false"));
+    await page.reload();
+    const collapsed = await page.$eval('[data-slot="sidebar"]', (node) => node.getAttribute("data-state"));
+    check("collapsed sidebar survives reload", collapsed === "collapsed", String(collapsed));
+
+    await page.click('button[aria-label^="Account menu"]');
+    await waitForText(page, "Change password");
+    await page.evaluate(() => {
+      [...document.querySelectorAll('[role="menuitem"]')]
+        .find((item) => item.textContent.trim() === "Sign out")
+        .click();
+    });
+    await waitForPath(page, "/sign-in");
+    check("desktop account menu signs out", true);
   } finally {
     await context.close();
   }
