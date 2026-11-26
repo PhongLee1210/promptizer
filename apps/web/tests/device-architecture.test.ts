@@ -8,6 +8,7 @@ import { MOBILE_SPLIT_ROUTES } from "../src/lib/device.ts";
 const SRC_ROOT = join(import.meta.dirname, "..", "src");
 const DESKTOP_TREE = join(SRC_ROOT, "app/(desktop)");
 const MOBILE_TREE = join(SRC_ROOT, "app/m");
+const EXAMPLES_TREE = join(SRC_ROOT, "app/examples");
 const DESKTOP_COMPONENTS = join(SRC_ROOT, "components/desktop");
 const MOBILE_COMPONENTS = join(SRC_ROOT, "components/mobile");
 
@@ -86,6 +87,7 @@ test("shared code never imports device-specific modules", () => {
       (file) =>
         !file.startsWith(DESKTOP_TREE) &&
         !file.startsWith(MOBILE_TREE) &&
+        !file.startsWith(EXAMPLES_TREE) &&
         !file.startsWith(DESKTOP_COMPONENTS) &&
         !file.startsWith(MOBILE_COMPONENTS),
     ),

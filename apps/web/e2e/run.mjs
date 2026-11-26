@@ -153,6 +153,12 @@ async function anonymousJourney(page) {
     (await currentPathAndQuery(page)) === "/sign-in?next=%2Faccount%2Fpassword",
     await currentPathAndQuery(page),
   );
+  await page.goto(`${BASE_URL}/examples/default`);
+  check(
+    "anonymous examples page redirects to sign-in",
+    (await currentPathAndQuery(page)).startsWith("/sign-in?next="),
+    await currentPathAndQuery(page),
+  );
   await page.goto(`${BASE_URL}/sign-up`);
   check("sign-up page is reachable anonymously", (await currentPathAndQuery(page)) === "/sign-up");
 }
@@ -453,6 +459,20 @@ async function desktopShellJourney(browser) {
     const collapsed = await page.$eval('[data-slot="sidebar"]', (node) => node.getAttribute("data-state"));
     check("collapsed sidebar survives reload", collapsed === "collapsed", String(collapsed));
 
+    await page.goto(`${BASE_URL}/examples`);
+    await waitForText(page, "Pre-built pages and patterns");
+    const exampleLinks = await page.$$eval('main a[href^="/examples/"]', (links) => links.length);
+    check("examples gallery lists the sample pages", exampleLinks >= 30, String(exampleLinks));
+
+    await page.goto(`${BASE_URL}/examples/default`);
+    await page.waitForSelector("svg.recharts-surface", { timeout: UI_TIMEOUT_MS });
+    check("sample dashboard renders its chart inside the shell", true);
+
+    await page.goto(`${BASE_URL}/examples/auth/v1/login`);
+    await waitForText(page, "Login");
+    check("sample auth page renders", true);
+
+    await page.goto(`${BASE_URL}${SIGNED_IN_LANDING_PATH}`);
     await page.click('button[aria-label^="Account menu"]');
     await waitForText(page, "Change password");
     await page.evaluate(() => {
