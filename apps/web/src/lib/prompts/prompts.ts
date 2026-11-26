@@ -4,8 +4,8 @@ export interface PromptSummary {
   id: string;
   title: string;
   body: string;
-  source: PromptSource;
-  category: string;
+  source: PromptSource | null;
+  category: string | null;
   tags: string[];
   updatedAt: Date;
 }
@@ -51,7 +51,9 @@ export function filterPrompts(prompts: PromptSummary[], { query, tag }: Pick<Pro
     const matchesTag = !tag || prompt.tags.includes(tag);
     const matchesQuery =
       !needle ||
-      [prompt.title, prompt.body, prompt.category, ...prompt.tags].some((text) => text.toLowerCase().includes(needle));
+      [prompt.title, prompt.body, prompt.category ?? "", ...prompt.tags].some((text) =>
+        text.toLowerCase().includes(needle),
+      );
     return matchesTag && matchesQuery;
   });
 }

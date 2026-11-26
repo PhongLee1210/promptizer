@@ -23,8 +23,8 @@ export function PromptTable({ prompts }: { prompts: PromptSummary[] }) {
               <TableCell className="max-w-80 truncate font-medium" title={prompt.title}>
                 {prompt.title}
               </TableCell>
-              <TableCell>{prompt.source}</TableCell>
-              <TableCell>{prompt.category}</TableCell>
+              <TableCell>{prompt.source ?? "—"}</TableCell>
+              <TableCell>{prompt.category ?? "—"}</TableCell>
               <TableCell>
                 <div className="flex flex-wrap gap-1">
                   {prompt.tags.map((tag) => (

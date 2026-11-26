@@ -21,14 +21,18 @@ export function PromptCard({ prompt }: PromptCardProps) {
         <p className="line-clamp-8 text-sm leading-relaxed break-words whitespace-pre-line">{prompt.body}</p>
       </CardContent>
       <CardFooter className="flex-wrap gap-2 px-4 pb-4">
-        <Badge variant="secondary">
-          <SparklesIcon aria-hidden="true" />
-          {prompt.source}
-        </Badge>
-        <Badge variant="outline">
-          <FolderIcon aria-hidden="true" />
-          {prompt.category}
-        </Badge>
+        {prompt.source && (
+          <Badge variant="secondary">
+            <SparklesIcon aria-hidden="true" />
+            {prompt.source}
+          </Badge>
+        )}
+        {prompt.category && (
+          <Badge variant="outline">
+            <FolderIcon aria-hidden="true" />
+            {prompt.category}
+          </Badge>
+        )}
         {prompt.tags.map((tag) => (
           <Badge key={tag} variant="outline" asChild>
             <Link href={promptsListHref({ tag })}>

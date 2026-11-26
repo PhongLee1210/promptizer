@@ -67,6 +67,73 @@ async function waitForServer() {
   throw new Error("Server did not become ready");
 }
 
+const SEED_PROMPTS = [
+  ["Mentoring Junior Engineers on Pipeline Architecture", "chatgpt", "System architecture", ["engineering", "it"]],
+  [
+    "Code Review Checklist for Quality and Maintainability",
+    "chatgpt",
+    "Technical reviews",
+    ["code-review", "engineering"],
+  ],
+  ["Step-by-Step Software Implementation", "claude", "Implementation", ["best-practices", "engineering"]],
+  ["Create Product Feature Documentation", "claude", "Documentation", ["documentation", "product"]],
+  ["Summarize a Dataset and Surface Anomalies", "gemini", "Data analysis", ["analytics"]],
+  ["Debug a Failing Test with Ranked Hypotheses", "chatgpt", "Debugging", ["debugging", "engineering"]],
+  ["Write a Clear Incident Update", "claude", "Incident communication", ["communication", "it"]],
+];
+
+async function seedPrompts() {
+  const admin = createAdminClient();
+  const { data, error } = await admin.auth.admin.listUsers({ perPage: 1000 });
+  if (error) {
+    throw error;
+  }
+  const userId = data.users.find((user) => user.email === email)?.id;
+  if (!userId) {
+    throw new Error("E2E user not found for seeding");
+  }
+  const unwrap = ({ data: rows, error: failure }) => {
+    if (failure) {
+      throw failure;
+    }
+    return rows;
+  };
+  const names = (pick) => [...new Set(SEED_PROMPTS.flatMap(pick))].map((name) => ({ user_id: userId, name }));
+  const categories = unwrap(
+    await admin
+      .from("category")
+      .insert(names((seed) => [seed[2]]))
+      .select(),
+  );
+  const tags = unwrap(
+    await admin
+      .from("tag")
+      .insert(names((seed) => seed[3]))
+      .select(),
+  );
+  const idOf = (rows, name) => rows.find((row) => row.name === name).id;
+  for (const [title, model, category, tagNames] of SEED_PROMPTS) {
+    const [prompt] = unwrap(
+      await admin
+        .from("prompt")
+        .insert({ user_id: userId, title, model, category_id: idOf(categories, category) })
+        .select(),
+    );
+    unwrap(
+      await admin
+        .from("prompt_version")
+        .insert({ prompt_id: prompt.id, version_number: 1, body: `Body of ${title}` })
+        .select(),
+    );
+    unwrap(
+      await admin
+        .from("prompt_tag")
+        .insert(tagNames.map((name) => ({ prompt_id: prompt.id, tag_id: idOf(tags, name), user_id: userId })))
+        .select(),
+    );
+  }
+}
+
 async function removeE2eUsers() {
   const admin = createAdminClient();
   const { data, error } = await admin.auth.admin.listUsers({ perPage: 1000 });
@@ -603,6 +670,7 @@ try {
   await journey("back after sign-out", () => backAfterSignOutJourney(page));
   await journey("expiry mid-action", () => expiryMidActionJourney(page));
   await journey("device split", () => deviceSplitJourney(browser));
+  await seedPrompts();
   await journey("desktop shell", () => desktopShellJourney(browser));
   await journey("mobile shell", () => mobileShellJourney(browser));
 } finally {

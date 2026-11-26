@@ -9,10 +9,10 @@ import { PromptTagsFilter } from "@/components/prompt-tags-filter";
 import { PromptsViewToggle } from "@/components/prompts-view-toggle";
 import type { PromptsListParams } from "@/lib/prompts/prompts";
 import { countTags, filterPrompts, promptsListHref } from "@/lib/prompts/prompts";
-import { listPrompts } from "@/lib/prompts/sample-prompts";
+import { listPromptsForSession } from "@/lib/server/prompts";
 
 export async function PromptsView({ params }: { params: PromptsListParams }) {
-  const allPrompts = await listPrompts();
+  const allPrompts = await listPromptsForSession();
   const prompts = filterPrompts(allPrompts, params);
   const tagOptions = countTags(allPrompts).map(({ tag, count }) => ({
     tag,
