@@ -50,20 +50,28 @@ function PacksMenuItem({ pathname, onNavigate }: { pathname: string; onNavigate:
       >
         <ChevronRightIcon aria-hidden="true" className={`transition-transform ${open ? "rotate-90" : ""}`} />
       </SidebarMenuAction>
-      <SidebarMenuSub id="sidebar-packs-list" hidden={!open}>
-        <SidebarMenuSubItem>
-          <p className="py-1 text-sm text-muted-foreground">
-            No packs yet.{" "}
-            <Link
-              href={PACKS_HREF}
-              onClick={onNavigate}
-              className="rounded-sm underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              Create one
-            </Link>
-          </p>
-        </SidebarMenuSubItem>
-      </SidebarMenuSub>
+      <div
+        id="sidebar-packs-list"
+        inert={!open}
+        className={`grid transition-[grid-template-rows,opacity] duration-200 ease-out motion-reduce:transition-none ${open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+      >
+        <div className="overflow-hidden">
+          <SidebarMenuSub>
+            <SidebarMenuSubItem>
+              <p className="py-1 text-sm text-muted-foreground">
+                No packs yet.{" "}
+                <Link
+                  href={PACKS_HREF}
+                  onClick={onNavigate}
+                  className="rounded-sm underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  Create one
+                </Link>
+              </p>
+            </SidebarMenuSubItem>
+          </SidebarMenuSub>
+        </div>
+      </div>
     </SidebarMenuItem>
   );
 }

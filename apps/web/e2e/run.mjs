@@ -437,7 +437,7 @@ async function desktopShellJourney(browser) {
 
     await page.click('button[aria-label="Collapse packs"]');
     await page.waitForSelector('button[aria-label="Expand packs"]');
-    const packsHidden = await page.$eval("#sidebar-packs-list", (list) => list.hidden);
+    const packsHidden = await page.$eval("#sidebar-packs-list", (list) => list.inert);
     check("packs list collapses", packsHidden);
   } finally {
     await context.close();

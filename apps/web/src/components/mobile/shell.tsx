@@ -41,14 +41,14 @@ function TabLink({ item, active }: { item: TabItem; active: boolean }) {
   const Icon = item.icon;
   const tone = active ? "text-primary" : "text-muted-foreground";
   const iconClass = item.primary
-    ? "-mt-5 size-11 rounded-full bg-primary text-primary-foreground shadow-md ring-4 ring-background"
+    ? "-mt-5 size-11 rounded-full bg-primary text-primary-foreground shadow-md ring-4 ring-background transition-transform duration-150 ease-out group-active/tab:scale-95 motion-reduce:transition-none"
     : "size-6";
 
   return (
     <Link
       href={item.href}
       aria-current={active ? "page" : undefined}
-      className={`flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 text-xs font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${item.primary ? "text-foreground" : tone}`}
+      className={`group/tab flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 text-xs font-medium transition-colors duration-150 ease-out motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${item.primary ? "text-foreground" : tone}`}
     >
       <span className={`flex items-center justify-center ${iconClass}`}>
         <Icon aria-hidden="true" className={item.primary ? "size-5" : "size-6"} />
