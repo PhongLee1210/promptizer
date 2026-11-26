@@ -515,13 +515,13 @@ async function desktopShellJourney(browser) {
     check("packs route no longer exists", packsResponse?.status() === 404, String(packsResponse?.status()));
 
     await page.goto(`${BASE_URL}${SIGNED_IN_LANDING_PATH}`);
-    await page.waitForSelector("article, [data-slot='card']");
-    const cardCount = await page.$$eval("[data-slot='card']", (cards) => cards.length);
+    await page.waitForSelector("a[href^='/prompts/']");
+    const cardCount = await page.$$eval("a[href^='/prompts/'][class*='h-96']", (cards) => cards.length);
     check("all prompts shows the prompt cards", cardCount >= 6, String(cardCount));
 
     await page.goto(`${BASE_URL}/prompts?q=incident`);
     await waitForText(page, "Write a Clear Incident Update");
-    const searchedCount = await page.$$eval("[data-slot='card']", (cards) => cards.length);
+    const searchedCount = await page.$$eval("a[href^='/prompts/'][class*='h-96']", (cards) => cards.length);
     check("search narrows the prompt list", searchedCount === 1, String(searchedCount));
 
     await page.goto(`${BASE_URL}/prompts?q=zzzz-no-match`);
@@ -529,7 +529,7 @@ async function desktopShellJourney(browser) {
 
     await page.goto(`${BASE_URL}/prompts?tag=debugging`);
     await waitForText(page, "Debug a Failing Test");
-    const taggedCount = await page.$$eval("[data-slot='card']", (cards) => cards.length);
+    const taggedCount = await page.$$eval("a[href^='/prompts/'][class*='h-96']", (cards) => cards.length);
     check("tag filter narrows the prompt list", taggedCount === 1, String(taggedCount));
 
     await page.click("button ::-p-text(Tag: debugging)");

@@ -11,7 +11,7 @@ export function PromptGridSkeleton() {
   return (
     <PromptGrid>
       {Array.from({ length: SKELETON_CARD_COUNT }, (_, index) => (
-        <Skeleton key={index} className="h-72 rounded-xl" />
+        <Skeleton key={index} className="h-96 rounded-xl" />
       ))}
     </PromptGrid>
   );
