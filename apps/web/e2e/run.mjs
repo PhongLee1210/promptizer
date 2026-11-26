@@ -448,7 +448,31 @@ async function desktopShellJourney(browser) {
     check("packs route no longer exists", packsResponse?.status() === 404, String(packsResponse?.status()));
 
     await page.goto(`${BASE_URL}${SIGNED_IN_LANDING_PATH}`);
-    await waitForText(page, "No prompts yet");
+    await page.waitForSelector("article, [data-slot='card']");
+    const cardCount = await page.$$eval("[data-slot='card']", (cards) => cards.length);
+    check("all prompts shows the prompt cards", cardCount >= 6, String(cardCount));
+
+    await page.goto(`${BASE_URL}/prompts?q=incident`);
+    await waitForText(page, "Write a Clear Incident Update");
+    const searchedCount = await page.$$eval("[data-slot='card']", (cards) => cards.length);
+    check("search narrows the prompt list", searchedCount === 1, String(searchedCount));
+
+    await page.goto(`${BASE_URL}/prompts?q=zzzz-no-match`);
+    await waitForText(page, "No results");
+
+    await page.goto(`${BASE_URL}/prompts?tag=debugging`);
+    await waitForText(page, "Debug a Failing Test");
+    const taggedCount = await page.$$eval("[data-slot='card']", (cards) => cards.length);
+    check("tag filter narrows the prompt list", taggedCount === 1, String(taggedCount));
+
+    await page.click("button ::-p-text(Tag: debugging)");
+    await waitForText(page, "Clear tag filter");
+    await page.keyboard.press("Escape");
+
+    await page.goto(`${BASE_URL}/prompts?view=table`);
+    await page.waitForSelector("table");
+    const rowCount = await page.$$eval("tbody tr", (rows) => rows.length);
+    check("table view lists every prompt", rowCount >= 6, String(rowCount));
     await page.click('button[aria-label^="Current theme"]');
     const modeAfter = await page.evaluate(() => document.documentElement.dataset.themeMode);
     check("theme switcher cycles from system to light", modeAfter === "light", String(modeAfter));

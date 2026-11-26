@@ -1,12 +1,16 @@
 import { AppPage } from "@/components/desktop/app-page";
 import { PromptsView } from "@/components/shared/prompts-view";
+import { parsePromptsListParams, promptsListHref } from "@/lib/prompts/prompts";
 
-export default async function PromptsPage({ searchParams }: { searchParams: Promise<{ q?: string | string[] }> }) {
-  const { q } = await searchParams;
-  const query = (Array.isArray(q) ? q[0] : q)?.trim() ?? "";
+export default async function PromptsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string | string[]; tag?: string | string[]; view?: string | string[] }>;
+}) {
+  const params = parsePromptsListParams(await searchParams);
   return (
-    <AppPage path={query ? `/prompts?q=${encodeURIComponent(query)}` : "/prompts"}>
-      <PromptsView query={query} />
+    <AppPage path={promptsListHref(params)}>
+      <PromptsView params={params} />
     </AppPage>
   );
 }

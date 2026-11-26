@@ -1,31 +1,43 @@
 import Link from "next/link";
-
-const PREVIEW_LINE_COUNT = 4;
-const PREVIEW_LINE_CLAMP_CLASS = "line-clamp-4";
+import { FolderIcon, SparklesIcon, TagIcon } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import type { PromptSummary } from "@/lib/prompts/prompts";
+import { promptsListHref } from "@/lib/prompts/prompts";
 
 interface PromptCardProps {
-  id: string;
-  title: string;
-  previewText: string;
-  updatedAt: Date;
+  prompt: PromptSummary;
 }
 
-const updatedAtFormatter = new Intl.DateTimeFormat("en", { dateStyle: "medium" });
-
-export function PromptCard({ id, title, previewText, updatedAt }: PromptCardProps) {
+export function PromptCard({ prompt }: PromptCardProps) {
   return (
-    <Link
-      href={`/prompts/${id}`}
-      data-preview-lines={PREVIEW_LINE_COUNT}
-      className="group flex h-full flex-col gap-3 rounded-xl border bg-card p-4 text-card-foreground transition-[box-shadow,transform,border-color] duration-150 hover:-translate-y-0.5 hover:border-ring/50 hover:shadow-md focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:outline-none motion-reduce:transition-none motion-reduce:hover:translate-y-0"
-    >
-      <h3 className="truncate text-base font-semibold">{title}</h3>
-      <p className={`${PREVIEW_LINE_CLAMP_CLASS} grow text-sm whitespace-pre-line text-muted-foreground`}>
-        {previewText}
-      </p>
-      <div className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
-        <time dateTime={updatedAt.toISOString()}>{updatedAtFormatter.format(updatedAt)}</time>
-      </div>
-    </Link>
+    <Card className="gap-0 overflow-hidden py-0">
+      <CardHeader className="bg-primary px-4 py-4 text-primary-foreground">
+        <CardTitle className="truncate text-lg font-medium" title={prompt.title}>
+          {prompt.title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="grow px-4 py-5">
+        <p className="line-clamp-8 text-sm leading-relaxed break-words whitespace-pre-line">{prompt.body}</p>
+      </CardContent>
+      <CardFooter className="flex-wrap gap-2 px-4 pb-4">
+        <Badge variant="secondary">
+          <SparklesIcon aria-hidden="true" />
+          {prompt.source}
+        </Badge>
+        <Badge variant="outline">
+          <FolderIcon aria-hidden="true" />
+          {prompt.category}
+        </Badge>
+        {prompt.tags.map((tag) => (
+          <Badge key={tag} variant="outline" asChild>
+            <Link href={promptsListHref({ tag })}>
+              <TagIcon aria-hidden="true" />
+              {tag}
+            </Link>
+          </Badge>
+        ))}
+      </CardFooter>
+    </Card>
   );
 }
