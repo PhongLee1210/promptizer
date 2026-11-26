@@ -9,7 +9,8 @@
     "start": "next start",
     "test": "node --import ./tests/alias-loader.mjs --env-file-if-exists=.env --test \"tests/**/*.test.ts\"",
     "typecheck": "tsc --noEmit",
-    "test:e2e": "pnpm run build && node --env-file-if-exists=.env e2e/run.mjs"
+    "test:e2e": "pnpm run build && node --env-file-if-exists=.env e2e/run.mjs",
+    "seed:prompts": "node --env-file=.env scripts/seed-prompts.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
