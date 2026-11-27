@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { classifyDevice, isMobileSplitRoute } from "../src/lib/device.ts";
+import { classifyDevice, isMobileSplitRoute, matchesRoutePattern } from "../src/lib/device.ts";
 
 const MOBILE_USER_AGENTS = [
   "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1",
@@ -33,10 +33,38 @@ test("desktop, tablet and missing user agents classify as desktop", () => {
 });
 
 test("only registered routes are rewritten for mobile", () => {
-  for (const route of ["/", "/prompts", "/prompts/new", "/account/password"]) {
+  for (const route of [
+    "/",
+    "/prompts",
+    "/prompts/new",
+    "/prompts/unknown",
+    "/prompts/3f2c9a10-0000-4000-8000-000000000000",
+    "/prompts/x/edit",
+    "/prompts/x/delete",
+    "/account/password",
+  ]) {
     assert.equal(isMobileSplitRoute(route), true, route);
   }
-  for (const route of ["/sign-in", "/sign-up", "/packs", "/m/prompts", "/prompts/unknown", "/api/auth/me"]) {
+  for (const route of [
+    "/sign-in",
+    "/sign-up",
+    "/packs",
+    "/m/prompts",
+    "/prompts/a/b/c",
+    "/prompts/x/unknown",
+    "/api/auth/me",
+  ]) {
     assert.equal(isMobileSplitRoute(route), false, route);
   }
+});
+
+test("dynamic route segments match exactly one non-empty path segment", () => {
+  assert.equal(matchesRoutePattern("/prompts/[id]", "/prompts/3f2c9a10-0000-4000-8000-000000000000"), true);
+  assert.equal(matchesRoutePattern("/prompts/[id]/edit", "/prompts/abc/edit"), true);
+  assert.equal(matchesRoutePattern("/prompts/[id]", "/prompts/"), false);
+  assert.equal(matchesRoutePattern("/prompts/[id]", "/prompts/a/b"), false);
+  assert.equal(matchesRoutePattern("/prompts/[id]/edit", "/prompts/abc/unknown"), false);
+  assert.equal(matchesRoutePattern("/prompts/[id]", "/m/prompts/abc"), false);
+  assert.equal(matchesRoutePattern("/", "/prompts"), false);
+  assert.equal(matchesRoutePattern("/", "/"), true);
 });
