@@ -37,3 +37,58 @@ export interface AuthErrorBody {
   message: string;
   fields?: AuthFieldErrors;
 }
+
+export const PROMPT_TITLE_MAX_LENGTH = 200;
+export const PROMPT_TEXT_MAX_LENGTH = 20_000;
+export const PROMPTS_PAGE_SIZE = 12;
+export const PROMPTS_PAGE_SIZE_MAX = 50;
+export const PROMPT_SEARCH_MAX_LENGTH = 200;
+
+export type PromptModel = "chatgpt" | "claude" | "gemini";
+
+export interface CategorySummary {
+  id: string;
+  name: string;
+}
+
+export interface Prompt {
+  id: string;
+  title: string;
+  text: string;
+  model: PromptModel | null;
+  category: CategorySummary | null;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PromptDraft {
+  title: string;
+  text: string;
+  categoryId?: string | null;
+}
+
+export type PromptChanges = Partial<PromptDraft>;
+
+export interface PromptListPage {
+  items: Prompt[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export type ApiErrorCode = AuthErrorCode | "not_found";
+
+export type PromptField = "title" | "text" | "categoryId" | "page" | "pageSize";
+
+export type PromptFieldErrors = Partial<Record<PromptField, string>>;
+
+export interface ApiErrorBody {
+  code: ApiErrorCode;
+  message: string;
+  fields?: Partial<Record<string, string>>;
+}
+
+export function countCharacters(value: string): number {
+  return Array.from(value).length;
+}
