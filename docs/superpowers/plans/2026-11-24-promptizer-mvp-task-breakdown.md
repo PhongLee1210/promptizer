@@ -271,6 +271,8 @@ after: T-2.4.3, T-2.4.4
 
 ## Epic 3 — Prompt management · 34h
 
+**Status (2026-11-27):** implemented on `main` before loops started. Loop 1 static audit: all tasks pass except T-3.0.1 (pack shape, decision pending) and T-3.1.1 (decision record pending); gap fixes in draft PRs #9 and #10. Boxes stay unticked until the Supabase-backed suites run (ledger F-1).
+
 **Story 3.0 — Library foundation.**
 
 **T-3.0.1 · Prompt & pack data-shape decision** · 1h · decision

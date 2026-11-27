@@ -1,16 +1,28 @@
 # Promptizer MVP — loop status ledger
 
-Driven by `/mvp-loop` (`.claude/commands/mvp-loop.md`), every 2 hours. States: READY · IN-PROGRESS · NEEDS-REVIEW · VERIFIED · FAILED · BLOCKED-DECISION · PENDING (deps not met) · DONE (verified before loops started).
+Driven by `/mvp-loop` (`.claude/commands/mvp-loop.md`), every 2 hours. States: READY · IN-PROGRESS · NEEDS-REVIEW · VERIFIED · FAILED · BLOCKED-DECISION · PENDING (deps not met) · DONE (verified before loops started) · NEEDS-MANUAL (automated part green; owner check left) · NEEDS-SUPABASE (static review PASS; Supabase-backed node/e2e suites must run before VERIFIED).
 
 ## Next loop
 
-1. Epic 3 work already landed on `main` (prompt contract, CRUD API, pages, markdown, auto-save, E2E) but the plan has none of it ticked. Verify every Epic 3 task against its checklist, tick what passes, and turn gaps into tasks. Known gap to check: T-3.0.1 requires pack fields; `main` has categories, not packs.
-2. T-1.1.7 manual Journey A smoke (load the built extension, chip appears, one rewrite works).
-3. Then start the critical path at the first task that is not VERIFIED.
+1. If `docs/superpowers/decisions/T-3.0.1.md` has `APPROVED:` filled, build `mvp/T-3.0.1-pack-shape` per the chosen option (B: migration + shared `Pack` types + category→pack rename; D: plan amendment + `category.updated_at` / body-length migration). Migrations are written as files only; the owner applies them. Then start Epic 4 (T-4.1.1) stacked on it.
+2. If `T-3.1.1.md` is approved (A), tick T-3.1.1 and T-3.1.2 boxes in the plan.
+3. If Supabase env is available in the cloud environment, run `pnpm -C apps/web test` and `pnpm -C apps/web run test:e2e` once on `main` and on PRs #9/#10 and promote the NEEDS-SUPABASE rows to VERIFIED (tick their plan boxes).
+4. Otherwise nothing on the critical path is unblocked: every Epic 4–7 task chains through T-3.0.1 / T-4.1.1. Use the loop for findings F-4–F-6 only.
+
+Cloud E2E recipe (extension): run per app, not through turbo (turbo strips env): `cd apps/chrome-extension && CI=1 PUPPETEER_EXECUTABLE_PATH=/opt/pw-browsers/chromium xvfb-run -a pnpm run test`. Green on `main` abf75d2 in loop 1.
 
 ## Open findings
 
-_none yet_
+- **F-1 · high · blocker (owner)** — Cloud environment has no Supabase env vars, so `apps/web` Supabase node suites (prompts API, ownership, accounts) and `e2e/run.mjs` never run. Epic 3 endpoint/page tasks cannot reach VERIFIED. Fix: add the `apps/web/.env.example` vars as cloud environment secrets, or run both suites locally and record the result here.
+- **F-2 · medium · T-3.2.4** — No `error.tsx`; failed list/prompt loads hit Next's default error page (dead end). Fix PR #10 (NEEDS-REVIEW). Remaining: no `global-error.tsx` for non-prompt routes.
+- **F-3 · low · T-3.4.3** — Delete e2e did not check category list removal or that Cancel keeps the prompt. Fix PR #9 (NEEDS-REVIEW, e2e not executed).
+- **F-4 · low · T-3.3.2 · product** — Browser back/forward from the editor is not warned, only flushed via keepalive. Decide whether that meets "warns once".
+- **F-5 · low · T-3.2.2 · product** — Cards show `updated` time; created date only as a tooltip. Decide if "timestamps" needs both visible.
+- **F-6 · low · T-3.1.2** — Render-failure inline alert (`markdown-preview.tsx` error boundary) has no test.
+- **F-7 · low · T-3.0.1** — Text limit (20 000 code points) is app-only; `prompt_version.body` has no DB check. Folded into the T-3.0.1 decision.
+- **F-8 · NEEDS-MANUAL · T-1.1.7** — Journey A smoke with the unpacked build (chip appears, one real Nano rewrite). Cloud cannot run it.
+
+Proposed Serena memory edit (apply to `web_prompts` once PR #10 merges): "Load failures under prompts are caught by error.tsx in both trees (shared components/prompts-error-state.tsx). Retry does router.refresh()+reset() in startTransition, since reset() alone doesn't re-fetch the server page. error.tsx keeps notFound() 404 status; loading.tsx does not."
 
 ## Tasks
 
@@ -22,7 +34,7 @@ _none yet_
 | T-1.1.4 | Shared-definitions package shell | infra | ⇉ | DONE | | | |
 | T-1.1.5 | Contributor docs point at the new layout | docs | ⇉ | DONE | | | |
 | T-1.1.6 | Remove stale artifacts | debt | ⇉ | DONE | | | |
-| T-1.1.7 | Full workspace verify pass | qa |  | NEEDS-REVIEW | | | |
+| T-1.1.7 | Full workspace verify pass | qa |  | NEEDS-MANUAL |  |  |  |
 | T-2.0.1 | Backend stack & skeleton decision | decision |  | DONE | | | |
 | T-2.0.2 | Backend app scaffold in the workspace | infra |  | DONE | | | |
 | T-2.0.3 | Account persistence decision | decision |  | DONE | | | |
@@ -45,26 +57,26 @@ _none yet_
 | T-2.4.3 | Credential persistence & renewal | feat |  | DONE | | | |
 | T-2.4.4 | Account screen in the popup | feat | ⇉ | DONE | | | |
 | T-2.4.5 | Extension auth tests | test |  | DONE | | | |
-| T-3.0.1 | Prompt & pack data-shape decision | decision |  | NEEDS-REVIEW | | | |
-| T-3.0.2 | Prompt persistence, owner-scoped | infra |  | NEEDS-REVIEW | | | |
-| T-3.1.1 | Markdown rendering & sanitization decision | decision |  | NEEDS-REVIEW | | | |
-| T-3.1.2 | Markdown preview helper | feat |  | NEEDS-REVIEW | | | |
-| T-3.1.3 | Create-prompt endpoint | feat |  | NEEDS-REVIEW | | | |
-| T-3.1.4 | New-prompt page | feat | ⇉ | NEEDS-REVIEW | | | |
-| T-3.1.5 | Prompt view page | feat | ⇉ | NEEDS-REVIEW | | | |
-| T-3.1.6 | Ownership isolation tests | test | ⇉ | NEEDS-REVIEW | | | |
-| T-3.2.1 | List endpoint | feat |  | NEEDS-REVIEW | | | |
-| T-3.2.2 | Prompt list page | feat | ⇉ | NEEDS-REVIEW | | | |
-| T-3.2.3 | Search & pack filter controls | feat |  | NEEDS-REVIEW | | | |
-| T-3.2.4 | Empty & no-result states | feat | ⇉ | NEEDS-REVIEW | | | |
-| T-3.2.5 | List tests | test | ⇉ | NEEDS-REVIEW | | | |
-| T-3.3.1 | Update endpoint | feat |  | NEEDS-REVIEW | | | |
-| T-3.3.2 | Editor page with live preview | feat |  | NEEDS-REVIEW | | | |
-| T-3.3.3 | Auto-save client | feat |  | NEEDS-REVIEW | | | |
-| T-3.3.4 | Auto-save tests | test | ⇉ | NEEDS-REVIEW | | | |
-| T-3.4.1 | Delete endpoint | feat |  | NEEDS-REVIEW | | | |
-| T-3.4.2 | Delete confirmation flow | feat | ⇉ | NEEDS-REVIEW | | | |
-| T-3.4.3 | Delete tests | test | ⇉ | NEEDS-REVIEW | | | |
+| T-3.0.1 | Prompt & pack data-shape decision | decision |  | BLOCKED-DECISION |  |  | decisions/T-3.0.1.md |
+| T-3.0.2 | Prompt persistence, owner-scoped | infra |  | NEEDS-SUPABASE | main |  |  |
+| T-3.1.1 | Markdown rendering & sanitization decision | decision |  | BLOCKED-DECISION |  |  | decisions/T-3.1.1.md |
+| T-3.1.2 | Markdown preview helper | feat |  | NEEDS-SUPABASE | main |  | blocked by T-3.1.1 approval |
+| T-3.1.3 | Create-prompt endpoint | feat |  | NEEDS-SUPABASE | main |  |  |
+| T-3.1.4 | New-prompt page | feat | ⇉ | NEEDS-SUPABASE | main |  |  |
+| T-3.1.5 | Prompt view page | feat | ⇉ | NEEDS-SUPABASE | main |  |  |
+| T-3.1.6 | Ownership isolation tests | test | ⇉ | NEEDS-SUPABASE | main |  |  |
+| T-3.2.1 | List endpoint | feat |  | NEEDS-SUPABASE | main |  |  |
+| T-3.2.2 | Prompt list page | feat | ⇉ | NEEDS-SUPABASE | main |  |  |
+| T-3.2.3 | Search & pack filter controls | feat |  | BLOCKED-DECISION | main |  | pack filter = category; re-check after T-3.0.1 |
+| T-3.2.4 | Empty & no-result states | feat | ⇉ | NEEDS-REVIEW | mvp/T-3.2.4-error-boundary | main | #10 |
+| T-3.2.5 | List tests | test | ⇉ | NEEDS-SUPABASE | main |  |  |
+| T-3.3.1 | Update endpoint | feat |  | NEEDS-SUPABASE | main |  |  |
+| T-3.3.2 | Editor page with live preview | feat |  | NEEDS-SUPABASE | main |  |  |
+| T-3.3.3 | Auto-save client | feat |  | NEEDS-SUPABASE | main |  |  |
+| T-3.3.4 | Auto-save tests | test | ⇉ | NEEDS-SUPABASE | main |  |  |
+| T-3.4.1 | Delete endpoint | feat |  | NEEDS-SUPABASE | main |  |  |
+| T-3.4.2 | Delete confirmation flow | feat | ⇉ | NEEDS-SUPABASE | main |  |  |
+| T-3.4.3 | Delete tests | test | ⇉ | NEEDS-REVIEW | mvp/T-3.4.3-delete-tests | main | #9 |
 | T-4.1.1 | Pack persistence & endpoints | feat |  | PENDING | | | |
 | T-4.1.2 | Pack management UI | feat | ⇉ | PENDING | | | |
 | T-4.1.3 | Pack-deletion preservation tests | test | ⇉ | PENDING | | | |
@@ -110,3 +122,4 @@ _none yet_
 ## Loop log
 
 - 2026-11-27 — ledger created; no loop run yet.
+- 2026-11-27 loop 1 (cloud, ~45 min) — `main` abf75d2: typecheck, format, build green; extension unit+E2E green (cloud recipe above); web node tests 50/50 but Supabase suites skipped (F-1). Two fresh verifiers audited Epic 3 on `main`: 75 checkboxes, T-3.0.1 FAIL (no pack entity; packs removed in 94f9045), T-3.1.1 PARTIAL (no decision record), 3 PARTIAL in 3.2.4/3.4.3, rest static PASS. Wrote decisions T-3.0.1 (options A–D, rec. B) and T-3.1.1 (rec. A). Opened draft PRs #9 (T-3.4.3 delete e2e) and #10 (T-3.2.4 error boundaries). Phase 5 sweep skipped: dashboard needs Supabase, no logged-in browser in cloud. Findings F-1–F-8 opened. No plan boxes ticked (nothing VERIFIED).
