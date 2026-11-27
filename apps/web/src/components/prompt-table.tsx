@@ -1,10 +1,10 @@
+import Link from "next/link";
+import type { Prompt } from "@promptizer/shared";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import type { PromptSummary } from "@/lib/prompts/prompts";
+import { SOURCE_LABEL_BY_MODEL, formatPromptDate } from "@/lib/prompts/prompts";
 
-const updatedAtFormatter = new Intl.DateTimeFormat("en", { dateStyle: "medium" });
-
-export function PromptTable({ prompts }: { prompts: PromptSummary[] }) {
+export function PromptTable({ prompts }: { prompts: Prompt[] }) {
   return (
     <div className="rounded-xl border">
       <Table>
@@ -14,6 +14,7 @@ export function PromptTable({ prompts }: { prompts: PromptSummary[] }) {
             <TableHead>Source</TableHead>
             <TableHead>Category</TableHead>
             <TableHead>Tags</TableHead>
+            <TableHead className="text-right">Created</TableHead>
             <TableHead className="text-right">Updated</TableHead>
           </TableRow>
         </TableHeader>
@@ -21,10 +22,12 @@ export function PromptTable({ prompts }: { prompts: PromptSummary[] }) {
           {prompts.map((prompt) => (
             <TableRow key={prompt.id}>
               <TableCell className="max-w-80 truncate font-medium" title={prompt.title}>
-                {prompt.title}
+                <Link href={`/prompts/${prompt.id}`} className="hover:underline">
+                  {prompt.title}
+                </Link>
               </TableCell>
-              <TableCell>{prompt.source ?? "—"}</TableCell>
-              <TableCell>{prompt.category ?? "—"}</TableCell>
+              <TableCell>{prompt.model ? SOURCE_LABEL_BY_MODEL[prompt.model] : "—"}</TableCell>
+              <TableCell>{prompt.category?.name ?? "—"}</TableCell>
               <TableCell>
                 <div className="flex flex-wrap gap-1">
                   {prompt.tags.map((tag) => (
@@ -35,7 +38,10 @@ export function PromptTable({ prompts }: { prompts: PromptSummary[] }) {
                 </div>
               </TableCell>
               <TableCell className="text-right text-muted-foreground">
-                <time dateTime={prompt.updatedAt.toISOString()}>{updatedAtFormatter.format(prompt.updatedAt)}</time>
+                <time dateTime={prompt.createdAt}>{formatPromptDate(prompt.createdAt)}</time>
+              </TableCell>
+              <TableCell className="text-right text-muted-foreground">
+                <time dateTime={prompt.updatedAt}>{formatPromptDate(prompt.updatedAt)}</time>
               </TableCell>
             </TableRow>
           ))}

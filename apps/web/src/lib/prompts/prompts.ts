@@ -14,6 +14,12 @@ export const SOURCE_LABEL_BY_MODEL: Record<PromptModel, PromptSource> = {
   gemini: "Gemini",
 };
 
+const PROMPT_DATE_FORMATTER = new Intl.DateTimeFormat("en", { dateStyle: "medium", timeZone: "UTC" });
+
+export function formatPromptDate(isoTimestamp: string): string {
+  return PROMPT_DATE_FORMATTER.format(new Date(isoTimestamp));
+}
+
 export type PromptsDisplayMode = "cards" | "table";
 
 export interface PromptsListParams {

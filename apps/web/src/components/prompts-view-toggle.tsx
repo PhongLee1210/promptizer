@@ -13,7 +13,7 @@ export function PromptsViewToggle({ params }: { params: PromptsListParams }) {
   return (
     <nav aria-label="Prompt view" className="hidden items-center gap-1 md:flex">
       {VIEW_OPTIONS.map(({ view, label, icon: Icon }) => (
-        <Button key={view} asChild variant={params.view === view ? "secondary" : "ghost"} size="sm">
+        <Button key={view} asChild variant={params.view === view ? "secondary" : "ghost"}>
           <Link href={promptsListHref({ ...params, view })} aria-current={params.view === view ? "page" : undefined}>
             <Icon aria-hidden="true" />
             {label}

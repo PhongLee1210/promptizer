@@ -4,23 +4,25 @@ import { Button } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 
 interface NoResultsStateProps {
-  query: string;
-  clearFiltersHref: string;
+  title: string;
+  description: string;
+  actionLabel: string;
+  actionHref: string;
 }
 
-export function NoResultsState({ query, clearFiltersHref }: NoResultsStateProps) {
+export function NoResultsState({ title, description, actionLabel, actionHref }: NoResultsStateProps) {
   return (
     <Empty className="border border-dashed md:flex-1">
       <EmptyHeader>
         <EmptyMedia variant="icon">
           <SearchXIcon aria-hidden="true" />
         </EmptyMedia>
-        <EmptyTitle>No results</EmptyTitle>
-        <EmptyDescription>Nothing matches &ldquo;{query}&rdquo;. Try a different search.</EmptyDescription>
+        <EmptyTitle>{title}</EmptyTitle>
+        <EmptyDescription>{description}</EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
         <Button asChild variant="outline">
-          <Link href={clearFiltersHref}>Clear filters</Link>
+          <Link href={actionHref}>{actionLabel}</Link>
         </Button>
       </EmptyContent>
     </Empty>
