@@ -5,3 +5,4 @@
 - Workspace caveats (Node version, E2E limits, Puppeteer install scope): `mem:tech_stack`.
 - Web app theme tokens and shadcn alignment (how to restyle the dashboard): `mem:web_theme`.
 - Web app device-split rendering (mobile/desktop route trees, proxy rewrite, bundle isolation rules): `mem:web_device_split`.
+- Web prompt storage, API contract, ownership/not-found rules, list search strategy, markdown renderer and auto-save invariants: `mem:web_prompts`.

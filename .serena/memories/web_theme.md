@@ -5,3 +5,7 @@
 - Desktop shell: components/desktop/app-shell.tsx (server, reads sidebar_state cookie and preferences) with sidebar/ and header/ parts; nav items in src/navigation/sidebar/sidebar-items.ts; header search is components/global-search.tsx (prompt search, `/` shortcut), not the template command palette.
 - Mobile uses the same tokens; its theme toggle goes through useSetThemeMode (hooks/use-theme-mode.ts).
 - Packs feature does not exist; only prompts and auth/account remain.
+- Layout rhythm: the desktop content wrapper (app-shell) and mobile main are flex columns with gap-6, so page views return fragments and never add their own outer spacing. Every page starts with PageHeader (optional `back` link from components/prompt-page-layout.ts); prompt pages use PROMPT_PAGE_LAYOUT_CLASS (content + 18rem side column) at lg.
+- Touch targets: one `@media (pointer: coarse)` rule in globals.css lifts buttons, triggers, inputs, selects and menu items to 44px; do not add per-component min-h-11 classes. Desktop control height is h-8 (Button default); size="sm" only for chips and the PageHeader back link.
+- Header search hides on the /prompts list (isPromptListPath) because the list has its own filter-aware search; the `/` shortcut comes from hooks/use-search-shortcut.ts. Avatars use components/user-avatar.tsx in both trees.
+- Destructive confirm actions are solid (DeletePromptButton class); the template destructive variant is a tint that fails 4.5:1 contrast.
