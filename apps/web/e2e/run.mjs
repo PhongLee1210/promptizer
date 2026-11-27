@@ -1108,6 +1108,18 @@ async function deleteJourney(browser, session) {
     await page.click("main a ::-p-text(Cancel)");
     await waitForPath(page, `/prompts/${doomed.id}`);
     check("cancel returns to the prompt", true);
+    const keptAfterCancel = await readPromptViaApi(session, doomed.id);
+    await page.goto(`${BASE_URL}/prompts`);
+    await waitForText(page, "All prompts");
+    const countAfterCancel = await headingCount(page);
+    check(
+      "cancel keeps the prompt",
+      keptAfterCancel?.title === "Delete me prompt" && countAfterCancel === countBefore,
+      `${countBefore} -> ${countAfterCancel}`,
+    );
+    await page.goto(`${BASE_URL}/prompts?category=${category.id}`);
+    await waitForText(page, "Category: Documentation");
+    check("category list shows the prompt before delete", (await cardTitles(page)).includes("Delete me prompt"));
 
     await page.goto(`${BASE_URL}/prompts/${doomed.id}/delete`);
     await submit(page, "Delete prompt");
@@ -1120,6 +1132,9 @@ async function deleteJourney(browser, session) {
       !listed.includes("Delete me prompt") && countAfter === countBefore - 1,
       `${countBefore} -> ${countAfter}`,
     );
+    await page.goto(`${BASE_URL}/prompts?category=${category.id}`);
+    await waitForText(page, "Category: Documentation");
+    check("deleted prompt leaves its category list", !(await cardTitles(page)).includes("Delete me prompt"));
     const gone = await page.goto(`${BASE_URL}/prompts/${doomed.id}`);
     check("deleted prompt url is not found", gone?.status() === 404, String(gone?.status()));
     const { data: keptCategory } = await createAdminClient().from("category").select("id").eq("id", category.id);
