@@ -5,6 +5,7 @@ import { KeyRoundIcon, LogOutIcon, MoonIcon, SunIcon } from "lucide-react";
 import type { AuthUser } from "@promptizer/shared";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { UserAvatar } from "@/components/user-avatar";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { useSetThemeMode, useThemeMode } from "@/hooks/use-theme-mode";
 
@@ -13,10 +14,6 @@ interface AccountSheetProps {
 }
 
 const SHEET_ROW_CLASS = "h-12 w-full justify-start gap-3 text-base";
-
-function initialOf(name: string): string {
-  return name.trim().charAt(0).toUpperCase() || "?";
-}
 
 export function AccountSheet({ user }: AccountSheetProps) {
   const signOut = useSignOut();
@@ -29,12 +26,7 @@ export function AccountSheet({ user }: AccountSheetProps) {
     <Sheet>
       <SheetTrigger asChild>
         <Button type="button" variant="ghost" size="icon" aria-label={`Account menu for ${user.name}`}>
-          <span
-            aria-hidden="true"
-            className="flex size-8 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground"
-          >
-            {initialOf(user.name)}
-          </span>
+          <UserAvatar name={user.name} />
         </Button>
       </SheetTrigger>
       <SheetContent side="bottom" className="gap-0 rounded-t-xl pb-[env(safe-area-inset-bottom)]">

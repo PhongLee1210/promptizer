@@ -1,12 +1,18 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { ArrowLeftIcon, SearchIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { isPromptListPath } from "@/lib/prompts/prompts";
 
 export function HeaderSearch() {
   const [open, setOpen] = useState(false);
+
+  if (isPromptListPath(usePathname())) {
+    return null;
+  }
 
   if (!open) {
     return (

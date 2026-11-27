@@ -177,3 +177,25 @@ html {
 .disable-transitions * {
   transition: none !important;
 }
+
+@media (pointer: coarse) {
+  :is(
+    [data-slot="button"],
+    [data-slot$="-trigger"],
+    input:not([type="hidden"], [type="checkbox"], [type="radio"]),
+    select,
+    [data-slot="dropdown-menu-item"],
+    [data-slot="table-cell"] a
+  ) {
+    min-height: 2.75rem;
+  }
+
+  [data-size^="icon"] {
+    min-width: 2.75rem;
+  }
+
+  [data-slot="table-cell"] a {
+    display: inline-flex;
+    align-items: center;
+  }
+}

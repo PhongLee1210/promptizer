@@ -23,7 +23,7 @@ export function AuthCard({ title, description, children, footer }: AuthCardProps
             </Link>
             <div className="space-y-2">
               <h2 className="text-5xl font-light text-primary-foreground">{APP_CONFIG.name}</h2>
-              <p className="text-xl text-primary-foreground/80">{APP_CONFIG.meta.description}</p>
+              <p className="text-xl text-primary-foreground">{APP_CONFIG.meta.description}</p>
             </div>
           </div>
         </div>

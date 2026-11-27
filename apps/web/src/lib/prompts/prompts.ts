@@ -160,3 +160,9 @@ export function promptsListHref(params: Partial<PromptsListParams>): string {
   const queryString = search.toString();
   return queryString ? `/prompts?${queryString}` : "/prompts";
 }
+
+const PROMPT_LIST_PATH_PATTERN = /^(\/m)?\/prompts\/?$/;
+
+export function isPromptListPath(pathname: string): boolean {
+  return PROMPT_LIST_PATH_PATTERN.test(pathname);
+}

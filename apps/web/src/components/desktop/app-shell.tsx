@@ -6,7 +6,6 @@ import { AppSidebar } from "@/components/desktop/sidebar/app-sidebar";
 import { GlobalSearch } from "@/components/global-search";
 import { LayoutControls } from "@/components/desktop/header/layout-controls";
 import { ThemeSwitcher } from "@/components/desktop/header/theme-switcher";
-import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { getPreference } from "@/server/server-actions";
 
@@ -48,10 +47,6 @@ export async function AppShell({ user, children }: AppShellProps) {
           <div className="flex w-full items-center justify-between gap-2 px-4 lg:px-6">
             <div className="flex min-w-0 flex-1 items-center gap-1 lg:gap-2">
               <SidebarTrigger aria-label="Toggle sidebar" className="-ml-1" />
-              <Separator
-                orientation="vertical"
-                className="mx-2 data-[orientation=vertical]:h-4 data-[orientation=vertical]:self-center"
-              />
               <GlobalSearch />
             </div>
             <div className="flex items-center gap-2">
@@ -60,7 +55,7 @@ export async function AppShell({ user, children }: AppShellProps) {
             </div>
           </div>
         </header>
-        <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden p-4 md:p-6">{children}</div>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-6 overflow-x-hidden p-4 md:p-6">{children}</div>
       </SidebarInset>
     </SidebarProvider>
   );

@@ -63,7 +63,7 @@ export function MobileShell({ user, children }: MobileShellProps) {
   return (
     <div className="flex h-dvh flex-col">
       <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center justify-between gap-1 border-b bg-background px-3 pt-[env(safe-area-inset-top)] box-content">
-        <BrandLogo />
+        <BrandLogo className="min-h-11" />
         <div className="flex items-center gap-1">
           <HeaderSearch />
           <AccountSheet user={user} />
