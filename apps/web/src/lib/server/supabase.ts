@@ -31,3 +31,11 @@ export function createAdminClient(): SupabaseClient {
     STATELESS_AUTH,
   );
 }
+
+export function createUserClient(accessToken: string): SupabaseClient {
+  return createClient(
+    requireEnvironmentVariable("NEXT_PUBLIC_SUPABASE_URL"),
+    requireEnvironmentVariable("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"),
+    { ...STATELESS_AUTH, global: { headers: { Authorization: `Bearer ${accessToken}` } } },
+  );
+}
