@@ -14,7 +14,8 @@ import {
 import { ACTION_COPY, OFFLINE_SAVE_MESSAGE, PREPARING_CAPTION, PREPARING_TITLE } from "./present-result";
 import type { WriteFailureNotice, WriteFailureRecovery } from "./present-result";
 
-export type SaveOutcome = { ok: true; showFirstSaveNotice: boolean } | ({ ok: false } & WriteFailureNotice);
+export type SaveOutcome =
+  { ok: true; showFirstSaveNotice: boolean } | ({ ok: false; titleError?: string } & WriteFailureNotice);
 
 export interface ResultWindowCallbacks {
   onStep: (direction: -1 | 1) => void;
@@ -35,6 +36,7 @@ export interface ResultWindowCallbacks {
 
 const SKELETON_LINE_WIDTHS = ["92%", "78%", "54%"] as const;
 const SAVE_CONFIRM_FLASH_MS = 900;
+const SAVE_ERROR_ID = "pz-save-error";
 const TITLE_PREFILL_MAX_LENGTH = 80;
 
 function prefillTitle(draft: string): string {
@@ -458,6 +460,7 @@ export class ResultWindow {
     titleInput.style.color = "inherit";
     body.append(titleInput);
     const errorLine = document.createElement("p");
+    errorLine.id = SAVE_ERROR_ID;
     errorLine.className = "pz-win__body--error";
     errorLine.setAttribute("role", "alert");
     errorLine.style.margin = "8px 0 0";
@@ -492,10 +495,15 @@ export class ResultWindow {
         return;
       }
       errorLine.textContent = "";
+      titleInput.removeAttribute("aria-invalid");
+      titleInput.removeAttribute("aria-describedby");
       saveInFlight = true;
       saveButton.disabled = true;
       cancelButton.disabled = true;
       const outcome = await this.callbacks.onSaveConfirm(titleInput.value.trim() || "Untitled prompt");
+      if (!body.isConnected) {
+        return;
+      }
       saveInFlight = false;
       if (outcome.ok) {
         saveSettled = true;
@@ -512,13 +520,21 @@ export class ResultWindow {
           errorLine.textContent = "Stored in your Promptizer account.";
           return;
         }
-        window.setTimeout(() => this.callbacks.onSaveCancel(), SAVE_CONFIRM_FLASH_MS);
+        window.setTimeout(() => {
+          if (body.isConnected) {
+            this.callbacks.onSaveCancel();
+          }
+        }, SAVE_CONFIRM_FLASH_MS);
         return;
       }
       saveBlocked = outcome.recovery === "blocked";
       saveButton.disabled = saveBlocked || !navigator.onLine;
       cancelButton.disabled = false;
       errorLine.textContent = outcome.message;
+      if (outcome.titleError !== undefined) {
+        titleInput.setAttribute("aria-invalid", "true");
+        titleInput.setAttribute("aria-describedby", SAVE_ERROR_ID);
+      }
       if (outcome.recovery === "retry") {
         relabelButton(saveButton, "retry", "Retry save");
       } else {

@@ -288,7 +288,12 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
     const signedInChangeCountAtRequest = signedInChangeCount;
     const result = await requestSavePrompt({ title, text: state.view.draft });
     if (!result.ok) {
-      return { ok: false, ...describeWriteFailure(result, navigator.onLine) };
+      const notice = describeWriteFailure(result, navigator.onLine);
+      if (result.kind !== "validation") {
+        return { ok: false, ...notice };
+      }
+      const fieldMessage = result.fields.title ?? result.fields.text;
+      return { ok: false, ...notice, message: fieldMessage ?? notice.message, titleError: result.fields.title };
     }
     const showFirstSaveNotice = await keepSavedPromptLocally(result.prompt, signedInChangeCountAtRequest);
     return { ok: true, showFirstSaveNotice };

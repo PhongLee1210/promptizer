@@ -68,6 +68,13 @@ async function readStorage(browser, keys) {
   return stored;
 }
 
+async function openSaveStep(page, rail) {
+  await rail.click();
+  await new Promise((r) => setTimeout(r, 200));
+  await (await page.waitForSelector("aria/Save prompt", { timeout: 5000 })).click();
+  return page.waitForSelector('aria/Prompt title[role="textbox"]', { timeout: 5000 });
+}
+
 async function holdSavePromptApi(browser) {
   const workerTarget = await browser.waitForTarget((target) => target.type() === "service_worker", {
     timeout: 5000,
@@ -126,6 +133,18 @@ await runCase("save-prompt", async (page, check, browser) => {
   await page.keyboard.press("Escape");
   await new Promise((r) => setTimeout(r, 300));
   check("cancel sends nothing to the server", requests.length === 0);
+
+  await rail.click();
+  await new Promise((r) => setTimeout(r, 200));
+  await (await page.waitForSelector("aria/Save prompt", { timeout: 5000 })).click();
+  const cancelTitleInput = await page.waitForSelector('aria/Prompt title[role="textbox"]', { timeout: 5000 });
+  await (await page.waitForSelector('aria/Cancel[role="button"]', { timeout: 5000 })).click();
+  await new Promise((r) => setTimeout(r, 300));
+  check(
+    "the save step's Cancel button closes the step and sends nothing",
+    requests.length === 0 && !(await cancelTitleInput.evaluate((input) => input.isConnected)),
+    String(requests.length),
+  );
   await client.send("Fetch.disable");
   await client.detach();
 
@@ -233,8 +252,15 @@ await runCase("save-prompt", async (page, check, browser) => {
       updatedAt: "",
     },
   })));
-  await (await page.waitForSelector('aria/Save prompt[role="button"]', { timeout: 5000 })).click();
-  await new Promise((r) => setTimeout(r, 300));
+  const secondSaveConfirm = await page.waitForSelector('aria/Save prompt[role="button"]', { timeout: 5000 });
+  await secondSaveConfirm.click();
+  await page.waitForFunction((button) => button.textContent?.trim() === "Saved", { timeout: 5000 }, secondSaveConfirm);
+  check(
+    "a save after the first one never shows the account-storage notice again",
+    !(await secondSaveConfirm.evaluate((btn) =>
+      btn.closest(".pz-win")?.textContent?.includes("Stored in your Promptizer account"),
+    )) && (await page.$('aria/Done[role="button"]')) === null,
+  );
   const sentBody = requests[0] ? JSON.parse(requests[0].body) : undefined;
   check(
     "editing the field after the save step opened does not change what gets sent",
@@ -324,6 +350,35 @@ await runCase("save-prompt", async (page, check, browser) => {
   await client.detach();
   await new Promise((r) => setTimeout(r, 1200));
 
+  const rejectedTitleInput = await openSaveStep(page, rail);
+  ({ client, requests } = await mockSavePromptApi(browser, () => ({
+    status: 422,
+    body: {
+      code: "validation_failed",
+      message: "Please fix the highlighted fields.",
+      fields: { title: "Title must be 200 characters or fewer." },
+    },
+  })));
+  await (await page.waitForSelector('aria/Save prompt[role="button"]', { timeout: 5000 })).click();
+  await page.waitForFunction(
+    (input) => input.getAttribute("aria-invalid") === "true",
+    { timeout: 5000 },
+    rejectedTitleInput,
+  );
+  const afterRejection = await rejectedTitleInput.evaluate((input) => ({
+    error: input.getRootNode().getElementById(input.getAttribute("aria-describedby") ?? "")?.textContent,
+    focused: input.getRootNode().activeElement === input,
+    open: input.isConnected && input.offsetParent !== null,
+  }));
+  check(
+    "a server validation error on save shows the server's title message inline and keeps the step open",
+    afterRejection.error === "Title must be 200 characters or fewer." && afterRejection.focused && afterRejection.open,
+    JSON.stringify(afterRejection),
+  );
+  await client.detach();
+  await page.keyboard.press("Escape");
+  await new Promise((r) => setTimeout(r, 300));
+
   await rail.click();
   await new Promise((r) => setTimeout(r, 200));
   await (await page.waitForSelector("aria/Save prompt", { timeout: 5000 })).click();
@@ -410,10 +465,59 @@ await runCase("save-prompt", async (page, check, browser) => {
 
   await page.keyboard.press("Escape");
   await new Promise((r) => setTimeout(r, 300));
-  await rail.click();
-  await new Promise((r) => setTimeout(r, 200));
-  await (await page.waitForSelector("aria/Save prompt", { timeout: 5000 })).click();
-  await page.waitForSelector('aria/Prompt title[role="textbox"]', { timeout: 5000 });
+  const closedStepTitleInput = await openSaveStep(page, rail);
+  const heldWhileClosed = await holdSavePromptApi(browser);
+  await (await page.waitForSelector('aria/Save prompt[role="button"]', { timeout: 5000 })).click();
+  await heldWhileClosed.paused;
+  const topBarClose = await closedStepTitleInput.evaluateHandle((input) =>
+    input.closest(".pz-win").querySelector('.pz-win__bar--top [aria-label="Close"]'),
+  );
+  check(
+    "the save step's Close stays available while the save is in flight",
+    !(await topBarClose.evaluate((btn) => btn.disabled)),
+  );
+  await topBarClose.click();
+  await new Promise((r) => setTimeout(r, 300));
+  check(
+    "Close during an in-flight save closes the step",
+    !(await closedStepTitleInput.evaluate((input) => input.isConnected)),
+  );
+  const reopenedTitleInput = await openSaveStep(page, rail);
+  await heldWhileClosed.release(201, {
+    id: "p-closed",
+    title: ORIGINAL_PROMPT,
+    text: ORIGINAL_PROMPT,
+    model: null,
+    category: null,
+    tags: [],
+    createdAt: "",
+    updatedAt: "",
+  });
+  await new Promise((r) => setTimeout(r, 1500));
+  const reopenedStep = await reopenedTitleInput.evaluate((input) => {
+    const win = input.closest(".pz-win");
+    return {
+      open: input.isConnected && input.offsetParent !== null,
+      saveLabel: win.querySelector(".pz-win__btn--primary")?.getAttribute("aria-label"),
+      confirmed: win.querySelector(".pz-win__btn--primary")?.textContent?.trim() === "Saved",
+      notice: win.textContent.includes("Stored in your Promptizer account"),
+    };
+  });
+  check(
+    "a save that lands after Close neither closes nor confirms in a reopened save step",
+    reopenedStep.open && reopenedStep.saveLabel === "Save prompt" && !reopenedStep.confirmed && !reopenedStep.notice,
+    JSON.stringify(reopenedStep),
+  );
+  const { [LIBRARY_STORAGE_KEY]: cacheAfterClosedSave } = await readStorage(browser, [LIBRARY_STORAGE_KEY]);
+  check(
+    "a save confirmed after Close still lands in the cache",
+    cacheAfterClosedSave?.prompts?.some((prompt) => prompt.id === "p-closed") === true,
+  );
+  await heldWhileClosed.client.detach();
+
+  await page.keyboard.press("Escape");
+  await new Promise((r) => setTimeout(r, 300));
+  await openSaveStep(page, rail);
   const held = await holdSavePromptApi(browser);
   await (await page.waitForSelector('aria/Save prompt[role="button"]', { timeout: 5000 })).click();
   await held.paused;

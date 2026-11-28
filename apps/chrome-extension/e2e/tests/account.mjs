@@ -2,6 +2,7 @@ import { runCase, extensionId } from "../harness.mjs";
 
 const API_PATH_PREFIXES = ["/api/auth/", "/api/library/"];
 const LIBRARY_STORAGE_KEY = "promptizer.librarySnapshot";
+const FIRST_SAVE_NOTICE_KEY = "promptizer.firstSaveNoticeShown";
 const ACCESS_TOKEN_LIFETIME_SECONDS = 3600;
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -201,6 +202,7 @@ await runCase("account", async (_page, check, browser) => {
   await waitForText(popup, "3 prompts, 1 pack\\b");
   check("corrupt cache recovers through an automatic refresh", (await storedLibrary(popup))?.prompts.length === 3);
 
+  await popup.evaluate((key) => chrome.storage.local.set({ [key]: true }), FIRST_SAVE_NOTICE_KEY);
   await (await popup.waitForSelector('aria/Sign out[role="button"]')).click();
   await waitForText(popup, "Use your Promptizer account");
   check("sign-out returns to the signed-out form", true);
@@ -214,6 +216,14 @@ await runCase("account", async (_page, check, browser) => {
   await waitForText(popup, "Use your Promptizer account");
   check("sign-out wiped the stored credentials", true);
   check("sign-out wiped the local library copy", (await storedLibrary(popup)) === undefined);
+  const { [FIRST_SAVE_NOTICE_KEY]: firstSaveNoticeAfterSignOut } = await popup.evaluate(
+    (key) => chrome.storage.local.get(key),
+    FIRST_SAVE_NOTICE_KEY,
+  );
+  check(
+    "sign-out wiped the first-save notice flag so the next account sees it",
+    firstSaveNoticeAfterSignOut === undefined,
+  );
   const storedAfterSignOut = await everyStoredValue(popup);
   check(
     "no prompt content or token remains in any extension storage after sign-out",
