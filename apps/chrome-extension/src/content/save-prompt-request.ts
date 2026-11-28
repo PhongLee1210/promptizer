@@ -62,6 +62,8 @@ export async function pushPromptEdit(
   const response = await sendPromptWrite<PromptWriteResponse>({ type: UPDATE_PROMPT_MESSAGE_TYPE, id, changes });
   if (response.ok) {
     await writeCacheWhileSignedIn(isSameAccountSignedIn, (cache) => replaceCachedPrompt(cache, response.prompt));
+  } else if (response.kind === "not_found") {
+    await writeCacheWhileSignedIn(isSameAccountSignedIn, (cache) => removeCachedPrompt(cache, id));
   }
   return response;
 }

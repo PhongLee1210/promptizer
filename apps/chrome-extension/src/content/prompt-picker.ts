@@ -592,16 +592,17 @@ export class PromptPicker {
     const saveButton = button("check", null, "Save changes", () => void save(), "primary");
     this.bottomBar.append(cancelButton, saveButton);
 
+    let isDeletedElsewhere = false;
     this.applyPanelAvailability = (online) => {
       offlineNote.hidden = online;
       if (!editing.isSaving) {
-        saveButton.disabled = !online;
+        saveButton.disabled = !online || isDeletedElsewhere;
       }
     };
     this.applyPanelAvailability(navigator.onLine);
 
     const save = async (): Promise<void> => {
-      if (editing.isSaving || !navigator.onLine) {
+      if (editing.isSaving || isDeletedElsewhere || !navigator.onLine) {
         return;
       }
       const changes = changedFields(prompt, titleInput.value.trim(), textArea.value);
@@ -628,8 +629,16 @@ export class PromptPicker {
         this.returnToList(response.prompt.id);
         return;
       }
-      saveButton.disabled = !navigator.onLine;
       cancelButton.disabled = false;
+      if (response.kind === "not_found") {
+        isDeletedElsewhere = true;
+        saveButton.disabled = true;
+        this.library = withoutPrompt(this.library, prompt.id);
+        formError.textContent = response.message;
+        cancelButton.focus();
+        return;
+      }
+      saveButton.disabled = !navigator.onLine;
       const fieldErrors = response.kind === "validation" ? response.fields : {};
       showFieldError(titleInput, titleError, fieldErrors.title);
       showFieldError(textArea, textError, fieldErrors.text);
@@ -694,7 +703,7 @@ export class PromptPicker {
       confirming.isDeleting = true;
       deleteButton.disabled = true;
       cancelButton.disabled = true;
-      deleteButton.setAttribute("aria-label", "Deleting…");
+      setButtonLabel(deleteButton, "Deleting…");
       const response = await this.callbacks.onDelete(prompt.id);
       if (thisOpening !== this.openCount || !this.isOpen) {
         return;
@@ -705,7 +714,7 @@ export class PromptPicker {
         this.returnToList(null);
         return;
       }
-      deleteButton.setAttribute("aria-label", "Delete prompt");
+      setButtonLabel(deleteButton, "Delete prompt");
       deleteButton.disabled = !navigator.onLine;
       cancelButton.disabled = false;
       failure.textContent = response.message;
@@ -756,4 +765,9 @@ export class PromptPicker {
     this.activeIndex = target;
     this.syncActiveRow();
   }
+}
+
+function setButtonLabel(target: HTMLButtonElement, label: string): void {
+  target.setAttribute("aria-label", label);
+  target.dataset.tip = label;
 }
