@@ -20,6 +20,7 @@ type PickerRow = { kind: "pack"; pack: PackSummary } | { kind: "prompt"; prompt:
 const LIST_ID = "pz-picker-list";
 const ROW_ID_PREFIX = "pz-picker-row-";
 const PICKER_TITLE = "My Prompts";
+const OFFLINE_MESSAGE = "You're offline. Showing your last synced library.";
 const EMPTY_LIBRARY_MESSAGE = "No saved prompts yet. Add some on the dashboard, then sync from the Promptizer popup.";
 
 export const PICKER_STYLE = `
@@ -46,6 +47,18 @@ export const PICKER_STYLE = `
   }
   input.pz-picker__input:focus-visible {
     border-color: var(--pz-color-fill-brand-default);
+  }
+  .pz-picker__offline {
+    flex: none;
+    margin: 0;
+    padding: 4px 10px;
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--pz-color-text-base-subdued);
+    border-bottom: 1px solid var(--pz-color-border-base-muted);
+  }
+  .pz-picker__offline[hidden] {
+    display: none;
   }
   .pz-picker__list {
     flex: 1;
@@ -117,6 +130,7 @@ export class PromptPicker {
   private readonly topBar: HTMLDivElement;
   private readonly input: HTMLInputElement;
   private readonly list: HTMLDivElement;
+  private readonly offlineNote: HTMLParagraphElement;
   private library: PickerLibrary = { prompts: [], packs: [] };
   private openPack: PackSummary | null = null;
   private rows: PickerRow[] = [];
@@ -162,7 +176,19 @@ export class PromptPicker {
     this.list.setAttribute("role", "listbox");
     this.list.setAttribute("aria-label", PICKER_TITLE);
 
-    this.element.append(this.topBar, search, this.list);
+    this.offlineNote = document.createElement("p");
+    this.offlineNote.className = "pz-picker__offline";
+    this.offlineNote.setAttribute("role", "status");
+    this.offlineNote.textContent = OFFLINE_MESSAGE;
+    this.syncOfflineNote();
+    window.addEventListener("online", () => this.syncOfflineNote());
+    window.addEventListener("offline", () => this.syncOfflineNote());
+
+    this.element.append(this.topBar, search, this.offlineNote, this.list);
+  }
+
+  private syncOfflineNote(): void {
+    this.offlineNote.hidden = navigator.onLine;
   }
 
   node(): HTMLDivElement {
@@ -178,6 +204,7 @@ export class PromptPicker {
     if (!open) {
       return;
     }
+    this.syncOfflineNote();
     const thisOpening = ++this.openCount;
     this.openPack = null;
     this.input.value = "";

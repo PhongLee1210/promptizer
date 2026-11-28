@@ -167,6 +167,25 @@ await runCase("prompt-picker", async (page, check, browser) => {
   );
   await textareaPage.close();
 
+  const offlineMessage = "You're offline. Showing your last synced library.";
+  await page.bringToFront();
+  await page.setOfflineMode(true);
+  await openPicker(page);
+  check(
+    "offline, the picker opens from the cache and says it is offline",
+    (await isShown(page, "Weekly report")) && (await previewShows(page, offlineMessage)),
+  );
+  await page.setOfflineMode(false);
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  check("coming back online clears the offline note without a restart", !(await previewShows(page, offlineMessage)));
+  await page.setOfflineMode(true);
+  await page.keyboard.type("weekly");
+  await page.keyboard.press("Enter");
+  await (await page.waitForSelector("aria/Replace text", { timeout: 5000 })).click();
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  check("offline, a picked prompt still inserts", (await composerText()) === "Weekly report text");
+  await page.setOfflineMode(false);
+
   await writeStorage(browser, { [LIBRARY_STORAGE_KEY]: storedLibrary([], []) });
   await page.bringToFront();
   await openPicker(page);
