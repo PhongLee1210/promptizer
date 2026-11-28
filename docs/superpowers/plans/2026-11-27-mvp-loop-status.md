@@ -124,12 +124,12 @@ Proposed Serena memory edit (apply to `web_prompts` once PR #10 merges): "Load f
 | T-6.1.2 | Rail "Save prompt" action + title step | feat |  | VERIFIED | mvp/T-6.1.2-save-prompt-rail | mvp/T-5.3.1-wipe-race | #37 (owner-built, option A worker relay) + F-17 fix #40 (`mvp/T-6.1.2-save-race`, base #39; loop 15 fresh verifier PASS) |
 | T-6.1.3 | One-time first-save notice | feat | ⇉ | VERIFIED | mvp/T-6.1.3-first-save-notice | mvp/T-6.1.2-save-prompt-rail | #38 (owner-built) + F-17 fix #40 (loop 15 PASS) |
 | T-6.1.4 | Save flow tests | test | ⇉ | VERIFIED | mvp/T-6.1.4-save-flow-tests | mvp/T-6.1.3-first-save-notice | #39 (owner-built; loop 15 verifier PASS, low test gaps in F-19) |
-| T-6.2.1 | Edit push from the extension | feat |  | NEEDS-REVIEW | mvp/T-6.2.1-edit-push | mvp/T-6.3.4-offline-save | #42; loop 16 fresh verifier at 3f15356: all checks green (unit 46/46, E2E 96/96, 5 sign-out probes), fixes 1–2 hold, 1 low (empty/extra `changes` accepted) fixed in 010deec (unit 46/46, E2E 96/96); 010deec needs a fresh look; box 3 inline display in T-6.2.2 |
-| T-6.2.2 | Edit UI in the picker | feat |  | NEEDS-REVIEW | mvp/T-6.2.2-picker-edit | mvp/T-6.2.1-edit-push | #43 (7e1f84d; builder: unit 51/51, E2E 112/112; also T-6.2.1 box 3 inline errors); fresh verifier dispatched loop 16 |
+| T-6.2.1 | Edit push from the extension | feat |  | VERIFIED | mvp/T-6.2.1-edit-push | mvp/T-6.3.4-offline-save | #42 (loop 16 fresh verifier PASS at 3f15356 + 010deec; box 3 inline display verified in #43) |
+| T-6.2.2 | Edit UI in the picker | feat |  | NEEDS-REVIEW | mvp/T-6.2.2-picker-edit | mvp/T-6.2.1-edit-push | #43; loop 16 fresh verifier at 7e1f84d: all boxes met, unit 51/51, E2E 112/112, 11 race probes; 1 medium (PATCH 404 left prompt cached, Save enabled) + 1 low (busy label) fixed in e8264aa (E2E 114/114); second verifier running |
 | T-6.2.3 | Edit sync tests | test | ⇉ | PENDING | | | |
 | T-6.3.1 | Conflict detection decision | decision |  | BLOCKED-DECISION | | | decisions/T-6.3.1.md |
 | T-6.3.2 | Conflict refusal & "updated elsewhere" UI | feat |  | PENDING | | | |
-| T-6.3.3 | Network error retry states | feat |  | IN-PROGRESS | mvp/T-6.3.3-retry-states | mvp/T-6.2.2-picker-edit | loop 16 builder |
+| T-6.3.3 | Network error retry states | feat |  | NEEDS-REVIEW | mvp/T-6.3.3-retry-states | mvp/T-6.2.2-picker-edit | #44 (130a640 + merge of #43 fix e750703; unit 52/52, E2E 126/126); fresh verifier running |
 | T-6.3.4 | Offline save disabled state | feat | ⇉ | VERIFIED | mvp/T-6.3.4-offline-save | mvp/T-6.1.2-save-race | #41 (loop 15 fresh verifier PASS incl. keyboard/toggle probes; also T-5.2.4 box 2) |
 | T-6.3.5 | Conflict & error tests | test | ⇉ | PENDING | | | |
 | T-7.1.1 | Journey A regression pass | qa |  | PENDING | mvp/T-7.1.1-release-anchor-editor | main | F-10 fix #27 VERIFIED loop 9 (5715553); the pass itself waits for all epics |
