@@ -67,7 +67,7 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
     onSelectLeaf: (action) => runAction(action, "text"),
     onToggleGroup: (group) => dispatch({ type: "group-toggled", group }),
     onRecentOpened: () => dispatch({ type: "recent-opened" }),
-    onMyPromptsOpened: () => dispatch({ type: "picker-opened" }),
+    onMyPromptsOpened: () => openPicker(),
     onTurnOff: () => turnOff(),
   });
   const resultWindow = new ResultWindow({
@@ -241,11 +241,20 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
     chip.focusTrigger();
   }
 
+  function openPicker(): void {
+    generation += 1;
+    dispatch({ type: "picker-opened" });
+  }
+
   function setSignedIn(nextSignedIn: boolean): void {
     if (signedIn === nextSignedIn) {
       return;
     }
     signedIn = nextSignedIn;
+    if (!signedIn && state.view.kind === "picker") {
+      dispatch({ type: "dismissed" });
+      return;
+    }
     render();
   }
 

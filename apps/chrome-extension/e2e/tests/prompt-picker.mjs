@@ -1,6 +1,7 @@
 import { runCase, extensionId, findAccessibleName } from "../harness.mjs";
 
 const SESSION_STORAGE_KEY = "promptizer.accountSession";
+const SIGNED_IN_STORAGE_KEY = "promptizer.signedIn";
 const LIBRARY_STORAGE_KEY = "promptizer.librarySnapshot";
 const WORK_PACK = { id: "pack-1", name: "Work" };
 
@@ -98,7 +99,11 @@ async function activeOptionLabel(searchHandle) {
 }
 
 await runCase("prompt-picker", async (page, check, browser) => {
-  await writeStorage(browser, { [SESSION_STORAGE_KEY]: storedSession(), [LIBRARY_STORAGE_KEY]: FULL_LIBRARY });
+  await writeStorage(browser, {
+    [SESSION_STORAGE_KEY]: storedSession(),
+    [SIGNED_IN_STORAGE_KEY]: true,
+    [LIBRARY_STORAGE_KEY]: FULL_LIBRARY,
+  });
   await page.bringToFront();
 
   const search = await openPicker(page);
@@ -239,4 +244,27 @@ await runCase("prompt-picker", async (page, check, browser) => {
     "an empty library shows the honest empty state with a dashboard pointer",
     (await isShown(page, "Open dashboard")) && !(await isShown(page, "Bug triage", 300)),
   );
+
+  await page.keyboard.press("Escape");
+  await page.$eval("#composer", (composer) => {
+    composer.innerText = "";
+  });
+  await page.type("#composer", "slow again");
+  await (await page.waitForSelector("aria/Promptizer actions")).click();
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  await (await page.waitForSelector("aria/Fix grammar", { timeout: 5000 })).click();
+  await (await page.waitForSelector("aria/Promptizer actions")).click();
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  await (await page.waitForSelector("aria/Promptizer actions")).click();
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  await (await page.waitForSelector("aria/My Prompts", { timeout: 5000 })).click();
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+  check(
+    "a late model answer cannot replace an open picker",
+    (await isShown(page, "Search prompts")) && !(await isShown(page, "Replace text", 300)),
+  );
+
+  await writeStorage(browser, { [SIGNED_IN_STORAGE_KEY]: false });
+  await page.bringToFront();
+  check("signing out closes an open picker", !(await isShown(page, "Search prompts", 1000)));
 });

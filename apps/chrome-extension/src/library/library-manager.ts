@@ -17,13 +17,19 @@ export interface LibraryManager {
 }
 
 export function createLibraryManager(client: LibraryClient, cache: LibraryCache): LibraryManager {
+  let wipeCount = 0;
+
   return {
     async current() {
       return cache.read();
     },
 
     async refresh(accessToken) {
+      const wipeCountAtStart = wipeCount;
       const result = await client.fetchSnapshot(accessToken);
+      if (wipeCount !== wipeCountAtStart) {
+        return cache.read();
+      }
       if (!result.ok) {
         const previous = await cache.read();
         return { ...previous, lastError: result.error.message };
@@ -38,6 +44,7 @@ export function createLibraryManager(client: LibraryClient, cache: LibraryCache)
     },
 
     wipe() {
+      wipeCount += 1;
       return cache.clear();
     },
   };

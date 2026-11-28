@@ -84,7 +84,10 @@ async function mockAuthApi(page, state) {
         return;
       }
       const library = { ...state.libraries[user.id], fetchedAt: Math.floor(Date.now() / 1000) };
-      request.respond({ status: 200, headers: json, body: JSON.stringify(library) });
+      setTimeout(
+        () => request.respond({ status: 200, headers: json, body: JSON.stringify(library) }),
+        state.libraryDelayMs,
+      );
       return;
     }
     if (url.pathname.endsWith("/me")) {
@@ -146,7 +149,13 @@ async function waitForText(page, pattern, timeoutMs = 5000) {
 }
 
 await runCase("account", async (_page, check, browser) => {
-  const state = { acceptCredentials: false, libraryUnreachable: false, libraries: initialLibraries(), requests: [] };
+  const state = {
+    acceptCredentials: false,
+    libraryUnreachable: false,
+    libraryDelayMs: 0,
+    libraries: initialLibraries(),
+    requests: [],
+  };
   let popup = await openAccountScreen(browser, state);
 
   await waitForText(popup, "Use your Promptizer account");
@@ -231,4 +240,10 @@ await runCase("account", async (_page, check, browser) => {
     JSON.stringify(rebuiltIds) === JSON.stringify(["prompt-1", "prompt-2", "prompt-3"]),
     String(rebuiltIds),
   );
+
+  state.libraryDelayMs = 1500;
+  await (await popup.waitForSelector('aria/Refresh[role="button"]')).click();
+  await signOut(popup);
+  await new Promise((resolve) => setTimeout(resolve, 2500));
+  check("a refresh still in flight at sign-out never restores the library", (await storedLibrary(popup)) === undefined);
 });

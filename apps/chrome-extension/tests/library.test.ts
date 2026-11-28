@@ -173,3 +173,22 @@ test("wipe clears the cache", async () => {
   await manager.wipe();
   assert.equal(store.current, undefined);
 });
+
+test("a refresh that lands after a wipe never writes the old library back", async () => {
+  const store = memoryStore(undefined);
+  let releaseResponse: () => void = () => {};
+  const heldFetch: typeof fetch = () =>
+    new Promise((resolve) => {
+      releaseResponse = () => resolve(new Response(JSON.stringify(snapshotAt(NOW_SECONDS)), { status: 200 }));
+    });
+  const manager = createLibraryManager(
+    createLibraryClient("https://api.test", heldFetch),
+    createLibraryCache(store, () => NOW_SECONDS * 1000),
+  );
+  const pendingRefresh = manager.refresh("token");
+  await manager.wipe();
+  releaseResponse();
+  const status = await pendingRefresh;
+  assert.equal(store.current, undefined);
+  assert.equal(status.prompts.length, 0);
+});
