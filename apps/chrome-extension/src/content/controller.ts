@@ -6,6 +6,7 @@ import { PromptizerChip } from "./chip";
 import {
   currentResult,
   initialChipState,
+  LIBRARY_ORIGIN,
   reduceChipState,
   UNDO_WINDOW_MS,
   type ChipEvent,
@@ -84,7 +85,7 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
     onClose: () => closeWindow(),
   });
   const picker = new PromptPicker({
-    onPick: () => closeWindow(),
+    onPick: (prompt) => insertPrompt(prompt.title, prompt.text),
     onOpenDashboard: () => openDashboard(),
     onClose: () => closeWindow(),
   });
@@ -124,7 +125,7 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
       picker.focusSearch();
       return;
     }
-    if (state.view.kind === "result" && event.type === "outcome-arrived") {
+    if (state.view.kind === "result" && (event.type === "outcome-arrived" || event.type === "prompt-picked")) {
       resultWindow.focusPrimary();
       return;
     }
@@ -314,9 +315,21 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
     return performAction(action, text);
   }
 
+  function insertPrompt(title: string, text: string): void {
+    const editor = anchorEditor();
+    if (editor === null || !document.contains(editor)) {
+      closeWindow();
+      return;
+    }
+    generation += 1;
+    pendingEditor = editor;
+    resizeObserver.observe(editor);
+    dispatch({ type: "prompt-picked", id: String(++resultIdCounter), title, text });
+  }
+
   function regenerate(): void {
     const entry = currentResult(state);
-    if (entry === null) {
+    if (entry === null || entry.action === LIBRARY_ORIGIN) {
       return;
     }
     runAction(entry.action, "text");
