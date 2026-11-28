@@ -13,7 +13,7 @@ import {
 } from "./loading-ui";
 import { ACTION_COPY, PREPARING_CAPTION, PREPARING_TITLE } from "./present-result";
 
-export type SaveOutcome = { ok: true } | { ok: false; message: string };
+export type SaveOutcome = { ok: true; showFirstSaveNotice: boolean } | { ok: false; message: string };
 
 export interface ResultWindowCallbacks {
   onStep: (direction: -1 | 1) => void;
@@ -468,6 +468,17 @@ export class ResultWindow {
       if (outcome.ok) {
         saveButton.innerHTML = "";
         saveButton.append(document.createTextNode("Saved"));
+        if (outcome.showFirstSaveNotice) {
+          cancelButton.disabled = false;
+          cancelButton.innerHTML = "";
+          cancelButton.append(document.createTextNode("Done"));
+          cancelButton.setAttribute("aria-label", "Done");
+          cancelButton.dataset.tip = "Done";
+          errorLine.classList.remove("pz-win__body--error");
+          errorLine.setAttribute("role", "status");
+          errorLine.textContent = "Stored in your Promptizer account.";
+          return;
+        }
         window.setTimeout(() => this.callbacks.onSaveCancel(), SAVE_CONFIRM_FLASH_MS);
         return;
       }

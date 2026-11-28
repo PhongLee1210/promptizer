@@ -1,4 +1,5 @@
 import { library } from "../library/library.ts";
+import { clearFirstSaveNotice } from "../prompts/first-save-notice.ts";
 import { API_ORIGIN } from "./api-origin.ts";
 import { createAuthClient } from "./auth-client.ts";
 import { createSessionManager } from "./session-manager.ts";
@@ -10,5 +11,5 @@ export const accountSession = createSessionManager(
   createAuthClient(API_ORIGIN),
   createBrowserSessionStore(),
   () => Date.now(),
-  () => library.wipe(),
+  () => Promise.all([library.wipe(), clearFirstSaveNotice()]).then(() => undefined),
 );
