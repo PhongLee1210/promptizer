@@ -44,6 +44,7 @@ test("only registered routes are rewritten for mobile", () => {
     "/account/password",
     "/packs",
     "/packs/new",
+    "/packs/x",
     "/packs/x/edit",
     "/packs/x/delete",
   ]) {

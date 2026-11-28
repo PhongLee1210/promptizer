@@ -31,11 +31,11 @@ export function PacksView({ packs }: { packs: PackSummary[] }) {
         <ul className="flex flex-col gap-2">
           {packs.map((pack) => (
             <li key={pack.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4">
-              <div className="flex min-w-0 items-center gap-2">
+              <Link href={`/packs/${pack.id}`} className="flex min-w-0 items-center gap-2 hover:underline">
                 <FolderIcon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
                 <span className="truncate font-medium">{pack.name}</span>
                 <Badge variant="secondary">{pack.promptCount}</Badge>
-              </div>
+              </Link>
               <div className="flex gap-2">
                 <Button asChild variant="outline" size="sm">
                   <Link href={`/packs/${pack.id}/edit`}>

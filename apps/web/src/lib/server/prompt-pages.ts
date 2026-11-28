@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 import type { CategorySummary, PackSummary, Prompt, PromptListPage } from "@promptizer/shared";
-import { PROMPTS_PAGE_SIZE } from "@promptizer/shared";
+import { PROMPTS_PAGE_SIZE, PROMPTS_PAGE_SIZE_MAX } from "@promptizer/shared";
 import { isPromptId } from "../prompts/prompts.ts";
 import type { PromptsListParams } from "../prompts/prompts.ts";
 import { findCategory, listPacksWithCounts } from "./categories.ts";
@@ -71,6 +71,23 @@ export async function loadPackOrNotFound(id: string): Promise<CategorySummary> {
     notFound();
   }
   throw new Error("Could not load pack");
+}
+
+export async function loadPackPromptsForSession(categoryId: string): Promise<Prompt[]> {
+  const accessToken = await readSessionAccessToken();
+  if (!accessToken) {
+    return [];
+  }
+  const page = await listPrompts(accessToken, {
+    query: "",
+    categoryId,
+    page: 1,
+    pageSize: PROMPTS_PAGE_SIZE_MAX,
+  });
+  if (!page.ok) {
+    throw new Error("Could not load pack prompts");
+  }
+  return page.value.items;
 }
 
 export async function loadPromptListForSession(params: PromptsListParams): Promise<PromptListForSession> {
