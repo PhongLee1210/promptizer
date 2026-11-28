@@ -213,3 +213,59 @@ test("every request identifies itself as the extension so the server keeps cooki
   assert.equal(seenHeaders.length, 4);
   assert.ok(seenHeaders.every((headers) => headers.get("X-Promptizer-Client") === "extension"));
 });
+
+function heldRefreshClient(renewedSession: AuthSession, signInSession: AuthSession) {
+  let releaseRefresh: () => void = () => {};
+  const refreshHeld = new Promise<void>((resolve) => {
+    releaseRefresh = resolve;
+  });
+  const client = createAuthClient(
+    "https://api.test",
+    routedFetch({
+      "/api/auth/refresh": () => new Response(JSON.stringify(renewedSession)),
+      "/api/auth/sign-in": () => new Response(JSON.stringify(signInSession)),
+      "/api/auth/sign-out": () => new Response("{}"),
+    }),
+  );
+  const heldClient = {
+    ...client,
+    refresh: async (refreshToken: string) => {
+      await refreshHeld;
+      return client.refresh(refreshToken);
+    },
+  };
+  return { client: heldClient, releaseRefresh };
+}
+
+test("a renewal that lands after sign-out does not bring the credentials back", async () => {
+  const store = memoryStore(sessionExpiringAt(NOW_SECONDS + 10));
+  const { client, releaseRefresh } = heldRefreshClient(
+    sessionExpiringAt(NOW_SECONDS + 3600, "access-2"),
+    sessionExpiringAt(NOW_SECONDS + 3600),
+  );
+  const manager = createSessionManager(client, store, () => NOW_SECONDS * 1000);
+  const tokenRequest = manager.getAccessToken();
+  await manager.signOut();
+  releaseRefresh();
+  assert.deepEqual(await tokenRequest, { ok: true, value: undefined });
+  assert.equal(store.current, undefined);
+  assert.equal(await manager.currentUser(), undefined);
+});
+
+test("a renewal for the previous account does not overwrite a newer sign-in", async () => {
+  const store = memoryStore(sessionExpiringAt(NOW_SECONDS + 10));
+  const otherAccount: AuthSession = {
+    accessToken: "access-b",
+    refreshToken: "refresh-b",
+    expiresAt: NOW_SECONDS + 3600,
+    user: { id: "user-2", email: "grace@example.com", name: "Grace" },
+  };
+  const { client, releaseRefresh } = heldRefreshClient(sessionExpiringAt(NOW_SECONDS + 3600, "access-2"), otherAccount);
+  const manager = createSessionManager(client, store, () => NOW_SECONDS * 1000);
+  const tokenRequest = manager.getAccessToken();
+  await manager.signIn("grace@example.com", "pw");
+  releaseRefresh();
+  assert.deepEqual(await tokenRequest, { ok: true, value: "access-b" });
+  assert.equal(store.current?.user.email, "grace@example.com");
+  assert.equal(store.current?.accessToken, "access-b");
+});
