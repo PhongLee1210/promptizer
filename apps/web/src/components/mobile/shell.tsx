@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import type { AuthUser } from "@promptizer/shared";
 import type { LucideIcon } from "lucide-react";
-import { FileTextIcon, PlusIcon } from "lucide-react";
+import { FileTextIcon, FolderIcon, PlusIcon } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
 import { AccountSheet } from "@/components/mobile/account-sheet";
 import { HeaderSearch } from "@/components/mobile/header-search";
@@ -24,6 +24,7 @@ interface TabItem {
 
 const TAB_ITEMS: TabItem[] = [
   { href: "/prompts", label: "Prompts", icon: FileTextIcon },
+  { href: "/packs", label: "Packs", icon: FolderIcon },
   { href: "/prompts/new", label: "New", icon: PlusIcon, primary: true },
 ];
 

@@ -9,6 +9,10 @@ export const MOBILE_SPLIT_ROUTES = [
   "/prompts/[id]",
   "/prompts/[id]/edit",
   "/prompts/[id]/delete",
+  "/packs",
+  "/packs/new",
+  "/packs/[id]/edit",
+  "/packs/[id]/delete",
   "/account/password",
 ] as const;
 

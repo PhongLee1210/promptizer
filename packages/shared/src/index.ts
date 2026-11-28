@@ -57,6 +57,10 @@ export interface CategoryDraft {
   name: string;
 }
 
+export interface PackSummary extends CategorySummary {
+  promptCount: number;
+}
+
 export type CategoryChanges = Partial<CategoryDraft>;
 
 export type CategoryField = "name";

@@ -1,4 +1,4 @@
-import { FileTextIcon, KeyRoundIcon, LayoutTemplateIcon, type LucideIcon } from "lucide-react";
+import { FileTextIcon, FolderIcon, KeyRoundIcon, LayoutTemplateIcon, type LucideIcon } from "lucide-react";
 
 export interface NavLinkItem {
   id: string;
@@ -20,6 +20,11 @@ export const sidebarItems: NavGroup[] = [
     id: "prompts",
     label: "Prompts",
     items: [{ id: "all-prompts", title: "All prompts", url: "/prompts", icon: FileTextIcon }],
+  },
+  {
+    id: "packs",
+    label: "Packs",
+    items: [{ id: "all-packs", title: "Packs", url: "/packs", icon: FolderIcon }],
   },
   {
     id: "account",
