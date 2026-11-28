@@ -3,8 +3,8 @@ import { createLibraryCache, withoutPrompt } from "../library/library-cache";
 import { createBrowserSnapshotStore } from "../library/snapshot-store";
 import type { PromptDeleteResponse, PromptEdit, PromptWriteResponse } from "../prompts/save-prompt-message";
 import { PICKER_HEIGHT } from "./anchor";
-import { OFFLINE_SAVE_MESSAGE } from "./present-result";
-import { button } from "./result-window";
+import { describeWriteFailure, OFFLINE_SAVE_MESSAGE, UNREACHABLE_WRITE_MESSAGE } from "./present-result";
+import { button, relabelButton, settleButtonsAfterFailedWrite } from "./result-window";
 
 export interface PickerLibrary {
   prompts: Prompt[];
@@ -23,8 +23,8 @@ type PickerRow = { kind: "pack"; pack: PackSummary } | { kind: "prompt"; prompt:
 
 type PickerMode =
   | { kind: "browsing" }
-  | { kind: "editing"; prompt: Prompt; isSaving: boolean }
-  | { kind: "confirming-delete"; prompt: Prompt; isDeleting: boolean };
+  | { kind: "editing"; prompt: Prompt; isSaving: boolean; isBlocked: boolean }
+  | { kind: "confirming-delete"; prompt: Prompt; isDeleting: boolean; isBlocked: boolean };
 
 const LIST_ID = "pz-picker-list";
 const ROW_ID_PREFIX = "pz-picker-row-";
@@ -35,6 +35,7 @@ const TITLE_ERROR_ID = "pz-picker-title-error";
 const TEXT_ERROR_ID = "pz-picker-text-error";
 const DELETE_QUESTION_ID = "pz-picker-delete-question";
 const DELETE_WARNING = "This permanently deletes the prompt and its text. This can't be undone.";
+const DELETING_STATUS = "Deleting…";
 
 export const PICKER_STYLE = `
   .pz-picker {
@@ -222,6 +223,12 @@ function offlineWriteNote(): HTMLParagraphElement {
   note.setAttribute("role", "status");
   note.textContent = OFFLINE_SAVE_MESSAGE;
   return note;
+}
+
+function replaceOfflineFailureOnceOnline(failureLine: HTMLElement, online: boolean): void {
+  if (online && failureLine.textContent === OFFLINE_SAVE_MESSAGE) {
+    failureLine.textContent = UNREACHABLE_WRITE_MESSAGE;
+  }
 }
 
 function showFieldError(field: HTMLInputElement | HTMLTextAreaElement, errorLine: HTMLElement, message?: string): void {
@@ -558,6 +565,7 @@ export class PromptPicker {
     this.input.removeAttribute("aria-activedescendant");
     this.renderTopBar(titleText, false);
     this.panel.removeAttribute("aria-labelledby");
+    this.panel.removeAttribute("aria-busy");
     this.panel.replaceChildren();
     this.bottomBar.replaceChildren();
   }
@@ -567,7 +575,12 @@ export class PromptPicker {
       return;
     }
     const thisOpening = this.openCount;
-    const editing: Extract<PickerMode, { kind: "editing" }> = { kind: "editing", prompt, isSaving: false };
+    const editing: Extract<PickerMode, { kind: "editing" }> = {
+      kind: "editing",
+      prompt,
+      isSaving: false,
+      isBlocked: false,
+    };
     this.mode = editing;
     this.openPanel("Edit prompt");
 
@@ -592,17 +605,17 @@ export class PromptPicker {
     const saveButton = button("check", null, "Save changes", () => void save(), "primary");
     this.bottomBar.append(cancelButton, saveButton);
 
-    let isDeletedElsewhere = false;
     this.applyPanelAvailability = (online) => {
       offlineNote.hidden = online;
-      if (!editing.isSaving) {
-        saveButton.disabled = !online || isDeletedElsewhere;
+      if (!editing.isSaving && !editing.isBlocked) {
+        saveButton.disabled = !online;
       }
+      replaceOfflineFailureOnceOnline(formError, online);
     };
     this.applyPanelAvailability(navigator.onLine);
 
     const save = async (): Promise<void> => {
-      if (editing.isSaving || isDeletedElsewhere || !navigator.onLine) {
+      if (editing.isSaving || editing.isBlocked || !navigator.onLine) {
         return;
       }
       const changes = changedFields(prompt, titleInput.value.trim(), textArea.value);
@@ -629,23 +642,30 @@ export class PromptPicker {
         this.returnToList(response.prompt.id);
         return;
       }
-      cancelButton.disabled = false;
+      const failure = describeWriteFailure(response, navigator.onLine);
+      editing.isBlocked = failure.recovery === "blocked";
       if (response.kind === "not_found") {
-        isDeletedElsewhere = true;
-        saveButton.disabled = true;
         this.library = withoutPrompt(this.library, prompt.id);
-        formError.textContent = response.message;
-        cancelButton.focus();
-        return;
       }
-      saveButton.disabled = !navigator.onLine;
+      const buttonToFocus = settleButtonsAfterFailedWrite(failure.recovery, {
+        action: saveButton,
+        cancel: cancelButton,
+        idleIcon: "check",
+        idleLabel: "Save changes",
+        retryLabel: "Retry save",
+      });
       const fieldErrors = response.kind === "validation" ? response.fields : {};
       showFieldError(titleInput, titleError, fieldErrors.title);
       showFieldError(textArea, textError, fieldErrors.text);
       if (fieldErrors.title === undefined && fieldErrors.text === undefined) {
-        formError.textContent = response.message;
+        formError.textContent = failure.message;
       }
-      (fieldErrors.title !== undefined ? titleInput : fieldErrors.text !== undefined ? textArea : saveButton).focus();
+      (fieldErrors.title !== undefined
+        ? titleInput
+        : fieldErrors.text !== undefined
+          ? textArea
+          : buttonToFocus
+      ).focus();
     };
 
     titleInput.addEventListener("keydown", (event) => {
@@ -666,6 +686,7 @@ export class PromptPicker {
       kind: "confirming-delete",
       prompt,
       isDeleting: false,
+      isBlocked: false,
     };
     this.mode = confirming;
     this.openPanel("Delete prompt");
@@ -675,6 +696,7 @@ export class PromptPicker {
     question.id = DELETE_QUESTION_ID;
     question.textContent = `Delete “${prompt.title}”?`;
     const warning = panelMessage(null, false);
+    warning.setAttribute("role", "status");
     warning.textContent = DELETE_WARNING;
     const failure = panelMessage(null, true);
     failure.setAttribute("role", "alert");
@@ -689,36 +711,46 @@ export class PromptPicker {
 
     this.applyPanelAvailability = (online) => {
       offlineNote.hidden = online;
-      if (!confirming.isDeleting) {
+      if (!confirming.isDeleting && !confirming.isBlocked) {
         deleteButton.disabled = !online;
       }
+      replaceOfflineFailureOnceOnline(failure, online);
     };
     this.applyPanelAvailability(navigator.onLine);
 
     const remove = async (): Promise<void> => {
-      if (confirming.isDeleting || !navigator.onLine) {
+      if (confirming.isDeleting || confirming.isBlocked || !navigator.onLine) {
         return;
       }
       failure.textContent = "";
       confirming.isDeleting = true;
       deleteButton.disabled = true;
       cancelButton.disabled = true;
-      setButtonLabel(deleteButton, "Deleting…");
+      relabelButton(deleteButton, "trash", DELETING_STATUS);
+      warning.textContent = DELETING_STATUS;
+      this.panel.setAttribute("aria-busy", "true");
       const response = await this.callbacks.onDelete(prompt.id);
       if (thisOpening !== this.openCount || !this.isOpen) {
         return;
       }
       confirming.isDeleting = false;
+      this.panel.removeAttribute("aria-busy");
+      warning.textContent = DELETE_WARNING;
       if (response.ok) {
         this.library = withoutPrompt(this.library, prompt.id);
         this.returnToList(null);
         return;
       }
-      setButtonLabel(deleteButton, "Delete prompt");
-      deleteButton.disabled = !navigator.onLine;
-      cancelButton.disabled = false;
-      failure.textContent = response.message;
-      cancelButton.focus();
+      const notice = describeWriteFailure(response, navigator.onLine);
+      confirming.isBlocked = notice.recovery === "blocked";
+      failure.textContent = notice.message;
+      settleButtonsAfterFailedWrite(notice.recovery, {
+        action: deleteButton,
+        cancel: cancelButton,
+        idleIcon: "trash",
+        idleLabel: "Delete prompt",
+        retryLabel: "Retry delete",
+      }).focus();
     };
 
     cancelButton.focus();
@@ -765,9 +797,4 @@ export class PromptPicker {
     this.activeIndex = target;
     this.syncActiveRow();
   }
-}
-
-function setButtonLabel(target: HTMLButtonElement, label: string): void {
-  target.setAttribute("aria-label", label);
-  target.dataset.tip = label;
 }

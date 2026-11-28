@@ -23,7 +23,7 @@ import {
 import { getEditorText, isContentEditableElement, resolveEditableTarget } from "./editor-detector";
 import { disableGlobally, isGloballyEnabled, onGlobalEnabledChanged } from "./global-enabled";
 import { evictWarmSessions, prepareNano, prewarmNano, type NanoAvailability } from "./nano";
-import { OFFLINE_SAVE_MESSAGE, presentResult } from "./present-result";
+import { describeWriteFailure, OFFLINE_SAVE_MESSAGE, presentResult } from "./present-result";
 import { PromptPicker } from "./prompt-picker";
 import { ActionRail } from "./rail";
 import { ResultWindow } from "./result-window";
@@ -280,15 +280,15 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
 
   async function confirmSavePrompt(title: string): Promise<SaveOutcome> {
     if (state.view.kind !== "saving") {
-      return { ok: false, message: "Something went wrong. Please try again." };
+      return { ok: false, message: "Something went wrong. Please try again.", recovery: "blocked" };
     }
     if (!navigator.onLine) {
-      return { ok: false, message: OFFLINE_SAVE_MESSAGE };
+      return { ok: false, message: OFFLINE_SAVE_MESSAGE, recovery: "retry" };
     }
     const signedInChangeCountAtRequest = signedInChangeCount;
     const result = await requestSavePrompt({ title, text: state.view.draft });
     if (!result.ok) {
-      return { ok: false, message: result.message };
+      return { ok: false, ...describeWriteFailure(result, navigator.onLine) };
     }
     const showFirstSaveNotice = await keepSavedPromptLocally(result.prompt, signedInChangeCountAtRequest);
     return { ok: true, showFirstSaveNotice };

@@ -107,6 +107,49 @@ test("a network failure while saving is reported as retryable, distinct from una
   assert.ok(!result.ok && result.kind === "retryable");
 });
 
+test("an API 401 on save, edit or delete is unauthenticated, a 409 is rejected and a 5xx stays retryable", async () => {
+  const writesAgainst = (fetchImplementation: typeof fetch) => {
+    const client = createPromptClient("https://api.test", fetchImplementation);
+    return [
+      createSavePromptHandler(tokenOk("access-token"), client)(DRAFT),
+      createUpdatePromptHandler(tokenOk("access-token"), client)("p1", { title: "x" }),
+      createDeletePromptHandler(tokenOk("access-token"), client)("p1"),
+    ];
+  };
+  const rejected = await Promise.all(
+    writesAgainst(respondWith(401, { code: "unauthenticated", message: "Session expired." })),
+  );
+  assert.deepEqual(
+    rejected.map((result) => !result.ok && result.kind),
+    ["unauthenticated", "unauthenticated", "unauthenticated"],
+  );
+  const unavailable = await Promise.all(writesAgainst(respondWith(503, { code: "service_unavailable", message: "" })));
+  assert.deepEqual(
+    unavailable.map((result) => !result.ok && result.kind),
+    ["retryable", "retryable", "retryable"],
+  );
+  const conflicting = await Promise.all(writesAgainst(respondWith(409, { code: "conflict", message: "" })));
+  assert.deepEqual(
+    conflicting.map((result) => !result.ok && result.kind),
+    ["rejected", "rejected", "rejected"],
+  );
+  assert.ok(conflicting.every((result) => !result.ok && result.message.includes("couldn't accept this change")));
+  const throttled = await Promise.all(writesAgainst(respondWith(429, { code: "conflict", message: "" })));
+  assert.deepEqual(
+    throttled.map((result) => !result.ok && result.kind),
+    ["retryable", "retryable", "retryable"],
+  );
+});
+
+test("a confirmed save whose reply can't be read offers no Retry that could save it twice", async () => {
+  const unreadableFetch: typeof fetch = async () => new Response("<html>ok</html>", { status: 201 });
+  const result = await createSavePromptHandler(
+    tokenOk("access-token"),
+    createPromptClient("https://api.test", unreadableFetch),
+  )(DRAFT);
+  assert.ok(!result.ok && result.kind === "rejected" && result.message.includes("may already be saved"));
+});
+
 test("the save request identifies itself as the extension", async () => {
   const seenHeaders: Headers[] = [];
   const recordingFetch: typeof fetch = async (_input, init) => {
@@ -190,13 +233,13 @@ test("editing a prompt deleted elsewhere is reported as not found, distinct from
   assert.ok(!result.ok && result.kind === "not_found");
 });
 
-test("a 404 on save stays the retryable message, not the deleted-prompt one", async () => {
+test("a 404 on save is rejected with the server's message, not the deleted-prompt one", async () => {
   const handler = createSavePromptHandler(
     tokenOk("access-token"),
     createPromptClient("https://api.test", respondWith(404, { code: "not_found", message: "Not found." })),
   );
   const result = await handler(DRAFT);
-  assert.ok(!result.ok && result.kind === "retryable");
+  assert.ok(!result.ok && result.kind === "rejected" && result.message === "Not found.");
 });
 
 test("update messages with an unsafe id or malformed changes are ignored by the worker", () => {

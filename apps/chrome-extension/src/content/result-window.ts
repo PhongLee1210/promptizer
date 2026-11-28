@@ -11,9 +11,16 @@ import {
   createSlowHint,
   updateProgressBar,
 } from "./loading-ui";
-import { ACTION_COPY, OFFLINE_SAVE_MESSAGE, PREPARING_CAPTION, PREPARING_TITLE } from "./present-result";
+import {
+  ACTION_COPY,
+  OFFLINE_SAVE_MESSAGE,
+  PREPARING_CAPTION,
+  PREPARING_TITLE,
+  UNREACHABLE_WRITE_MESSAGE,
+} from "./present-result";
+import type { WriteFailureNotice, WriteFailureRecovery } from "./present-result";
 
-export type SaveOutcome = { ok: true; showFirstSaveNotice: boolean } | { ok: false; message: string };
+export type SaveOutcome = { ok: true; showFirstSaveNotice: boolean } | ({ ok: false } & WriteFailureNotice);
 
 export interface ResultWindowCallbacks {
   onStep: (direction: -1 | 1) => void;
@@ -255,6 +262,34 @@ export function button(
   return el;
 }
 
+export function relabelButton(target: HTMLButtonElement, iconName: IconName, label: string): void {
+  target.setAttribute("aria-label", label);
+  target.dataset.tip = label;
+  target.innerHTML = icon(iconName, 14);
+}
+
+export interface FailedWriteButtons {
+  action: HTMLButtonElement;
+  cancel: HTMLButtonElement;
+  idleIcon: IconName;
+  idleLabel: string;
+  retryLabel: string;
+}
+
+export function settleButtonsAfterFailedWrite(
+  recovery: WriteFailureRecovery,
+  { action, cancel, idleIcon, idleLabel, retryLabel }: FailedWriteButtons,
+): HTMLButtonElement {
+  action.disabled = recovery === "blocked" || !navigator.onLine;
+  cancel.disabled = false;
+  if (recovery === "retry") {
+    relabelButton(action, "retry", retryLabel);
+  } else {
+    relabelButton(action, idleIcon, idleLabel);
+  }
+  return recovery === "retry" && !action.disabled ? action : cancel;
+}
+
 export class ResultWindow {
   private readonly element: HTMLDivElement;
   private readonly topBar: HTMLDivElement;
@@ -470,16 +505,23 @@ export class ResultWindow {
 
     let saveSettled = false;
     let saveInFlight = false;
+    let saveBlocked = false;
     const applyAvailability = (online: boolean): void => {
       offlineNote.hidden = online;
-      if (!saveInFlight && !saveSettled) {
+      if (!saveInFlight && !saveSettled && !saveBlocked) {
         saveButton.disabled = !online;
+      }
+      if (online && errorLine.textContent === OFFLINE_SAVE_MESSAGE) {
+        errorLine.textContent = UNREACHABLE_WRITE_MESSAGE;
       }
     };
     this.applySaveAvailability = applyAvailability;
     applyAvailability(navigator.onLine);
 
     const handleSave = async (): Promise<void> => {
+      if (saveInFlight || saveSettled || saveBlocked) {
+        return;
+      }
       errorLine.textContent = "";
       saveInFlight = true;
       saveButton.disabled = true;
@@ -490,6 +532,8 @@ export class ResultWindow {
         saveSettled = true;
         saveButton.innerHTML = "";
         saveButton.append(document.createTextNode("Saved"));
+        saveButton.setAttribute("aria-label", "Saved");
+        saveButton.dataset.tip = "Saved";
         if (outcome.showFirstSaveNotice) {
           cancelButton.disabled = false;
           cancelButton.innerHTML = "";
@@ -504,9 +548,16 @@ export class ResultWindow {
         window.setTimeout(() => this.callbacks.onSaveCancel(), SAVE_CONFIRM_FLASH_MS);
         return;
       }
-      saveButton.disabled = !navigator.onLine;
-      cancelButton.disabled = false;
+      saveBlocked = outcome.recovery === "blocked";
       errorLine.textContent = outcome.message;
+      const buttonToFocus = settleButtonsAfterFailedWrite(outcome.recovery, {
+        action: saveButton,
+        cancel: cancelButton,
+        idleIcon: "check",
+        idleLabel: "Save prompt",
+        retryLabel: "Retry save",
+      });
+      (outcome.recovery === "fix-input" ? titleInput : buttonToFocus).focus();
     };
 
     window.setTimeout(() => titleInput.focus(), 0);
