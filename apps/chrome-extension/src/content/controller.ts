@@ -1,5 +1,7 @@
 import { API_ORIGIN } from "../account/api-origin";
 import { hasStoredSession, onStoredSessionChanged } from "../account/session-store";
+import { createLibraryCache } from "../library/library-cache.ts";
+import { createBrowserSnapshotStore } from "../library/snapshot-store.ts";
 import { performActionWithRealProviders } from "./action-router";
 import { placePicker, placeRail, placeWindow } from "./anchor";
 import { PromptizerChip } from "./chip";
@@ -20,8 +22,11 @@ import { presentResult } from "./present-result";
 import { PromptPicker } from "./prompt-picker";
 import { ActionRail } from "./rail";
 import { ResultWindow } from "./result-window";
+import type { SaveOutcome } from "./result-window";
+import { requestSavePrompt } from "./save-prompt-request.ts";
 import type { ActionId, ActionSource, RefineResult } from "./action-types";
 import { writeEditorText } from "./write-editor";
+import type { Prompt } from "@promptizer/shared";
 
 const FOCUS_OUT_GRACE_MS = 120;
 const COPY_FLASH_MS = 1200;
@@ -41,7 +46,7 @@ interface AppliedDraft {
 }
 
 function railItemCount(hasHistory: boolean, signedIn: boolean): number {
-  return RAIL_BASE_ITEM_COUNT + Number(hasHistory) + Number(signedIn);
+  return RAIL_BASE_ITEM_COUNT + Number(hasHistory) + Number(signedIn) * 2;
 }
 
 export function startChipController(options: ChipControllerOptions = {}): () => void {
@@ -67,6 +72,7 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
     onSelectLeaf: (action) => runAction(action, "text"),
     onToggleGroup: (group) => dispatch({ type: "group-toggled", group }),
     onRecentOpened: () => dispatch({ type: "recent-opened" }),
+    onSavePromptOpened: () => openSavePrompt(),
     onMyPromptsOpened: () => openPicker(),
     onTurnOff: () => turnOff(),
   });
@@ -83,6 +89,8 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
     onReplace: () => applySuggestion(),
     onRetry: () => retry(),
     onClose: () => closeWindow(),
+    onSaveCancel: () => closeWindow(),
+    onSaveConfirm: (title) => confirmSavePrompt(title),
   });
   const picker = new PromptPicker({
     onPick: (prompt) => insertPrompt(prompt.title, prompt.text),
@@ -123,6 +131,10 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
     }
     if (state.view.kind === "picker") {
       picker.focusSearch();
+      return;
+    }
+    if (state.view.kind === "saving") {
+      resultWindow.focusTitle();
       return;
     }
     if (state.view.kind === "result" && (event.type === "outcome-arrived" || event.type === "prompt-picked")) {
@@ -244,6 +256,38 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
   function openPicker(): void {
     generation += 1;
     dispatch({ type: "picker-opened" });
+  }
+
+  function openSavePrompt(): void {
+    const editor = anchorEditor();
+    if (editor === null) {
+      return;
+    }
+    const draft = getEditorText(editor).trim();
+    generation += 1;
+    dispatch({ type: "save-opened", draft });
+  }
+
+  async function confirmSavePrompt(title: string): Promise<SaveOutcome> {
+    if (state.view.kind !== "saving") {
+      return { ok: false, message: "Something went wrong. Please try again." };
+    }
+    const result = await requestSavePrompt({ title, text: state.view.draft });
+    if (!result.ok) {
+      return { ok: false, message: result.message };
+    }
+    await cacheSavedPrompt(result.prompt);
+    return { ok: true };
+  }
+
+  async function cacheSavedPrompt(prompt: Prompt): Promise<void> {
+    const cache = createLibraryCache(createBrowserSnapshotStore());
+    const current = await cache.read();
+    await cache.save({
+      prompts: [prompt, ...current.prompts],
+      packs: current.packs,
+      fetchedAt: current.fetchedAt ?? Math.floor(Date.now() / 1000),
+    });
   }
 
   function setSignedIn(nextSignedIn: boolean): void {

@@ -7,6 +7,7 @@ export interface RailCallbacks {
   onSelectLeaf: (action: ActionId) => void;
   onToggleGroup: (group: RailGroupId) => void;
   onRecentOpened: () => void;
+  onSavePromptOpened: () => void;
   onMyPromptsOpened: () => void;
   onTurnOff: () => void;
 }
@@ -204,6 +205,7 @@ export class ActionRail {
     this.appendGroup("translate", openGroup === "translate");
     this.appendGroup("tone", openGroup === "tone");
     if (signedIn) {
+      this.appendSavePrompt();
       this.appendMyPrompts();
     }
     if (hasHistory) {
@@ -264,6 +266,13 @@ export class ActionRail {
     const item = document.createElement("span");
     item.className = "pz-rail__item";
     item.append(createButton({ iconName: "clock" }, "Recent results", () => this.callbacks.onRecentOpened()));
+    this.element.append(item);
+  }
+
+  private appendSavePrompt(): void {
+    const item = document.createElement("span");
+    item.className = "pz-rail__item";
+    item.append(createButton({ iconName: "cloud" }, "Save prompt", () => this.callbacks.onSavePromptOpened()));
     this.element.append(item);
   }
 
