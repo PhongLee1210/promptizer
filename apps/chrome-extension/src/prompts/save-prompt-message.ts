@@ -39,7 +39,13 @@ function isPromptEdit(value: unknown): value is PromptEdit {
     return false;
   }
   const { title, text } = value as Record<string, unknown>;
-  return (title === undefined || typeof title === "string") && (text === undefined || typeof text === "string");
+  const fieldsAreValid =
+    (title === undefined || typeof title === "string") && (text === undefined || typeof text === "string");
+  return fieldsAreValid && (typeof title === "string" || typeof text === "string");
+}
+
+export function pickPromptEdit({ title, text }: PromptEdit): PromptEdit {
+  return { ...(title !== undefined && { title }), ...(text !== undefined && { text }) };
 }
 
 export function isUpdatePromptMessage(value: unknown): value is UpdatePromptMessage {

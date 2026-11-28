@@ -2,7 +2,7 @@ import { browser } from "wxt/browser";
 import { accountSession, API_ORIGIN } from "../account/account-session.ts";
 import { createPromptClient } from "../prompts/prompt-client.ts";
 import { createSavePromptHandler, createUpdatePromptHandler } from "../prompts/save-prompt-handler.ts";
-import { isSavePromptMessage, isUpdatePromptMessage } from "../prompts/save-prompt-message.ts";
+import { isSavePromptMessage, isUpdatePromptMessage, pickPromptEdit } from "../prompts/save-prompt-message.ts";
 import type { PromptWriteResponse } from "../prompts/save-prompt-message.ts";
 
 const promptClient = createPromptClient(API_ORIGIN);
@@ -15,7 +15,7 @@ function handlePromptWrite(message: unknown): Promise<PromptWriteResponse> | und
     return handleSavePrompt(message.draft);
   }
   if (isUpdatePromptMessage(message)) {
-    return handleUpdatePrompt(message.id, message.changes);
+    return handleUpdatePrompt(message.id, pickPromptEdit(message.changes));
   }
   return undefined;
 }

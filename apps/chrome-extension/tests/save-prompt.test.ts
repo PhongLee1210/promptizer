@@ -3,7 +3,12 @@ import { test } from "node:test";
 import type { AuthClientResult } from "../src/account/auth-client.ts";
 import { createPromptClient } from "../src/prompts/prompt-client.ts";
 import { createSavePromptHandler, createUpdatePromptHandler } from "../src/prompts/save-prompt-handler.ts";
-import { isUpdatePromptMessage, UPDATE_PROMPT_MESSAGE_TYPE } from "../src/prompts/save-prompt-message.ts";
+import type { PromptEdit } from "../src/prompts/save-prompt-message.ts";
+import {
+  isUpdatePromptMessage,
+  pickPromptEdit,
+  UPDATE_PROMPT_MESSAGE_TYPE,
+} from "../src/prompts/save-prompt-message.ts";
 
 const DRAFT = { title: "A title", text: "the prompt text" };
 
@@ -196,6 +201,10 @@ test("update messages with an unsafe id or malformed changes are ignored by the 
   }
   assert.equal(isUpdatePromptMessage(message("p1", { title: 1 })), false);
   assert.equal(isUpdatePromptMessage(message("p1", null)), false);
+  for (const changes of [{}, { title: undefined }, [], { categoryId: "x" }]) {
+    assert.equal(isUpdatePromptMessage(message("p1", changes)), false, JSON.stringify(changes));
+  }
+  assert.deepEqual(pickPromptEdit({ text: "body", categoryId: "x" } as PromptEdit), { text: "body" });
 });
 
 test("an edit with no session or no network never reaches the server as a success", async () => {
