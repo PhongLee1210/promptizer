@@ -23,3 +23,4 @@ export function fail(
 export const SERVICE_UNAVAILABLE = fail(502, "service_unavailable", "The service is unreachable. Please try again.");
 export const UNAUTHENTICATED = fail(401, "unauthenticated", "Please sign in to continue.");
 export const PROMPT_NOT_FOUND = fail(404, "not_found", "This prompt doesn't exist or was deleted.");
+export const CATEGORY_NOT_FOUND = fail(404, "not_found", "This pack doesn't exist or was deleted.");

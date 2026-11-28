@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { after, before, describe, test } from "node:test";
 import { PROMPT_TEXT_MAX_LENGTH } from "@promptizer/shared";
-import type { ApiErrorBody, AuthSession, Prompt, PromptListPage } from "@promptizer/shared";
+import type { ApiErrorBody, AuthSession, CategorySummary, Prompt, PromptListPage } from "@promptizer/shared";
+import { DELETE as deleteCategoryRoute, PATCH as renameCategoryRoute } from "../src/app/api/categories/[id]/route.ts";
+import { POST as createCategoryRoute } from "../src/app/api/categories/route.ts";
 import {
   DELETE as deletePromptRoute,
   GET as getPrompt,
@@ -438,6 +440,106 @@ describe(
       assert.equal(tagLinks, 0);
       const { data: keptCategory } = await admin.from("category").select("id").eq("id", category).maybeSingle();
       assert.ok(keptCategory);
+    });
+
+    test("create pack returns the owned pack with a trimmed name and its location", async () => {
+      const response = await createCategoryRoute(request("POST", "/api/categories", owner, { name: "  Research  " }));
+      assert.equal(response.status, 201);
+      const category = (await response.json()) as CategorySummary;
+      assert.equal(category.name, "Research");
+      assert.equal(response.headers.get("Location"), `/api/categories/${category.id}`);
+    });
+
+    test("create pack reports a friendly error for a missing or empty name and rejects anonymous callers", async () => {
+      const missing = await createCategoryRoute(request("POST", "/api/categories", owner, {}));
+      assert.equal(missing.status, 422);
+      assert.deepEqual(((await missing.json()) as ApiErrorBody).fields, { name: "Enter a name." });
+      const blank = await createCategoryRoute(request("POST", "/api/categories", owner, { name: "   " }));
+      assert.equal(blank.status, 422);
+      assert.deepEqual(((await blank.json()) as ApiErrorBody).fields, { name: "Enter a name." });
+      const anonymous = await createCategoryRoute(request("POST", "/api/categories", undefined, { name: "x" }));
+      assert.equal(anonymous.status, 401);
+      assert.equal(((await anonymous.json()) as ApiErrorBody).code, "unauthenticated");
+    });
+
+    test("a second pack with the same name is rejected as a friendly field error, scoped per owner", async () => {
+      const namer = await registerAccount();
+      const name = `Duplicate ${crypto.randomUUID()}`;
+      const first = await createCategoryRoute(request("POST", "/api/categories", namer, { name }));
+      assert.equal(first.status, 201);
+      const second = await createCategoryRoute(request("POST", "/api/categories", namer, { name }));
+      assert.equal(second.status, 422);
+      assert.deepEqual(((await second.json()) as ApiErrorBody).fields, {
+        name: "You already have a pack with this name.",
+      });
+      const elsewhere = await createCategoryRoute(request("POST", "/api/categories", stranger, { name }));
+      assert.equal(elsewhere.status, 201);
+    });
+
+    test("rename updates the pack; another account cannot rename or delete it and sees not-found", async () => {
+      const category = await createCategory(owner, `Rename me ${crypto.randomUUID()}`);
+      const foreignRename = await renameCategoryRoute(
+        request("PATCH", `/api/categories/${category}`, stranger, { name: "Hijacked" }),
+        routeContext(category),
+      );
+      assert.equal(foreignRename.status, 404);
+      const foreignDelete = await deleteCategoryRoute(
+        request("DELETE", `/api/categories/${category}`, stranger),
+        routeContext(category),
+      );
+      assert.equal(foreignDelete.status, 404);
+      const renamed = await renameCategoryRoute(
+        request("PATCH", `/api/categories/${category}`, owner, { name: "  Renamed  " }),
+        routeContext(category),
+      );
+      assert.equal(renamed.status, 200);
+      assert.equal(((await renamed.json()) as CategorySummary).name, "Renamed");
+    });
+
+    test("rename and delete report not-found for a missing or malformed id", async () => {
+      for (const id of [MISSING_ID, "not-a-uuid"]) {
+        const rename = await renameCategoryRoute(
+          request("PATCH", `/api/categories/${id}`, owner, { name: "x" }),
+          routeContext(id),
+        );
+        assert.equal(rename.status, 404, id);
+        const remove = await deleteCategoryRoute(request("DELETE", `/api/categories/${id}`, owner), routeContext(id));
+        assert.equal(remove.status, 404, id);
+      }
+    });
+
+    test("deleting a pack preserves every prompt in it, uncategorized but still listed", async () => {
+      const packOwner = await registerAccount();
+      const category = await createCategory(packOwner, `Doomed pack ${crypto.randomUUID()}`);
+      const kept = await Promise.all([
+        createPrompt(packOwner, { title: "Stays 1", text: "a", categoryId: category }),
+        createPrompt(packOwner, { title: "Stays 2", text: "b", categoryId: category }),
+      ]);
+      assert.equal((await listPage(packOwner, `?category=${category}`)).total, 2);
+
+      const deleted = await deleteCategoryRoute(
+        request("DELETE", `/api/categories/${category}`, packOwner),
+        routeContext(category),
+      );
+      assert.equal(deleted.status, 204);
+
+      const again = await deleteCategoryRoute(
+        request("DELETE", `/api/categories/${category}`, packOwner),
+        routeContext(category),
+      );
+      assert.equal(again.status, 404);
+
+      assert.equal((await listPage(packOwner, `?category=${category}`)).total, 0);
+      const allPrompts = await listPage(packOwner);
+      assert.equal(allPrompts.total, 2);
+      for (const prompt of kept) {
+        const fetched = await getPrompt(
+          request("GET", `/api/prompts/${prompt.id}`, packOwner),
+          routeContext(prompt.id),
+        );
+        assert.equal(fetched.status, 200);
+        assert.equal(((await fetched.json()) as Prompt).category, null);
+      }
     });
   },
 );

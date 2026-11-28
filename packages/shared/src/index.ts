@@ -46,10 +46,22 @@ export const PROMPT_SEARCH_MAX_LENGTH = 200;
 
 export type PromptModel = "chatgpt" | "claude" | "gemini";
 
+export const CATEGORY_NAME_MAX_LENGTH = 80;
+
 export interface CategorySummary {
   id: string;
   name: string;
 }
+
+export interface CategoryDraft {
+  name: string;
+}
+
+export type CategoryChanges = Partial<CategoryDraft>;
+
+export type CategoryField = "name";
+
+export type CategoryFieldErrors = Partial<Record<CategoryField, string>>;
 
 export interface Prompt {
   id: string;
