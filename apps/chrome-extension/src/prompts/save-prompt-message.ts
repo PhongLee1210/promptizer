@@ -2,6 +2,7 @@ import type { Prompt, PromptFieldErrors } from "@promptizer/shared";
 
 export const SAVE_PROMPT_MESSAGE_TYPE = "promptizer:save-prompt";
 export const UPDATE_PROMPT_MESSAGE_TYPE = "promptizer:update-prompt";
+export const DELETE_PROMPT_MESSAGE_TYPE = "promptizer:delete-prompt";
 
 export interface SavePromptMessage {
   type: typeof SAVE_PROMPT_MESSAGE_TYPE;
@@ -19,10 +20,18 @@ export interface UpdatePromptMessage {
   changes: PromptEdit;
 }
 
-export type PromptWriteResponse =
-  | { ok: true; prompt: Prompt }
+export interface DeletePromptMessage {
+  type: typeof DELETE_PROMPT_MESSAGE_TYPE;
+  id: string;
+}
+
+export type PromptWriteFailure =
   | { ok: false; kind: "unauthenticated" | "retryable" | "not_found"; message: string }
   | { ok: false; kind: "validation"; message: string; fields: PromptFieldErrors };
+
+export type PromptWriteResponse = { ok: true; prompt: Prompt } | PromptWriteFailure;
+
+export type PromptDeleteResponse = { ok: true } | PromptWriteFailure;
 
 function hasMessageType(value: unknown, type: string): boolean {
   return typeof value === "object" && value !== null && (value as { type?: unknown }).type === type;
@@ -33,6 +42,10 @@ export function isSavePromptMessage(value: unknown): value is SavePromptMessage 
 }
 
 const PROMPT_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
+
+function isPromptId(value: unknown): value is string {
+  return typeof value === "string" && PROMPT_ID_PATTERN.test(value);
+}
 
 function isPromptEdit(value: unknown): value is PromptEdit {
   if (typeof value !== "object" || value === null) {
@@ -53,5 +66,9 @@ export function isUpdatePromptMessage(value: unknown): value is UpdatePromptMess
     return false;
   }
   const { id, changes } = value as { id?: unknown; changes?: unknown };
-  return typeof id === "string" && PROMPT_ID_PATTERN.test(id) && isPromptEdit(changes);
+  return isPromptId(id) && isPromptEdit(changes);
+}
+
+export function isDeletePromptMessage(value: unknown): value is DeletePromptMessage {
+  return hasMessageType(value, DELETE_PROMPT_MESSAGE_TYPE) && isPromptId((value as { id?: unknown }).id);
 }

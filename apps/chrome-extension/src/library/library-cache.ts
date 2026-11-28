@@ -72,3 +72,25 @@ export async function replaceCachedPrompt(cache: LibraryCache, prompt: Prompt): 
   });
   return true;
 }
+
+export function withoutPrompt(
+  library: { prompts: Prompt[]; packs: PackSummary[] },
+  id: string,
+): { prompts: Prompt[]; packs: PackSummary[] } {
+  const removedPackId = library.prompts.find((prompt) => prompt.id === id)?.category?.id;
+  return {
+    prompts: library.prompts.filter((prompt) => prompt.id !== id),
+    packs: library.packs.map((pack) =>
+      pack.id === removedPackId ? { ...pack, promptCount: Math.max(pack.promptCount - 1, 0) } : pack,
+    ),
+  };
+}
+
+export async function removeCachedPrompt(cache: LibraryCache, id: string): Promise<boolean> {
+  const current = await cache.read();
+  if (current.fetchedAt === undefined || !current.prompts.some((cached) => cached.id === id)) {
+    return false;
+  }
+  await cache.save({ ...withoutPrompt(current, id), fetchedAt: current.fetchedAt });
+  return true;
+}

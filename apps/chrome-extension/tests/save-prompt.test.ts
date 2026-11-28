@@ -2,9 +2,15 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { AuthClientResult } from "../src/account/auth-client.ts";
 import { createPromptClient } from "../src/prompts/prompt-client.ts";
-import { createSavePromptHandler, createUpdatePromptHandler } from "../src/prompts/save-prompt-handler.ts";
+import {
+  createDeletePromptHandler,
+  createSavePromptHandler,
+  createUpdatePromptHandler,
+} from "../src/prompts/save-prompt-handler.ts";
 import type { PromptEdit } from "../src/prompts/save-prompt-message.ts";
 import {
+  DELETE_PROMPT_MESSAGE_TYPE,
+  isDeletePromptMessage,
   isUpdatePromptMessage,
   pickPromptEdit,
   UPDATE_PROMPT_MESSAGE_TYPE,
@@ -216,4 +222,51 @@ test("an edit with no session or no network never reaches the server as a succes
   );
   const result = await offline("p1", { title: "x" });
   assert.ok(!result.ok && result.kind === "retryable");
+});
+
+test("an extension delete uses the dashboard's DELETE path and treats 204 as confirmed", async () => {
+  const seen: { url: string; method?: string; body?: unknown; client: string | null }[] = [];
+  const recordingFetch: typeof fetch = async (input, init) => {
+    seen.push({
+      url: String(input),
+      method: init?.method,
+      body: init?.body,
+      client: new Headers(init?.headers).get("X-Promptizer-Client"),
+    });
+    return new Response(null, { status: 204 });
+  };
+  const handler = createDeletePromptHandler(
+    tokenOk("access-token"),
+    createPromptClient("https://api.test", recordingFetch),
+  );
+  assert.deepEqual(await handler("p 1"), { ok: true });
+  assert.deepEqual(seen, [
+    { url: "https://api.test/api/prompts/p%201", method: "DELETE", body: undefined, client: "extension" },
+  ]);
+});
+
+test("deleting a prompt already gone is reported as not found; other failures stay retryable", async () => {
+  const gone = createDeletePromptHandler(
+    tokenOk("access-token"),
+    createPromptClient("https://api.test", respondWith(404, { code: "not_found", message: "Prompt not found." })),
+  );
+  const goneResult = await gone("p1");
+  assert.ok(!goneResult.ok && goneResult.kind === "not_found");
+  const offline = createDeletePromptHandler(
+    tokenOk("access-token"),
+    createPromptClient("https://api.test", failingFetch),
+  );
+  const offlineResult = await offline("p1");
+  assert.ok(!offlineResult.ok && offlineResult.kind === "retryable");
+  const signedOut = createDeletePromptHandler(tokenOk(undefined), createPromptClient("https://api.test", failingFetch));
+  const signedOutResult = await signedOut("p1");
+  assert.ok(!signedOutResult.ok && signedOutResult.kind === "unauthenticated");
+});
+
+test("delete messages with an unsafe id are ignored by the worker", () => {
+  assert.equal(isDeletePromptMessage({ type: DELETE_PROMPT_MESSAGE_TYPE, id: "3f2a-uuid_1" }), true);
+  for (const id of ["", "..", ".", "a/b", "a?b", 7, undefined]) {
+    assert.equal(isDeletePromptMessage({ type: DELETE_PROMPT_MESSAGE_TYPE, id }), false, String(id));
+  }
+  assert.equal(isDeletePromptMessage({ type: UPDATE_PROMPT_MESSAGE_TYPE, id: "p1" }), false);
 });

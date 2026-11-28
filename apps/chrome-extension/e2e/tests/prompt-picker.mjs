@@ -98,6 +98,41 @@ async function activeOptionLabel(searchHandle) {
   });
 }
 
+async function readStorage(browser, keys) {
+  const extensionPage = await browser.newPage();
+  await extensionPage.goto(`chrome-extension://${extensionId()}/popup.html`);
+  const stored = await extensionPage.evaluate((wanted) => chrome.storage.local.get(wanted), keys);
+  await extensionPage.close();
+  return stored;
+}
+
+async function mockPromptApi(browser, respond) {
+  const workerTarget = await browser.waitForTarget((target) => target.type() === "service_worker", {
+    timeout: 5000,
+  });
+  const client = await workerTarget.createCDPSession();
+  const requests = [];
+  await client.send("Fetch.enable", { patterns: [{ urlPattern: "*/api/prompts*", requestStage: "Request" }] });
+  client.on("Fetch.requestPaused", async (event) => {
+    requests.push({ url: event.request.url, method: event.request.method, body: event.request.postData });
+    const outcome = respond(event.request);
+    await client.send("Fetch.fulfillRequest", {
+      requestId: event.requestId,
+      responseCode: outcome.status,
+      responseHeaders: [{ name: "Content-Type", value: "application/json" }],
+      body: Buffer.from(outcome.body === null ? "" : JSON.stringify(outcome.body)).toString("base64"),
+    });
+  });
+  return { client, requests };
+}
+
+async function describedError(fieldHandle) {
+  return fieldHandle.evaluate((field) => {
+    const id = field.getAttribute("aria-describedby");
+    return id === null ? null : (field.getRootNode().getElementById(id)?.textContent ?? null);
+  });
+}
+
 await runCase("prompt-picker", async (page, check, browser) => {
   await writeStorage(browser, {
     [SESSION_STORAGE_KEY]: storedSession(),
@@ -236,6 +271,169 @@ await runCase("prompt-picker", async (page, check, browser) => {
   await new Promise((resolve) => setTimeout(resolve, 200));
   check("offline, a picked prompt still inserts", (await composerText()) === "Weekly report text");
   await page.setOfflineMode(false);
+
+  const OFFLINE_SAVE_MESSAGE = "You're offline. Your library is read-only until you reconnect.";
+  const serverEdited = {
+    ...promptFixture("prompt-1", "Weekly summary (server)", WORK_PACK),
+    text: "Weekly report text",
+  };
+  const api = await mockPromptApi(browser, (request) => {
+    if (request.method === "DELETE") {
+      return { status: 204, body: null };
+    }
+    const changes = JSON.parse(request.postData ?? "{}");
+    if (changes.text === "rejected draft") {
+      return {
+        status: 422,
+        body: {
+          code: "validation_failed",
+          message: "Please fix the highlighted fields.",
+          fields: { text: "Text is not allowed." },
+        },
+      };
+    }
+    return { status: 200, body: serverEdited };
+  });
+  await page.bringToFront();
+  let pickerSearch = await openPicker(page);
+  await page.keyboard.type("weekly");
+  await (await page.waitForSelector('aria/Edit selected prompt[role="button"]')).click();
+  let titleField = await page.waitForSelector('aria/Prompt title[role="textbox"]', { timeout: 5000 });
+  check(
+    "Edit opens the selected prompt with its title focused and its text editable",
+    (await focusedLabel(titleField)) === "Prompt title" &&
+      (await titleField.evaluate((input) => input.value)) === "Weekly report" &&
+      (await (await page.waitForSelector('aria/Prompt text[role="textbox"]')).evaluate((area) => area.value)) ===
+        "Weekly report text",
+  );
+  await page.keyboard.type(" draft");
+  await page.keyboard.press("Escape");
+  check(
+    "Escape cancels the edit back to the list with the search focused",
+    (await focusedLabel(pickerSearch)) === "Search prompts" &&
+      (await activeOptionLabel(pickerSearch)) === "Weekly report",
+  );
+  await (await page.waitForSelector('aria/Edit selected prompt[role="button"]')).click();
+  await page.waitForSelector('aria/Prompt title[role="textbox"]', { timeout: 5000 });
+  await (await page.waitForSelector('aria/Cancel edit[role="button"]')).click();
+  check("cancelling an edit sends nothing to the server", api.requests.length === 0, String(api.requests.length));
+
+  await (await page.waitForSelector('aria/Edit selected prompt[role="button"]')).click();
+  titleField = await page.waitForSelector('aria/Prompt title[role="textbox"]', { timeout: 5000 });
+  await titleField.evaluate((input) => input.select());
+  await page.keyboard.type("Weekly summary");
+  await (await page.waitForSelector('aria/Save changes[role="button"]')).click();
+  check(
+    "saving an edit lists the server-confirmed prompt in the picker",
+    (await isShown(page, "Weekly summary (server)", 5000)) && !(await isShown(page, "Weekly report", 300)),
+  );
+  const patch = api.requests[0];
+  check(
+    "the edit is pushed as a PATCH with only the changed title",
+    patch?.method === "PATCH" &&
+      patch.url.endsWith("/api/prompts/prompt-1") &&
+      patch.body === '{"title":"Weekly summary"}',
+    JSON.stringify(patch),
+  );
+  const { [LIBRARY_STORAGE_KEY]: editedCache } = await readStorage(browser, [LIBRARY_STORAGE_KEY]);
+  check(
+    "the confirmed edit replaces the cached prompt",
+    editedCache?.prompts?.find((prompt) => prompt.id === "prompt-1")?.title === "Weekly summary (server)",
+  );
+
+  await (await page.waitForSelector('aria/Edit selected prompt[role="button"]')).click();
+  await page.waitForSelector('aria/Prompt title[role="textbox"]', { timeout: 5000 });
+  const textField = await page.waitForSelector('aria/Prompt text[role="textbox"]');
+  await textField.evaluate((area) => area.select());
+  await textField.type("rejected draft");
+  await (await page.waitForSelector('aria/Save changes[role="button"]')).click();
+  await page.waitForFunction((area) => area.getAttribute("aria-invalid") === "true", { timeout: 5000 }, textField);
+  check(
+    "a server validation error shows inline next to the text field",
+    (await describedError(textField)) === "Text is not allowed." && (await previewShows(page, "Text is not allowed.")),
+  );
+  check(
+    "a rejected edit keeps the typed text and stays in the editor",
+    (await textField.evaluate((area) => area.value)) === "rejected draft" &&
+      (await focusedLabel(textField)) === "Prompt text",
+  );
+  await page.keyboard.press("Escape");
+  check("the rejected text never reaches the picker", await isShown(page, "Weekly summary (server)"));
+
+  const requestsBeforeDelete = api.requests.length;
+  await (await page.waitForSelector('aria/Delete selected prompt[role="button"]')).click();
+  const cancelDelete = await page.waitForSelector('aria/Cancel[role="button"]', { timeout: 5000 });
+  check(
+    "Delete asks for confirmation with the dashboard's wording before sending anything",
+    (await previewShows(page, "Delete \u201cWeekly summary (server)\u201d?")) &&
+      (await previewShows(page, "This permanently deletes the prompt and its text. This can't be undone.")) &&
+      (await focusedLabel(cancelDelete)) === "Cancel" &&
+      api.requests.length === requestsBeforeDelete,
+  );
+  await cancelDelete.click();
+  check(
+    "cancelling the confirmation keeps the prompt and sends nothing",
+    (await isShown(page, "Weekly summary (server)")) && api.requests.length === requestsBeforeDelete,
+  );
+  await (await page.waitForSelector('aria/Delete selected prompt[role="button"]')).click();
+  await (await page.waitForSelector('aria/Delete prompt[role="button"]', { timeout: 5000 })).click();
+  check(
+    "a confirmed delete removes the prompt from the picker",
+    await page
+      .waitForFunction(
+        (input) => input.getRootNode().querySelector('[aria-label="Weekly summary (server)"]') === null,
+        { timeout: 5000 },
+        pickerSearch,
+      )
+      .then(() => true)
+      .catch(() => false),
+  );
+  const deleteRequest = api.requests[requestsBeforeDelete];
+  const { [LIBRARY_STORAGE_KEY]: deletedCache } = await readStorage(browser, [LIBRARY_STORAGE_KEY]);
+  check(
+    "the delete is pushed as a DELETE and the cache drops the prompt and its pack count",
+    deleteRequest?.method === "DELETE" &&
+      deletedCache?.prompts?.every((prompt) => prompt.id !== "prompt-1") &&
+      deletedCache?.packs?.[0]?.promptCount === 1,
+    JSON.stringify(deleteRequest),
+  );
+  await page.keyboard.press("Escape");
+  await api.client.detach();
+
+  pickerSearch = await openPicker(page);
+  await page.keyboard.type("bug");
+  await (await page.waitForSelector('aria/Edit selected prompt[role="button"]')).click();
+  const saveEdit = await page.waitForSelector('aria/Save changes[role="button"]', { timeout: 5000 });
+  await page.setOfflineMode(true);
+  await page.waitForFunction((saveButton) => saveButton.disabled, { timeout: 5000 }, saveEdit);
+  check(
+    "going offline mid-edit disables Save and shows the read-only message",
+    await previewShows(page, OFFLINE_SAVE_MESSAGE),
+  );
+  await page.keyboard.press("Escape");
+  const offlineActions = await pickerSearch.evaluate((input) =>
+    [...input.getRootNode().querySelectorAll(".pz-picker .pz-win__bar--bottom button")].map((actionButton) => ({
+      disabled: actionButton.disabled,
+      title: actionButton.title,
+    })),
+  );
+  check(
+    "offline, Edit and Delete are disabled with the read-only message",
+    offlineActions.length === 2 &&
+      offlineActions.every((action) => action.disabled && action.title === OFFLINE_SAVE_MESSAGE),
+    JSON.stringify(offlineActions),
+  );
+  await page.setOfflineMode(false);
+  await page.waitForFunction(
+    (input) =>
+      [...input.getRootNode().querySelectorAll(".pz-picker .pz-win__bar--bottom button")].every(
+        (actionButton) => !actionButton.disabled,
+      ),
+    { timeout: 5000 },
+    pickerSearch,
+  );
+  check("back online, Edit and Delete are available again", true);
+  await page.keyboard.press("Escape");
 
   await writeStorage(browser, { [LIBRARY_STORAGE_KEY]: storedLibrary([], []) });
   await page.bringToFront();

@@ -28,9 +28,10 @@ import { PromptPicker } from "./prompt-picker";
 import { ActionRail } from "./rail";
 import { ResultWindow } from "./result-window";
 import type { SaveOutcome } from "./result-window";
-import { requestSavePrompt } from "./save-prompt-request.ts";
+import { pushPromptDelete, pushPromptEdit, requestSavePrompt } from "./save-prompt-request.ts";
 import type { ActionId, ActionSource, RefineResult } from "./action-types";
 import { writeEditorText } from "./write-editor";
+import type { PromptDeleteResponse, PromptEdit, PromptWriteResponse } from "../prompts/save-prompt-message.ts";
 import type { Prompt } from "@promptizer/shared";
 
 const FOCUS_OUT_GRACE_MS = 120;
@@ -103,6 +104,8 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
     onPick: (prompt) => insertPrompt(prompt.title, prompt.text),
     onOpenDashboard: () => openDashboard(),
     onClose: () => closeWindow(),
+    onSaveEdit: (id, changes) => saveLibraryEdit(id, changes),
+    onDelete: (id) => deleteLibraryPrompt(id),
   });
   const chip = new PromptizerChip(
     () => dispatch({ type: "chip-clicked" }),
@@ -289,6 +292,22 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
     }
     const showFirstSaveNotice = await keepSavedPromptLocally(result.prompt, signedInChangeCountAtRequest);
     return { ok: true, showFirstSaveNotice };
+  }
+
+  async function saveLibraryEdit(id: string, changes: PromptEdit): Promise<PromptWriteResponse> {
+    if (!navigator.onLine) {
+      return { ok: false, kind: "retryable", message: OFFLINE_SAVE_MESSAGE };
+    }
+    const signedInChangeCountAtRequest = signedInChangeCount;
+    return pushPromptEdit(id, changes, () => isSameAccountSignedIn(signedInChangeCountAtRequest));
+  }
+
+  async function deleteLibraryPrompt(id: string): Promise<PromptDeleteResponse> {
+    if (!navigator.onLine) {
+      return { ok: false, kind: "retryable", message: OFFLINE_SAVE_MESSAGE };
+    }
+    const signedInChangeCountAtRequest = signedInChangeCount;
+    return pushPromptDelete(id, () => isSameAccountSignedIn(signedInChangeCountAtRequest));
   }
 
   async function isSameAccountSignedIn(signedInChangeCountAtRequest: number): Promise<boolean> {

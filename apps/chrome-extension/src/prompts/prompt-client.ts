@@ -10,6 +10,7 @@ export type PromptClientResult<Value> = { ok: true; value: Value } | { ok: false
 export interface PromptClient {
   createPrompt(accessToken: string, draft: PromptDraft): Promise<PromptClientResult<Prompt>>;
   updatePrompt(accessToken: string, id: string, changes: PromptChanges): Promise<PromptClientResult<Prompt>>;
+  deletePrompt(accessToken: string, id: string): Promise<PromptClientResult<null>>;
 }
 
 const RETRYABLE_ERROR: PromptClientError = {
@@ -45,34 +46,54 @@ async function readErrorBody(response: Response): Promise<ApiErrorBody | undefin
 }
 
 export function createPromptClient(apiOrigin: string, fetchImplementation: typeof fetch = fetch): PromptClient {
+  async function sendPromptRequest(
+    method: "POST" | "PATCH" | "DELETE",
+    path: string,
+    accessToken: string,
+    payload?: PromptDraft | PromptChanges,
+  ): Promise<PromptClientResult<Response>> {
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${accessToken}`,
+      [CLIENT_KIND_HEADER]: EXTENSION_CLIENT_KIND,
+    };
+    if (payload !== undefined) {
+      headers["Content-Type"] = "application/json";
+    }
+    let response: Response;
+    try {
+      response = await fetchImplementation(`${apiOrigin}${path}`, {
+        method,
+        headers,
+        body: payload === undefined ? undefined : JSON.stringify(payload),
+      });
+    } catch {
+      return { ok: false, error: RETRYABLE_ERROR };
+    }
+    if (!response.ok) {
+      return { ok: false, error: mapFailure(response.status, await readErrorBody(response), method !== "POST") };
+    }
+    return { ok: true, value: response };
+  }
+
   async function sendPromptWrite(
     method: "POST" | "PATCH",
     path: string,
     accessToken: string,
     payload: PromptDraft | PromptChanges,
   ): Promise<PromptClientResult<Prompt>> {
-    let response: Response;
+    const sent = await sendPromptRequest(method, path, accessToken, payload);
+    if (!sent.ok) {
+      return sent;
+    }
     try {
-      response = await fetchImplementation(`${apiOrigin}${path}`, {
-        method,
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-          [CLIENT_KIND_HEADER]: EXTENSION_CLIENT_KIND,
-        },
-        body: JSON.stringify(payload),
-      });
+      return { ok: true, value: (await sent.value.json()) as Prompt };
     } catch {
       return { ok: false, error: RETRYABLE_ERROR };
     }
-    if (!response.ok) {
-      return { ok: false, error: mapFailure(response.status, await readErrorBody(response), method === "PATCH") };
-    }
-    try {
-      return { ok: true, value: (await response.json()) as Prompt };
-    } catch {
-      return { ok: false, error: RETRYABLE_ERROR };
-    }
+  }
+
+  function promptPath(id: string): string {
+    return `/api/prompts/${encodeURIComponent(id)}`;
   }
 
   return {
@@ -80,7 +101,11 @@ export function createPromptClient(apiOrigin: string, fetchImplementation: typeo
       return sendPromptWrite("POST", "/api/prompts", accessToken, draft);
     },
     updatePrompt(accessToken, id, changes) {
-      return sendPromptWrite("PATCH", `/api/prompts/${encodeURIComponent(id)}`, accessToken, changes);
+      return sendPromptWrite("PATCH", promptPath(id), accessToken, changes);
+    },
+    async deletePrompt(accessToken, id) {
+      const sent = await sendPromptRequest("DELETE", promptPath(id), accessToken);
+      return sent.ok ? { ok: true, value: null } : sent;
     },
   };
 }
