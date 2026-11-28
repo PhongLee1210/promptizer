@@ -11,7 +11,7 @@ import {
   createSlowHint,
   updateProgressBar,
 } from "./loading-ui";
-import { ACTION_COPY, PREPARING_CAPTION, PREPARING_TITLE } from "./present-result";
+import { ACTION_COPY, OFFLINE_SAVE_MESSAGE, PREPARING_CAPTION, PREPARING_TITLE } from "./present-result";
 
 export type SaveOutcome = { ok: true; showFirstSaveNotice: boolean } | { ok: false; message: string };
 
@@ -264,6 +264,7 @@ export class ResultWindow {
   private wasBusy = false;
   private busyBody: HTMLElement | null = null;
   private preparingBar: HTMLElement | null = null;
+  private applySaveAvailability: ((online: boolean) => void) | null = null;
 
   constructor(private readonly callbacks: ResultWindowCallbacks) {
     this.element = document.createElement("div");
@@ -295,6 +296,7 @@ export class ResultWindow {
       return;
     }
     this.preparingBar = null;
+    this.applySaveAvailability = null;
     const open =
       state.view.kind === "loading" ||
       state.view.kind === "preparing" ||
@@ -454,18 +456,38 @@ export class ResultWindow {
     errorLine.style.margin = "8px 0 0";
     errorLine.style.fontSize = "11px";
     body.append(errorLine);
+    const offlineNote = document.createElement("p");
+    offlineNote.setAttribute("role", "status");
+    offlineNote.style.margin = "8px 0 0";
+    offlineNote.style.fontSize = "11px";
+    offlineNote.textContent = OFFLINE_SAVE_MESSAGE;
+    body.append(offlineNote);
     this.bodyWrap.append(body);
 
     const cancelButton = button("close", null, "Cancel", this.callbacks.onSaveCancel);
     const saveButton = button("check", null, "Save prompt", () => void handleSave(), "primary");
     this.bottomBar.append(cancelButton, saveButton);
 
+    let saveSettled = false;
+    let saveInFlight = false;
+    const applyAvailability = (online: boolean): void => {
+      offlineNote.hidden = online;
+      if (!saveInFlight && !saveSettled) {
+        saveButton.disabled = !online;
+      }
+    };
+    this.applySaveAvailability = applyAvailability;
+    applyAvailability(navigator.onLine);
+
     const handleSave = async (): Promise<void> => {
       errorLine.textContent = "";
+      saveInFlight = true;
       saveButton.disabled = true;
       cancelButton.disabled = true;
       const outcome = await this.callbacks.onSaveConfirm(titleInput.value.trim() || "Untitled prompt");
+      saveInFlight = false;
       if (outcome.ok) {
+        saveSettled = true;
         saveButton.innerHTML = "";
         saveButton.append(document.createTextNode("Saved"));
         if (outcome.showFirstSaveNotice) {
@@ -482,12 +504,16 @@ export class ResultWindow {
         window.setTimeout(() => this.callbacks.onSaveCancel(), SAVE_CONFIRM_FLASH_MS);
         return;
       }
-      saveButton.disabled = false;
+      saveButton.disabled = !navigator.onLine;
       cancelButton.disabled = false;
       errorLine.textContent = outcome.message;
     };
 
     window.setTimeout(() => titleInput.focus(), 0);
+  }
+
+  syncSaveAvailability(online: boolean): void {
+    this.applySaveAvailability?.(online);
   }
 
   focusTitle(): void {
