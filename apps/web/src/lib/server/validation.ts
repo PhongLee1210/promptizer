@@ -6,7 +6,16 @@ import {
   PROMPTS_PAGE_SIZE,
   PROMPTS_PAGE_SIZE_MAX,
 } from "@promptizer/shared";
-import type { AuthFieldErrors, PromptChanges, PromptDraft, PromptFieldErrors } from "@promptizer/shared";
+import type {
+  AuthFieldErrors,
+  CategoryChanges,
+  CategoryDraft,
+  CategoryFieldErrors,
+  PromptChanges,
+  PromptDraft,
+  PromptFieldErrors,
+} from "@promptizer/shared";
+import { categoryDraftProblems, normalizeCategoryName } from "../prompts/categories.ts";
 import {
   normalizePromptTitle,
   normalizeSearchQuery,
@@ -64,7 +73,7 @@ function passwordProblem(password: string | undefined): string | undefined {
   return undefined;
 }
 
-function validationFailure(fields: AuthFieldErrors | PromptFieldErrors) {
+function validationFailure(fields: AuthFieldErrors | PromptFieldErrors | CategoryFieldErrors) {
   return fail(422, "validation_failed", "Please fix the highlighted fields.", fields);
 }
 
@@ -199,4 +208,25 @@ export function parsePromptListQuery(searchParams: URLSearchParams): Outcome<Pro
   const categoryId = searchParams.get("category")?.trim() || undefined;
   const tag = removeUnsupportedCharacters(searchParams.get("tag") ?? "").trim() || undefined;
   return succeed({ query, categoryId, tag, page, pageSize });
+}
+
+export function validateCategoryDraft(body: unknown): Outcome<CategoryDraft> {
+  const record = asRecord(body) ?? {};
+  const problems = categoryDraftProblems(record);
+  if (Object.keys(problems).length > 0) {
+    return validationFailure(problems);
+  }
+  return succeed({ name: normalizeCategoryName(record.name as string) });
+}
+
+export function validateCategoryChanges(body: unknown): Outcome<CategoryChanges> {
+  const record = asRecord(body);
+  if (!record || !("name" in record)) {
+    return fail(422, "validation_failed", "Nothing to update.");
+  }
+  const problems = categoryDraftProblems(record);
+  if (Object.keys(problems).length > 0) {
+    return validationFailure(problems);
+  }
+  return succeed({ name: normalizeCategoryName(record.name as string) });
 }
