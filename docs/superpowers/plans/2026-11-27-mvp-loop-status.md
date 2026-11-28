@@ -4,17 +4,17 @@ Driven by `/mvp-loop` (`.claude/commands/mvp-loop.md`), every 2 hours. States: R
 
 ## Next loop
 
-1. If `docs/superpowers/decisions/T-3.0.1.md` has `APPROVED:` filled, build `mvp/T-3.0.1-pack-shape` per the chosen option (B: migration + shared `Pack` types + category→pack rename; D: plan amendment + `category.updated_at` / body-length migration). Migrations are written as files only; the owner applies them. Then start Epic 4 (T-4.1.1) stacked on it.
+1. **Owner action:** PR #11 (owner-built T-4.1.1) treats `category` as the pack ("approved T-3.0.1 decision, one pack per prompt", which is option A). But `decisions/T-3.0.1.md` still has an empty `APPROVED:`. Once that line reads `APPROVED: A` (or D), tick the T-3.0.1 boxes that A/D satisfy and build T-4.1.2 (pack management UI) stacked on `mvp/T-4.1.1-pack-endpoints`, then T-4.1.3, then T-4.2.1. Under A, the T-3.0.1 decision's remaining gaps (`category.updated_at`, DB check on body length) are optional migration files.
 2. If `T-3.1.1.md` is approved (A), tick T-3.1.1 and T-3.1.2 boxes in the plan.
-3. Probe Supabase first: `curl -s -o /dev/null -w '%{http_code}' "$NEXT_PUBLIC_SUPABASE_URL/auth/v1/health" -H "apikey: $NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"`. If it answers (not 000/proxy 403), run `pnpm -C apps/web test` and `pnpm -C apps/web run test:e2e` once on `main` and on PRs #9/#10, then promote NEEDS-SUPABASE rows to VERIFIED and tick their plan boxes.
-4. If the owner wants progress without Supabase: F-9 (e2e for prompts error boundary, on PR #10's branch) and a root `global-error.tsx` (F-2 remainder). F-6 needs a test seam because `renderMarkdown` never throws on real input; propose one rather than adding a test dependency.
+3. Probe Supabase first (`curl ... /auth/v1/health`). If it answers, run `pnpm -C apps/web test` and `test:e2e` on `main` and on PRs #11/#12, then promote NEEDS-SUPABASE rows.
+4. Without Supabase or a decision: F-6 test seam proposal (see F-6). Every other open item needs Supabase or the owner.
 
 Cloud E2E recipe (extension): run per app, not through turbo (turbo strips env): `cd apps/chrome-extension && CI=1 PUPPETEER_EXECUTABLE_PATH=/opt/pw-browsers/chromium xvfb-run -a pnpm run test`. Green on `main` abf75d2 in loop 1.
 
 ## Open findings
 
 - **F-1 · high · blocker (owner)** — Loop 2: Supabase env vars are now set, but the cloud network policy blocks the Supabase host (egress proxy 403, `curl` → 000), so auth/prompts suites fail with 502 / cancelled. Fix: allow `*.supabase.co` in the cloud environment network policy. Originally: no Supabase env vars, so `apps/web` Supabase node suites (prompts API, ownership, accounts) and `e2e/run.mjs` never run. Epic 3 endpoint/page tasks cannot reach VERIFIED. Fix: add the `apps/web/.env.example` vars as cloud environment secrets, or run both suites locally and record the result here.
-- **F-2 · medium · T-3.2.4** — No `error.tsx`; failed list/prompt loads hit Next's default error page (dead end). Fix PR #10 VERIFIED by owner 2026-11-28 (local `make verify` green, web tests 76/76); awaiting merge. Remaining: no `global-error.tsx` / root `error.tsx`, so `/`, `/m`, `/account/password`, `/sign-in`, `/sign-up` still hit Next's default error page.
+- **F-2 · medium · T-3.2.4** — Loop 7: remainder fixed in draft PR #12 (stacked on #10): root `error.tsx` + `global-error.tsx`, static green and runtime-checked in `next dev`. Original: No `error.tsx`; failed list/prompt loads hit Next's default error page (dead end). Fix PR #10 VERIFIED by owner 2026-11-28 (local `make verify` green, web tests 76/76); awaiting merge. Remaining: no `global-error.tsx` / root `error.tsx`, so `/`, `/m`, `/account/password`, `/sign-in`, `/sign-up` still hit Next's default error page.
 - **F-3 · low · T-3.4.3** — Delete e2e did not check category list removal or that Cancel keeps the prompt. Fix PR #9 VERIFIED by owner 2026-11-28 (local `pnpm -C apps/web run test:e2e` all passed with real Supabase); awaiting merge. Nit: `check("cancel returns to the prompt", true)` at run.mjs:1110 is vacuous; fold into the new check.
 - **F-4 · low · T-3.3.2 · product** — Browser back/forward from the editor is not warned, only flushed via keepalive. Decide whether that meets "warns once".
 - **F-5 · low · T-3.2.2 · product** — Cards show `updated` time; created date only as a tooltip. Decide if "timestamps" needs both visible.
@@ -69,7 +69,7 @@ Proposed Serena memory edit (apply to `web_prompts` once PR #10 merges): "Load f
 | T-3.2.1 | List endpoint | feat |  | NEEDS-SUPABASE | main |  |  |
 | T-3.2.2 | Prompt list page | feat | ⇉ | NEEDS-SUPABASE | main |  |  |
 | T-3.2.3 | Search & pack filter controls | feat |  | BLOCKED-DECISION | main |  | pack filter = category; re-check after T-3.0.1 |
-| T-3.2.4 | Empty & no-result states | feat | ⇉ | VERIFIED | mvp/T-3.2.4-error-boundary | main | #10 |
+| T-3.2.4 | Empty & no-result states | feat | ⇉ | VERIFIED | mvp/T-3.2.4-error-boundary | main | #10; F-2 follow-up #12 (NEEDS-REVIEW, base #10) |
 | T-3.2.5 | List tests | test | ⇉ | NEEDS-SUPABASE | main |  |  |
 | T-3.3.1 | Update endpoint | feat |  | NEEDS-SUPABASE | main |  |  |
 | T-3.3.2 | Editor page with live preview | feat |  | NEEDS-SUPABASE | main |  |  |
@@ -78,7 +78,7 @@ Proposed Serena memory edit (apply to `web_prompts` once PR #10 merges): "Load f
 | T-3.4.1 | Delete endpoint | feat |  | NEEDS-SUPABASE | main |  |  |
 | T-3.4.2 | Delete confirmation flow | feat | ⇉ | NEEDS-SUPABASE | main |  |  |
 | T-3.4.3 | Delete tests | test | ⇉ | VERIFIED | mvp/T-3.4.3-delete-tests | main | #9 |
-| T-4.1.1 | Pack persistence & endpoints | feat |  | PENDING | | | |
+| T-4.1.1 | Pack persistence & endpoints | feat |  | NEEDS-SUPABASE | mvp/T-4.1.1-pack-endpoints | main | #11 (owner-built; owner reports 82/82 live; cloud static PASS) |
 | T-4.1.2 | Pack management UI | feat | ⇉ | PENDING | | | |
 | T-4.1.3 | Pack-deletion preservation tests | test | ⇉ | PENDING | | | |
 | T-4.2.1 | Membership endpoints | feat |  | PENDING | | | |
@@ -131,3 +131,4 @@ Proposed Serena memory edit (apply to `web_prompts` once PR #10 merges): "Load f
 - 2026-11-28 loop 6 (cloud, ~3 min) — No-op. Decisions T-3.0.1 / T-3.1.1 still have empty `APPROVED:`; `main` unchanged (abf75d2); drafts #9/#10 unchanged since 2026-11-27, no owner comments; Supabase health probe still 000 / proxy 403 (F-1). Nothing dispatched; no tasks moved, no PRs opened. Owner not re-notified (same blockers as loop 2).
 - 2026-11-28 — owner verified PR #10 locally (comment on #10): T-3.2.4 → VERIFIED, plan boxes ticked.
 - 2026-11-28 — owner verified PR #9 locally with real Supabase e2e (comment on #9): T-3.4.3 → VERIFIED, plan boxes ticked.
+- 2026-11-28 loop 7 (cloud, ~25 min) — Decisions T-3.0.1 / T-3.1.1 still have an empty `APPROVED:`. `main` unchanged (abf75d2). Found owner-built draft PR #11 (T-4.1.1, category-as-pack, the body says T-3.0.1 approved as A). Static review in cloud: typecheck, prettier and build pass; web tests 52/12, same as `main` (the 12 failures are Supabase suites, F-1); code follows the prompt-route patterns (nit: category ids are validated with `isPromptId`) → NEEDS-SUPABASE. Built F-2 remainder: draft PR #12 `mvp/T-3.2.4-global-error` → base #10 (root `error.tsx` + `global-error.tsx`, `PromptsErrorState` takes `description`). Typecheck, prettier and build pass; Playwright check against `next dev` with a temporary throwing page shows the boundary, Try again and the `/prompts` link. T-4.1.2 not started: the decision file is still unapproved. Supabase still proxy 403. Owner notified about the decision-file mismatch.
