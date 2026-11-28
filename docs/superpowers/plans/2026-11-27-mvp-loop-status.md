@@ -125,11 +125,11 @@ Proposed Serena memory edit (apply to `web_prompts` once PR #10 merges): "Load f
 | T-6.1.3 | One-time first-save notice | feat | ⇉ | VERIFIED | mvp/T-6.1.3-first-save-notice | mvp/T-6.1.2-save-prompt-rail | #38 (owner-built) + F-17 fix #40 (loop 15 PASS) |
 | T-6.1.4 | Save flow tests | test | ⇉ | VERIFIED | mvp/T-6.1.4-save-flow-tests | mvp/T-6.1.3-first-save-notice | #39 (owner-built; loop 15 verifier PASS, low test gaps in F-19) |
 | T-6.2.1 | Edit push from the extension | feat |  | NEEDS-REVIEW | mvp/T-6.2.1-edit-push | mvp/T-6.3.4-offline-save | #42; loop 16 fresh verifier at 3f15356: all checks green (unit 46/46, E2E 96/96, 5 sign-out probes), fixes 1–2 hold, 1 low (empty/extra `changes` accepted) fixed in 010deec (unit 46/46, E2E 96/96); 010deec needs a fresh look; box 3 inline display in T-6.2.2 |
-| T-6.2.2 | Edit UI in the picker | feat |  | IN-PROGRESS | mvp/T-6.2.2-picker-edit | mvp/T-6.2.1-edit-push | loop 16 builder |
+| T-6.2.2 | Edit UI in the picker | feat |  | NEEDS-REVIEW | mvp/T-6.2.2-picker-edit | mvp/T-6.2.1-edit-push | #43 (7e1f84d; builder: unit 51/51, E2E 112/112; also T-6.2.1 box 3 inline errors); fresh verifier dispatched loop 16 |
 | T-6.2.3 | Edit sync tests | test | ⇉ | PENDING | | | |
 | T-6.3.1 | Conflict detection decision | decision |  | BLOCKED-DECISION | | | decisions/T-6.3.1.md |
 | T-6.3.2 | Conflict refusal & "updated elsewhere" UI | feat |  | PENDING | | | |
-| T-6.3.3 | Network error retry states | feat |  | PENDING | | | |
+| T-6.3.3 | Network error retry states | feat |  | IN-PROGRESS | mvp/T-6.3.3-retry-states | mvp/T-6.2.2-picker-edit | loop 16 builder |
 | T-6.3.4 | Offline save disabled state | feat | ⇉ | VERIFIED | mvp/T-6.3.4-offline-save | mvp/T-6.1.2-save-race | #41 (loop 15 fresh verifier PASS incl. keyboard/toggle probes; also T-5.2.4 box 2) |
 | T-6.3.5 | Conflict & error tests | test | ⇉ | PENDING | | | |
 | T-7.1.1 | Journey A regression pass | qa |  | PENDING | mvp/T-7.1.1-release-anchor-editor | main | F-10 fix #27 VERIFIED loop 9 (5715553); the pass itself waits for all epics |
