@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { FolderIcon, PencilIcon, Trash2Icon } from "lucide-react";
 import type { CategorySummary, Prompt } from "@promptizer/shared";
+import { AddToPackPicker } from "@/components/add-to-pack-picker";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { PromptCard } from "@/components/prompt-card";
 import { PromptGrid } from "@/components/prompt-grid";
+import { RemoveFromPackButton } from "@/components/remove-from-pack-button";
 import { Button } from "@/components/ui/button";
 
 const ALL_PACKS_BACK_LINK = { href: "/packs", label: "All packs" };
@@ -33,6 +35,7 @@ export function PackView({ pack, prompts }: { pack: CategorySummary; prompts: Pr
           </>
         }
       />
+      <AddToPackPicker packId={pack.id} />
       {prompts.length === 0 ? (
         <EmptyState
           icon={FolderIcon}
@@ -43,7 +46,10 @@ export function PackView({ pack, prompts }: { pack: CategorySummary; prompts: Pr
       ) : (
         <PromptGrid>
           {prompts.map((prompt) => (
-            <PromptCard key={prompt.id} prompt={prompt} />
+            <div key={prompt.id} className="relative">
+              <PromptCard prompt={prompt} />
+              <RemoveFromPackButton promptId={prompt.id} />
+            </div>
           ))}
         </PromptGrid>
       )}
