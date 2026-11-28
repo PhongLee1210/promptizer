@@ -1,0 +1,38 @@
+import type { PackSummary, Prompt } from "@promptizer/shared";
+import type { LibraryCache } from "./library-cache.ts";
+import type { LibraryClient } from "./library-client.ts";
+
+export interface LibraryStatus {
+  prompts: Prompt[];
+  packs: PackSummary[];
+  isStale: boolean;
+  lastError?: string;
+}
+
+export interface LibraryManager {
+  current(): Promise<LibraryStatus>;
+  refresh(accessToken: string): Promise<LibraryStatus>;
+  wipe(): Promise<void>;
+}
+
+export function createLibraryManager(client: LibraryClient, cache: LibraryCache): LibraryManager {
+  return {
+    async current() {
+      return cache.read();
+    },
+
+    async refresh(accessToken) {
+      const result = await client.fetchSnapshot(accessToken);
+      if (!result.ok) {
+        const previous = await cache.read();
+        return { ...previous, lastError: result.error.message };
+      }
+      await cache.save(result.value);
+      return { prompts: result.value.prompts, packs: result.value.packs, isStale: false };
+    },
+
+    wipe() {
+      return cache.clear();
+    },
+  };
+}
