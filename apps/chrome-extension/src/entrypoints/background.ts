@@ -1,17 +1,32 @@
 import { browser } from "wxt/browser";
 import { accountSession, API_ORIGIN } from "../account/account-session.ts";
 import { createPromptClient } from "../prompts/prompt-client.ts";
-import { createSavePromptHandler } from "../prompts/save-prompt-handler.ts";
-import { isSavePromptMessage } from "../prompts/save-prompt-message.ts";
+import { createSavePromptHandler, createUpdatePromptHandler } from "../prompts/save-prompt-handler.ts";
+import { isSavePromptMessage, isUpdatePromptMessage, pickPromptEdit } from "../prompts/save-prompt-message.ts";
+import type { PromptWriteResponse } from "../prompts/save-prompt-message.ts";
 
-const handleSavePrompt = createSavePromptHandler(() => accountSession.getAccessToken(), createPromptClient(API_ORIGIN));
+const promptClient = createPromptClient(API_ORIGIN);
+const getAccessToken = () => accountSession.getAccessToken();
+const handleSavePrompt = createSavePromptHandler(getAccessToken, promptClient);
+const handleUpdatePrompt = createUpdatePromptHandler(getAccessToken, promptClient);
+
+function handlePromptWrite(message: unknown): Promise<PromptWriteResponse> | undefined {
+  if (isSavePromptMessage(message)) {
+    return handleSavePrompt(message.draft);
+  }
+  if (isUpdatePromptMessage(message)) {
+    return handleUpdatePrompt(message.id, pickPromptEdit(message.changes));
+  }
+  return undefined;
+}
 
 export default defineBackground(() => {
   browser.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    if (!isSavePromptMessage(message)) {
+    const pending = handlePromptWrite(message);
+    if (pending === undefined) {
       return undefined;
     }
-    void handleSavePrompt(message.draft).then(sendResponse);
+    void pending.then(sendResponse);
     return true;
   });
 });

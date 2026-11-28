@@ -2,7 +2,13 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { AuthClientResult } from "../src/account/auth-client.ts";
 import { createPromptClient } from "../src/prompts/prompt-client.ts";
-import { createSavePromptHandler } from "../src/prompts/save-prompt-handler.ts";
+import { createSavePromptHandler, createUpdatePromptHandler } from "../src/prompts/save-prompt-handler.ts";
+import type { PromptEdit } from "../src/prompts/save-prompt-message.ts";
+import {
+  isUpdatePromptMessage,
+  pickPromptEdit,
+  UPDATE_PROMPT_MESSAGE_TYPE,
+} from "../src/prompts/save-prompt-message.ts";
 
 const DRAFT = { title: "A title", text: "the prompt text" };
 
@@ -108,4 +114,106 @@ test("the save request identifies itself as the extension", async () => {
   await handler(DRAFT);
   assert.equal(seenHeaders[0]?.get("X-Promptizer-Client"), "extension");
   assert.equal(seenHeaders[0]?.get("Authorization"), "Bearer access-token");
+});
+
+const STORED_PROMPT = {
+  id: "p 1",
+  title: "Edited title",
+  text: "edited text",
+  model: null,
+  category: null,
+  tags: [],
+  createdAt: "",
+  updatedAt: "",
+};
+
+test("an extension edit uses the dashboard's PATCH update path with only the changed fields", async () => {
+  const seen: { url: string; method?: string; body?: string; client: string | null }[] = [];
+  const recordingFetch: typeof fetch = async (input, init) => {
+    seen.push({
+      url: String(input),
+      method: init?.method,
+      body: init?.body as string,
+      client: new Headers(init?.headers).get("X-Promptizer-Client"),
+    });
+    return new Response(JSON.stringify(STORED_PROMPT), { status: 200 });
+  };
+  const handler = createUpdatePromptHandler(
+    tokenOk("access-token"),
+    createPromptClient("https://api.test", recordingFetch),
+  );
+  const result = await handler("p 1", { title: "Edited title" });
+  assert.deepEqual(result, { ok: true, prompt: STORED_PROMPT });
+  assert.deepEqual(seen, [
+    {
+      url: "https://api.test/api/prompts/p%201",
+      method: "PATCH",
+      body: '{"title":"Edited title"}',
+      client: "extension",
+    },
+  ]);
+});
+
+test("an edit's server validation errors carry the field messages for inline display", async () => {
+  const handler = createUpdatePromptHandler(
+    tokenOk("access-token"),
+    createPromptClient(
+      "https://api.test",
+      respondWith(422, {
+        code: "validation_failed",
+        message: "Please fix the highlighted fields.",
+        fields: { text: "Enter the prompt text." },
+      }),
+    ),
+  );
+  const result = await handler("p1", { text: "" });
+  assert.deepEqual(result, {
+    ok: false,
+    kind: "validation",
+    message: "Please fix the highlighted fields.",
+    fields: { text: "Enter the prompt text." },
+  });
+});
+
+test("editing a prompt deleted elsewhere is reported as not found, distinct from retryable", async () => {
+  const handler = createUpdatePromptHandler(
+    tokenOk("access-token"),
+    createPromptClient("https://api.test", respondWith(404, { code: "not_found", message: "Prompt not found." })),
+  );
+  const result = await handler("p1", { title: "x" });
+  assert.ok(!result.ok && result.kind === "not_found");
+});
+
+test("a 404 on save stays the retryable message, not the deleted-prompt one", async () => {
+  const handler = createSavePromptHandler(
+    tokenOk("access-token"),
+    createPromptClient("https://api.test", respondWith(404, { code: "not_found", message: "Not found." })),
+  );
+  const result = await handler(DRAFT);
+  assert.ok(!result.ok && result.kind === "retryable");
+});
+
+test("update messages with an unsafe id or malformed changes are ignored by the worker", () => {
+  const message = (id: unknown, changes: unknown) => ({ type: UPDATE_PROMPT_MESSAGE_TYPE, id, changes });
+  assert.equal(isUpdatePromptMessage(message("3f2a-uuid_1", { title: "x" })), true);
+  for (const id of ["", "..", ".", "a/b", "a?b", 7]) {
+    assert.equal(isUpdatePromptMessage(message(id, { title: "x" })), false, String(id));
+  }
+  assert.equal(isUpdatePromptMessage(message("p1", { title: 1 })), false);
+  assert.equal(isUpdatePromptMessage(message("p1", null)), false);
+  for (const changes of [{}, { title: undefined }, [], { categoryId: "x" }]) {
+    assert.equal(isUpdatePromptMessage(message("p1", changes)), false, JSON.stringify(changes));
+  }
+  assert.deepEqual(pickPromptEdit({ text: "body", categoryId: "x" } as PromptEdit), { text: "body" });
+});
+
+test("an edit with no session or no network never reaches the server as a success", async () => {
+  const signedOut = createUpdatePromptHandler(tokenOk(undefined), createPromptClient("https://api.test", failingFetch));
+  assert.ok(!(await signedOut("p1", { title: "x" })).ok);
+  const offline = createUpdatePromptHandler(
+    tokenOk("access-token"),
+    createPromptClient("https://api.test", failingFetch),
+  );
+  const result = await offline("p1", { title: "x" });
+  assert.ok(!result.ok && result.kind === "retryable");
 });
