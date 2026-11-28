@@ -32,6 +32,20 @@ export function isSavePromptMessage(value: unknown): value is SavePromptMessage 
   return hasMessageType(value, SAVE_PROMPT_MESSAGE_TYPE);
 }
 
+const PROMPT_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
+
+function isPromptEdit(value: unknown): value is PromptEdit {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const { title, text } = value as Record<string, unknown>;
+  return (title === undefined || typeof title === "string") && (text === undefined || typeof text === "string");
+}
+
 export function isUpdatePromptMessage(value: unknown): value is UpdatePromptMessage {
-  return hasMessageType(value, UPDATE_PROMPT_MESSAGE_TYPE);
+  if (!hasMessageType(value, UPDATE_PROMPT_MESSAGE_TYPE)) {
+    return false;
+  }
+  const { id, changes } = value as { id?: unknown; changes?: unknown };
+  return typeof id === "string" && PROMPT_ID_PATTERN.test(id) && isPromptEdit(changes);
 }

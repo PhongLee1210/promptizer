@@ -19,7 +19,7 @@ const RETRYABLE_ERROR: PromptClientError = {
 
 const NOT_FOUND_MESSAGE = "This prompt is no longer in your account. Refresh your library.";
 
-function mapFailure(status: number, body: ApiErrorBody | undefined): PromptClientError {
+function mapFailure(status: number, body: ApiErrorBody | undefined, targetsExistingPrompt: boolean): PromptClientError {
   if (status === 401 || body?.code === "unauthenticated") {
     return { kind: "unauthenticated", message: body?.message ?? "Please sign in again." };
   }
@@ -30,7 +30,7 @@ function mapFailure(status: number, body: ApiErrorBody | undefined): PromptClien
       fields: body?.fields ?? {},
     };
   }
-  if (status === 404 || body?.code === "not_found") {
+  if (targetsExistingPrompt && (status === 404 || body?.code === "not_found")) {
     return { kind: "not_found", message: NOT_FOUND_MESSAGE };
   }
   return RETRYABLE_ERROR;
@@ -66,7 +66,7 @@ export function createPromptClient(apiOrigin: string, fetchImplementation: typeo
       return { ok: false, error: RETRYABLE_ERROR };
     }
     if (!response.ok) {
-      return { ok: false, error: mapFailure(response.status, await readErrorBody(response)) };
+      return { ok: false, error: mapFailure(response.status, await readErrorBody(response), method === "PATCH") };
     }
     try {
       return { ok: true, value: (await response.json()) as Prompt };
