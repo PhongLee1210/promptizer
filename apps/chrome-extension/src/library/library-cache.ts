@@ -12,6 +12,7 @@ export interface LibraryCacheState {
   prompts: Prompt[];
   packs: PackSummary[];
   isStale: boolean;
+  fetchedAt?: number;
 }
 
 export interface LibraryCache {
@@ -43,7 +44,12 @@ export function createLibraryCache(store: SnapshotStore, now: () => number = () 
         return EMPTY_STATE;
       }
       const ageSeconds = Math.floor(now() / 1000) - stored.fetchedAt;
-      return { prompts: stored.prompts, packs: stored.packs, isStale: ageSeconds > SNAPSHOT_STALE_AFTER_SECONDS };
+      return {
+        prompts: stored.prompts,
+        packs: stored.packs,
+        isStale: ageSeconds > SNAPSHOT_STALE_AFTER_SECONDS,
+        fetchedAt: stored.fetchedAt,
+      };
     },
     save(snapshot) {
       return store.save(snapshot);
