@@ -550,6 +550,8 @@ after: T-5.3.1
 
 ## Epic 6 — Save & sync from the extension · 17h
 
+**Status (2026-11-28):** the owner built Story 6.1 as draft PRs #37–#39 (stacked on #32, background worker relay = decision T-6.1.2 option A). Loop 15 found a sign-out race and fixed it in #40, then built T-6.3.4 (#41) and T-6.2.1 (#42) on top. T-6.1.4 is VERIFIED. T-6.2.2 and T-6.3.3 are next. T-6.3.2 and T-6.3.5 wait on decision T-6.3.1.
+
 **Story 6.1 — Save prompt.**
 
 **T-6.1.1 · Save-prompt endpoint** · 1.5h · feat
@@ -572,8 +574,8 @@ after: T-6.1.2
 
 **T-6.1.4 · Save flow tests** · 1h · test ⇉
 after: T-6.1.2
-- [ ] Explicit-only capture pinned: no text leaves the machine without the action
-- [ ] Cancel path sends nothing; failed save is surfaced
+- [x] Explicit-only capture pinned: no text leaves the machine without the action
+- [x] Cancel path sends nothing; failed save is surfaced
 
 **Story 6.2 — Edit from the extension.**
 
