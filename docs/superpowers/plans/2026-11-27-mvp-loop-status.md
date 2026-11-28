@@ -15,7 +15,7 @@ Cloud E2E recipe (extension): run per app, not through turbo (turbo strips env):
 
 - **F-1 · high · blocker (owner)** — Loop 2: Supabase env vars are now set, but the cloud network policy blocks the Supabase host (egress proxy 403, `curl` → 000), so auth/prompts suites fail with 502 / cancelled. Fix: allow `*.supabase.co` in the cloud environment network policy. Originally: no Supabase env vars, so `apps/web` Supabase node suites (prompts API, ownership, accounts) and `e2e/run.mjs` never run. Epic 3 endpoint/page tasks cannot reach VERIFIED. Fix: add the `apps/web/.env.example` vars as cloud environment secrets, or run both suites locally and record the result here.
 - **F-2 · medium · T-3.2.4** — No `error.tsx`; failed list/prompt loads hit Next's default error page (dead end). Fix PR #10 VERIFIED by owner 2026-11-28 (local `make verify` green, web tests 76/76); awaiting merge. Remaining: no `global-error.tsx` / root `error.tsx`, so `/`, `/m`, `/account/password`, `/sign-in`, `/sign-up` still hit Next's default error page.
-- **F-3 · low · T-3.4.3** — Delete e2e did not check category list removal or that Cancel keeps the prompt. Fix PR #9 (static PASS loop 2, e2e not executed). Nit: `check("cancel returns to the prompt", true)` at run.mjs:1110 is vacuous; fold into the new check.
+- **F-3 · low · T-3.4.3** — Delete e2e did not check category list removal or that Cancel keeps the prompt. Fix PR #9 VERIFIED by owner 2026-11-28 (local `pnpm -C apps/web run test:e2e` all passed with real Supabase); awaiting merge.
 - **F-4 · low · T-3.3.2 · product** — Browser back/forward from the editor is not warned, only flushed via keepalive. Decide whether that meets "warns once".
 - **F-5 · low · T-3.2.2 · product** — Cards show `updated` time; created date only as a tooltip. Decide if "timestamps" needs both visible.
 - **F-6 · low · T-3.1.2** — Render-failure inline alert (`markdown-preview.tsx` error boundary) has no test.
@@ -77,7 +77,7 @@ Proposed Serena memory edit (apply to `web_prompts` once PR #10 merges): "Load f
 | T-3.3.4 | Auto-save tests | test | ⇉ | NEEDS-SUPABASE | main |  |  |
 | T-3.4.1 | Delete endpoint | feat |  | NEEDS-SUPABASE | main |  |  |
 | T-3.4.2 | Delete confirmation flow | feat | ⇉ | NEEDS-SUPABASE | main |  |  |
-| T-3.4.3 | Delete tests | test | ⇉ | NEEDS-SUPABASE | mvp/T-3.4.3-delete-tests | main | #9 |
+| T-3.4.3 | Delete tests | test | ⇉ | VERIFIED | mvp/T-3.4.3-delete-tests | main | #9 |
 | T-4.1.1 | Pack persistence & endpoints | feat |  | PENDING | | | |
 | T-4.1.2 | Pack management UI | feat | ⇉ | PENDING | | | |
 | T-4.1.3 | Pack-deletion preservation tests | test | ⇉ | PENDING | | | |
@@ -130,3 +130,4 @@ Proposed Serena memory edit (apply to `web_prompts` once PR #10 merges): "Load f
 - 2026-11-28 loop 5 (cloud, ~3 min) — No-op. Decisions T-3.0.1 / T-3.1.1 still have empty `APPROVED:`; `main` unchanged (abf75d2); drafts #9/#10 unchanged since 2026-11-27, no owner comments; Supabase health probe still 000 (F-1). Nothing dispatched; no tasks moved, no PRs opened. Owner not re-notified (same blockers as loop 2).
 - 2026-11-28 loop 6 (cloud, ~3 min) — No-op. Decisions T-3.0.1 / T-3.1.1 still have empty `APPROVED:`; `main` unchanged (abf75d2); drafts #9/#10 unchanged since 2026-11-27, no owner comments; Supabase health probe still 000 / proxy 403 (F-1). Nothing dispatched; no tasks moved, no PRs opened. Owner not re-notified (same blockers as loop 2).
 - 2026-11-28 — owner verified PR #10 locally (comment on #10): T-3.2.4 → VERIFIED, plan boxes ticked.
+- 2026-11-28 — owner verified PR #9 locally with real Supabase e2e (comment on #9): T-3.4.3 → VERIFIED, plan boxes ticked.

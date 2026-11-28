@@ -400,8 +400,8 @@ after: T-3.4.1
 
 **T-3.4.3 · Delete tests** · 1h · test ⇉
 after: T-3.4.2
-- [ ] Delete → gone from list, packs, and its own URL
-- [ ] Confirmation required (no accidental single-click deletion)
+- [x] Delete → gone from list, packs, and its own URL
+- [x] Confirmation required (no accidental single-click deletion)
 
 ---
 
