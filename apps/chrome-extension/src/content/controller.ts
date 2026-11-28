@@ -23,7 +23,7 @@ import {
 import { getEditorText, isContentEditableElement, resolveEditableTarget } from "./editor-detector";
 import { disableGlobally, isGloballyEnabled, onGlobalEnabledChanged } from "./global-enabled";
 import { evictWarmSessions, prepareNano, prewarmNano, type NanoAvailability } from "./nano";
-import { presentResult } from "./present-result";
+import { OFFLINE_SAVE_MESSAGE, presentResult } from "./present-result";
 import { PromptPicker } from "./prompt-picker";
 import { ActionRail } from "./rail";
 import { ResultWindow } from "./result-window";
@@ -158,7 +158,7 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
     chip.setLoading(state.view.kind === "loading" || state.view.kind === "preparing");
     chip.setProgress(state.view.kind === "preparing" ? state.view.percent : null);
     chip.setUndoVisible(state.replaced);
-    rail.render(state.view, context, state.results.length > 0, signedIn);
+    rail.render(state.view, context, state.results.length > 0, signedIn, navigator.onLine);
     resultWindow.render(state);
     picker.render(state.view.kind === "picker");
     updatePosition();
@@ -267,7 +267,7 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
 
   function openSavePrompt(): void {
     const editor = anchorEditor();
-    if (editor === null) {
+    if (editor === null || !navigator.onLine) {
       return;
     }
     const draft = getEditorText(editor).trim();
@@ -278,6 +278,9 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
   async function confirmSavePrompt(title: string): Promise<SaveOutcome> {
     if (state.view.kind !== "saving") {
       return { ok: false, message: "Something went wrong. Please try again." };
+    }
+    if (!navigator.onLine) {
+      return { ok: false, message: OFFLINE_SAVE_MESSAGE };
     }
     const signedInChangeCountAtRequest = signedInChangeCount;
     const result = await requestSavePrompt({ title, text: state.view.draft });
@@ -317,6 +320,11 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
   function countSignedInChange(nextSignedIn: boolean): void {
     signedInChangeCount += 1;
     setSignedIn(nextSignedIn);
+  }
+
+  function handleConnectivityChange(): void {
+    rail.syncSavePromptAvailability(navigator.onLine);
+    resultWindow.syncSaveAvailability(navigator.onLine);
   }
 
   function setSignedIn(nextSignedIn: boolean): void {
@@ -561,6 +569,8 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
   document.addEventListener("click", handleDocumentClick, true);
   document.addEventListener("scroll", handleScrollOrResize, true);
   window.addEventListener("resize", handleScrollOrResize);
+  window.addEventListener("online", handleConnectivityChange);
+  window.addEventListener("offline", handleConnectivityChange);
 
   render();
 
@@ -589,6 +599,8 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
     document.removeEventListener("click", handleDocumentClick, true);
     document.removeEventListener("scroll", handleScrollOrResize, true);
     window.removeEventListener("resize", handleScrollOrResize);
+    window.removeEventListener("online", handleConnectivityChange);
+    window.removeEventListener("offline", handleConnectivityChange);
     mutationObserver.disconnect();
     resizeObserver.disconnect();
     releaseWarmSessions();

@@ -3,6 +3,7 @@ import { runCase, extensionId, focusAndType, ORIGINAL_PROMPT } from "../harness.
 const SESSION_STORAGE_KEY = "promptizer.accountSession";
 const SIGNED_IN_STORAGE_KEY = "promptizer.signedIn";
 const FIRST_SAVE_NOTICE_KEY = "promptizer.firstSaveNoticeShown";
+const OFFLINE_SAVE_MESSAGE = "You're offline. Your library is read-only until you reconnect.";
 const STORED_SESSION = {
   accessToken: "access-token",
   refreshToken: "refresh-token",
@@ -260,6 +261,63 @@ await runCase("save-prompt", async (page, check, browser) => {
   check("a failed save surfaces the server's error message", true);
   const stillOpenAfterFailure = await retryConfirm.evaluate((btn) => btn.isConnected && btn.offsetParent !== null);
   check("a failed save leaves the step open so the user can retry", stillOpenAfterFailure);
+  await client.detach();
+
+  await page.keyboard.press("Escape");
+  await new Promise((r) => setTimeout(r, 300));
+  ({ client, requests } = await mockSavePromptApi(browser, () => ({
+    status: 201,
+    body: { id: "p5", title: "", text: "", model: null, category: null, tags: [], createdAt: "", updatedAt: "" },
+  })));
+
+  await page.setOfflineMode(true);
+  await rail.click();
+  await new Promise((r) => setTimeout(r, 200));
+  const offlineRailSave = await page.waitForSelector('aria/Save prompt[role="menuitem"]', { timeout: 5000 });
+  const offlineRailState = await offlineRailSave.evaluate((btn) => ({
+    disabled: btn.getAttribute("aria-disabled"),
+    tip: btn.dataset.tip,
+  }));
+  check(
+    "offline, the rail's Save prompt is disabled with the read-only message",
+    offlineRailState.disabled === "true" && offlineRailState.tip === OFFLINE_SAVE_MESSAGE,
+    JSON.stringify(offlineRailState),
+  );
+  await offlineRailSave.click();
+  await new Promise((r) => setTimeout(r, 300));
+  check(
+    "offline, activating Save prompt opens no save step",
+    (await page.$('aria/Prompt title[role="textbox"]')) === null,
+  );
+
+  await page.setOfflineMode(false);
+  await new Promise((r) => setTimeout(r, 200));
+  const onlineRailDisabled = await offlineRailSave.evaluate((btn) => btn.getAttribute("aria-disabled"));
+  check("coming back online re-enables Save prompt without a restart", onlineRailDisabled === null);
+  await offlineRailSave.click();
+  await page.waitForSelector('aria/Prompt title[role="textbox"]', { timeout: 5000 });
+  check("back online, Save prompt opens the save step again", true);
+
+  const stepSaveButton = await page.waitForSelector('aria/Save prompt[role="button"]', { timeout: 5000 });
+  const offlineNoteShown = (btn) =>
+    [...(btn.closest(".pz-win")?.querySelectorAll('[role="status"]') ?? [])].some(
+      (node) => !node.hidden && node.textContent?.includes("You're offline"),
+    );
+  await page.setOfflineMode(true);
+  await page.waitForFunction((btn) => btn.disabled, { timeout: 5000 }, stepSaveButton);
+  check(
+    "going offline while the save step is open disables Save and shows the read-only message",
+    await stepSaveButton.evaluate(offlineNoteShown),
+  );
+  await stepSaveButton.evaluate((btn) => btn.click());
+  await new Promise((r) => setTimeout(r, 300));
+  check("offline, nothing is sent or queued", requests.length === 0, String(requests.length));
+
+  await page.setOfflineMode(false);
+  await page.waitForFunction((btn) => !btn.disabled, { timeout: 5000 }, stepSaveButton);
+  check("back online, the open save step can save again", !(await stepSaveButton.evaluate(offlineNoteShown)));
+  check("nothing queued while offline is sent on reconnect", requests.length === 0, String(requests.length));
+  await page.keyboard.press("Escape");
   await client.detach();
 
   await page.keyboard.press("Escape");

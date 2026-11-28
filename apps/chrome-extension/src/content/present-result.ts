@@ -10,6 +10,7 @@ export interface ActionCopy {
 export const ERROR_MESSAGE = "Couldn't get a result. Your text is unchanged.";
 export const NOT_CONFIGURED_MESSAGE =
   "On-device AI isn't ready yet. Open the Promptizer popup and follow the On-device AI setup steps.";
+export const OFFLINE_SAVE_MESSAGE = "You're offline. Your library is read-only until you reconnect.";
 export const PREPARING_TITLE = "Setting up on-device AI";
 export const PREPARING_CAPTION = "Downloading Gemini Nano. Keep Chrome open; this happens once per computer.";
 

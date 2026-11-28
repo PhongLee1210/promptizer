@@ -1,5 +1,5 @@
 import { icon, type IconName } from "../utils/icons";
-import { ACTION_COPY } from "./present-result";
+import { ACTION_COPY, OFFLINE_SAVE_MESSAGE } from "./present-result";
 import type { ActionId, RailGroupId } from "./action-types";
 import type { ChipView } from "./chip-state";
 
@@ -102,6 +102,10 @@ export const RAIL_STYLE = `
   button.pz-rail__btn:focus-visible {
     outline: none;
   }
+  button.pz-rail__btn[aria-disabled="true"] {
+    opacity: 0.4;
+    cursor: default;
+  }
   .pz-rail__strip {
     position: absolute;
     right: 33px;
@@ -173,6 +177,18 @@ function createButton(
   return button;
 }
 
+function applySavePromptAvailability(button: HTMLButtonElement, online: boolean): void {
+  if (online) {
+    button.removeAttribute("aria-disabled");
+    button.removeAttribute("aria-description");
+    button.dataset.tip = "Save prompt";
+    return;
+  }
+  button.setAttribute("aria-disabled", "true");
+  button.setAttribute("aria-description", OFFLINE_SAVE_MESSAGE);
+  button.dataset.tip = OFFLINE_SAVE_MESSAGE;
+}
+
 export class ActionRail {
   private readonly element: HTMLDivElement;
 
@@ -189,7 +205,7 @@ export class ActionRail {
     return this.element;
   }
 
-  render(view: ChipView, context: "chat" | "editor", hasHistory: boolean, signedIn: boolean): void {
+  render(view: ChipView, context: "chat" | "editor", hasHistory: boolean, signedIn: boolean, online: boolean): void {
     const open = view.kind === "rail";
     this.element.dataset.open = String(open);
     this.element.replaceChildren();
@@ -205,7 +221,7 @@ export class ActionRail {
     this.appendGroup("translate", openGroup === "translate");
     this.appendGroup("tone", openGroup === "tone");
     if (signedIn) {
-      this.appendSavePrompt();
+      this.appendSavePrompt(online);
       this.appendMyPrompts();
     }
     if (hasHistory) {
@@ -269,11 +285,25 @@ export class ActionRail {
     this.element.append(item);
   }
 
-  private appendSavePrompt(): void {
+  private appendSavePrompt(online: boolean): void {
     const item = document.createElement("span");
     item.className = "pz-rail__item";
-    item.append(createButton({ iconName: "cloud" }, "Save prompt", () => this.callbacks.onSavePromptOpened()));
+    const button = createButton({ iconName: "cloud" }, "Save prompt", () => {
+      if (button.getAttribute("aria-disabled") !== "true") {
+        this.callbacks.onSavePromptOpened();
+      }
+    });
+    button.dataset.railItem = "save-prompt";
+    applySavePromptAvailability(button, online);
+    item.append(button);
     this.element.append(item);
+  }
+
+  syncSavePromptAvailability(online: boolean): void {
+    const button = this.element.querySelector<HTMLButtonElement>('[data-rail-item="save-prompt"]');
+    if (button !== null) {
+      applySavePromptAvailability(button, online);
+    }
   }
 
   private appendMyPrompts(): void {
