@@ -125,7 +125,7 @@ Proposed Serena memory edit (apply to `web_prompts` once PR #10 merges): "Load f
 | T-6.1.3 | One-time first-save notice | feat | ⇉ | VERIFIED | mvp/T-6.1.3-first-save-notice | mvp/T-6.1.2-save-prompt-rail | #38 (owner-built) + F-17 fix #40 (loop 15 PASS) |
 | T-6.1.4 | Save flow tests | test | ⇉ | VERIFIED | mvp/T-6.1.4-save-flow-tests | mvp/T-6.1.3-first-save-notice | #39 (owner-built; loop 15 verifier PASS, low test gaps in F-19) |
 | T-6.2.1 | Edit push from the extension | feat |  | NEEDS-REVIEW | mvp/T-6.2.1-edit-push | mvp/T-6.3.4-offline-save | #42; loop 15 verifier: 1 medium (edit cache write unguarded vs sign-out) + 2 low, fixed in 3f15356 (unit 46/46, E2E 96/96), needs a fresh verifier; box 3 data path only, inline display in T-6.2.2 |
-| T-6.2.2 | Edit UI in the picker | feat |  | PENDING | | | |
+| T-6.2.2 | Edit UI in the picker | feat |  | IN-PROGRESS | mvp/T-6.2.2-picker-edit | mvp/T-6.2.1-edit-push | loop 16 builder |
 | T-6.2.3 | Edit sync tests | test | ⇉ | PENDING | | | |
 | T-6.3.1 | Conflict detection decision | decision |  | BLOCKED-DECISION | | | decisions/T-6.3.1.md |
 | T-6.3.2 | Conflict refusal & "updated elsewhere" UI | feat |  | PENDING | | | |
