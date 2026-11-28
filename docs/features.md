@@ -204,7 +204,7 @@ setup, everything failing — so the popup always explains *why* the chip is or 
 
 - Rewrites never leave the machine: Gemini Nano runs inside Chrome. Signed out, the extension makes no
   network calls. Signing in from the popup's Account screen is optional; only then does the popup talk to
-  the Promptizer account service (sign in, renew, sign out).
+  the Promptizer account service (sign in, check and renew the session, sign out).
 - No `host_permissions`; permissions are `storage` and `activeTab` only, asserted on every build.
 - Only the text you select an action on is sent to the model. No page scraping, no prompt logging, no
   analytics, no telemetry.

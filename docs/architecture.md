@@ -1,6 +1,6 @@
 # Architecture
 
-Promptizer is a Chrome extension with two moving parts and no server. A **content script** lives on
+Promptizer is a Chrome extension with two moving parts. A **content script** lives on
 the page you are typing on; a **popup** is the settings surface. There is no background worker, no
 backend for rewrites, and no third-party runtime code. Rewrites never leave the machine. The only network
 traffic is the optional account sign-in, sent from the popup to the Promptizer service in `apps/web`.
@@ -33,12 +33,13 @@ traffic is the optional account sign-in, sent from the popup to the Promptizer s
                             ▼
  ┌─ the popup ───────────────────────────────────────────────┐
  │   on/off · model status · setup guide · site and model    │
- │   preferences                                             │
+ │   preferences · optional account sign-in ──► Promptizer   │
+ │   service                                                 │
  └───────────────────────────────────────────────────────────┘
 ```
 
-Everything the extension can do flows down that single path. There is no second route, no queue, no
-sync, no remote call.
+Every rewrite flows down that single path. There is no second route, no queue and no sync; the only
+remote call is the optional account sign-in from the popup.
 
 ## Four ideas worth knowing
 

@@ -135,7 +135,7 @@ Build the zip locally with `pnpm -C apps/chrome-extension run zip`.
 Only the text you run an action on is processed, and Gemini Nano keeps it on-device. Rewrites never
 leave the machine. Signed out, the extension makes no network requests at all. If you choose to sign in
 from the popup's Account screen, the popup talks to your Promptizer account service (`apps/web`) to sign
-in, renew the session and sign out, and the session is kept in the extension's local storage until you
+in, check and renew the session and sign out, and the session is kept in the extension's local storage until you
 sign out. Permissions are `storage` and `activeTab` only, with no host permissions,
 asserted on every build. Password, one-time-code and payment fields never get a chip, so their
 contents are never read. No prompt logging, no page scraping, no automatic submission.
