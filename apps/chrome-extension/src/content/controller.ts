@@ -1,3 +1,5 @@
+import { API_ORIGIN } from "../account/api-origin";
+import { hasStoredSession, onStoredSessionChanged } from "../account/session-store";
 import { performActionWithRealProviders } from "./action-router";
 import { placeRail, placeWindow } from "./anchor";
 import { PromptizerChip } from "./chip";
@@ -21,6 +23,8 @@ import { writeEditorText } from "./write-editor";
 
 const FOCUS_OUT_GRACE_MS = 120;
 const COPY_FLASH_MS = 1200;
+const RAIL_BASE_ITEM_COUNT = 6;
+const MY_PROMPTS_URL = `${API_ORIGIN}/prompts`;
 
 export interface ChipControllerOptions {
   performAction?: (action: ActionId, text: string) => Promise<RefineResult>;
@@ -34,8 +38,8 @@ interface AppliedDraft {
   originalText: string;
 }
 
-function railItemCount(hasHistory: boolean): number {
-  return hasHistory ? 7 : 6;
+function railItemCount(hasHistory: boolean, signedIn: boolean): number {
+  return RAIL_BASE_ITEM_COUNT + Number(hasHistory) + Number(signedIn);
 }
 
 export function startChipController(options: ChipControllerOptions = {}): () => void {
@@ -47,6 +51,7 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
   let state: ChipState = initialChipState;
   let context: "chat" | "editor" = "chat";
   let globallyEnabled = true;
+  let signedIn = false;
   let focusedEditor: HTMLElement | null = null;
   let pendingEditor: HTMLElement | null = null;
   let appliedDraft: AppliedDraft | null = null;
@@ -60,6 +65,7 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
     onSelectLeaf: (action) => runAction(action, "text"),
     onToggleGroup: (group) => dispatch({ type: "group-toggled", group }),
     onRecentOpened: () => dispatch({ type: "recent-opened" }),
+    onMyPromptsOpened: () => openMyPrompts(),
     onTurnOff: () => turnOff(),
   });
   const resultWindow = new ResultWindow({
@@ -121,7 +127,7 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
     chip.setLoading(state.view.kind === "loading" || state.view.kind === "preparing");
     chip.setProgress(state.view.kind === "preparing" ? state.view.percent : null);
     chip.setUndoVisible(state.replaced);
-    rail.render(state.view, context, state.results.length > 0);
+    rail.render(state.view, context, state.results.length > 0, signedIn);
     resultWindow.render(state);
     updatePosition();
   }
@@ -135,7 +141,7 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
     if (state.view.kind === "rail") {
       chip.applyPanelPlacement(
         rail.node(),
-        placeRail(chip.anchorRect(), railItemCount(state.results.length > 0), viewport),
+        placeRail(chip.anchorRect(), railItemCount(state.results.length > 0, signedIn), viewport),
       );
     } else if (state.view.kind !== "closed") {
       chip.applyPanelPlacement(resultWindow.node(), placeWindow(chip.anchorRect(), viewport));
@@ -209,6 +215,20 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
     dispatch({ type: "dismissed" });
     chip.hide();
     void disableGlobally();
+  }
+
+  function openMyPrompts(): void {
+    window.open(MY_PROMPTS_URL, "_blank", "noopener");
+    dispatch({ type: "dismissed" });
+    chip.focusTrigger();
+  }
+
+  function setSignedIn(nextSignedIn: boolean): void {
+    if (signedIn === nextSignedIn) {
+      return;
+    }
+    signedIn = nextSignedIn;
+    render();
   }
 
   function setGloballyEnabled(enabled: boolean): void {
@@ -439,6 +459,8 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
 
   const unsubscribeGlobalEnabled = onGlobalEnabledChanged(setGloballyEnabled);
   void isGloballyEnabled().then(setGloballyEnabled);
+  const unsubscribeStoredSession = onStoredSessionChanged(setSignedIn);
+  void hasStoredSession().then(setSignedIn);
 
   return function stopChipController(): void {
     if (blurHandle !== undefined) {
@@ -449,6 +471,7 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
     }
     clearUndoWindow();
     unsubscribeGlobalEnabled();
+    unsubscribeStoredSession();
     document.removeEventListener("focusin", handleFocusIn, true);
     document.removeEventListener("focusout", handleFocusOut, true);
     document.removeEventListener("click", handleDocumentClick, true);
