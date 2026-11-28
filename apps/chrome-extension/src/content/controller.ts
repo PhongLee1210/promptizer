@@ -300,7 +300,7 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
   }
 
   function applySuggestion(): void {
-    const editor = pendingEditor;
+    const editor = anchorEditor();
     const entry = currentResult(state);
     if (editor === null || entry === null || !document.contains(editor)) {
       return;
