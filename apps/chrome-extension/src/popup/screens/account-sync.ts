@@ -4,6 +4,10 @@ import type { LibraryStatus } from "../../library/library-manager.ts";
 import { banner, button, footerNote, sectionHeading, setButtonBusy } from "../components";
 import { el } from "../dom";
 
+function countOf(count: number, singular: string, plural: string): string {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
 function formatLastSynced(fetchedAt: number | undefined): string {
   if (fetchedAt === undefined) {
     return "Never synced";
@@ -37,7 +41,10 @@ export function renderSyncStatus(): HTMLElement {
       },
     });
     const children: (Node | string)[] = [
-      sectionHeading("Library", `${status.prompts.length} prompts, ${status.packs.length} packs`),
+      sectionHeading(
+        "Library",
+        `${countOf(status.prompts.length, "prompt", "prompts")}, ${countOf(status.packs.length, "pack", "packs")}`,
+      ),
       footerNote(formatLastSynced(status.fetchedAt)),
     ];
     if (status.lastError) {

@@ -163,7 +163,7 @@ await runCase("account", async (_page, check, browser) => {
   await waitForText(popup, SIGNED_IN_USER.email);
   check("successful sign-in shows the signed-in identity", true);
 
-  await waitForText(popup, "2 prompts, 1 packs");
+  await waitForText(popup, "2 prompts, 1 pack\\b");
   check("sign-in caches the account's library locally", (await storedLibrary(popup))?.prompts.length === 2);
 
   await popup.close();
@@ -173,7 +173,7 @@ await runCase("account", async (_page, check, browser) => {
 
   state.libraries[SIGNED_IN_USER.id].prompts.push(promptFixture("prompt-3", "Release notes", WORK_PACK));
   await (await popup.waitForSelector('aria/Refresh[role="button"]')).click();
-  await waitForText(popup, "3 prompts, 1 packs");
+  await waitForText(popup, "3 prompts, 1 pack\\b");
   check("refresh replaces the cache with the updated library", (await storedLibrary(popup))?.prompts.length === 3);
 
   state.libraryUnreachable = true;
@@ -182,14 +182,14 @@ await runCase("account", async (_page, check, browser) => {
   check(
     "failed refresh keeps the previous cache with an honest error",
     (await storedLibrary(popup))?.prompts.length === 3 &&
-      /3 prompts, 1 packs/.test(await popup.$eval("body", (body) => body.innerText)),
+      /3 prompts, 1 pack\b/.test(await popup.$eval("body", (body) => body.innerText)),
   );
   state.libraryUnreachable = false;
 
   await popup.evaluate((key) => chrome.storage.local.set({ [key]: { prompts: "corrupt" } }), LIBRARY_STORAGE_KEY);
   await popup.close();
   popup = await openAccountScreen(browser, state);
-  await waitForText(popup, "3 prompts, 1 packs");
+  await waitForText(popup, "3 prompts, 1 pack\\b");
   check("corrupt cache recovers through an automatic refresh", (await storedLibrary(popup))?.prompts.length === 3);
 
   await (await popup.waitForSelector('aria/Sign out[role="button"]')).click();
@@ -214,7 +214,7 @@ await runCase("account", async (_page, check, browser) => {
   );
 
   await signIn(popup, SECOND_USER.email);
-  await waitForText(popup, "1 prompts, 0 packs");
+  await waitForText(popup, "1 prompt, 0 packs");
   const secondAccountIds = (await storedLibrary(popup))?.prompts.map((prompt) => prompt.id);
   check(
     "a second account's cache holds only its own library",
@@ -224,7 +224,7 @@ await runCase("account", async (_page, check, browser) => {
 
   await signOut(popup);
   await signIn(popup, SIGNED_IN_USER.email);
-  await waitForText(popup, "3 prompts, 1 packs");
+  await waitForText(popup, "3 prompts, 1 pack\\b");
   const rebuiltIds = (await storedLibrary(popup))?.prompts.map((prompt) => prompt.id);
   check(
     "signing back in rebuilds the cache from the account",
