@@ -114,6 +114,33 @@ test("sign-out wipes credentials even when the server is unreachable", async () 
   assert.equal(await manager.currentUser(), undefined);
 });
 
+test("sign-out, rejected renewal and every new sign-in wipe the account's local data", async () => {
+  let wipeCount = 0;
+  const wipeAccountData = async () => {
+    wipeCount += 1;
+  };
+  const signInResponse = () => new Response(JSON.stringify(sessionExpiringAt(NOW_SECONDS + 3600)), { status: 200 });
+  const signedInManager = createSessionManager(
+    createAuthClient("https://api.test", routedFetch({ "/api/auth/sign-in": signInResponse })),
+    memoryStore(),
+    () => NOW_SECONDS * 1000,
+    wipeAccountData,
+  );
+  await signedInManager.signIn("ada@example.com", "pw");
+  assert.equal(wipeCount, 1);
+  await signedInManager.signOut();
+  assert.equal(wipeCount, 2);
+
+  const expiringManager = createSessionManager(
+    createAuthClient("https://api.test", respondWith(401, { code: "unauthenticated", message: "expired" })),
+    memoryStore(sessionExpiringAt(NOW_SECONDS + 10)),
+    () => NOW_SECONDS * 1000,
+    wipeAccountData,
+  );
+  await expiringManager.getAccessToken();
+  assert.equal(wipeCount, 3);
+});
+
 function routedFetch(routes: Record<string, () => Response>): typeof fetch {
   return async (input) => {
     const path = new URL(String(input)).pathname;

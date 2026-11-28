@@ -25,7 +25,13 @@ export function createSessionManager(
   client: AuthClient,
   store: SessionStore,
   now: () => number = () => Date.now(),
+  wipeAccountData: () => Promise<void> = async () => {},
 ): SessionManager {
+  async function clearCredentials(): Promise<void> {
+    await store.clear();
+    await wipeAccountData();
+  }
+
   async function renew(session: AuthSession): Promise<AuthClientResult<AuthSession | undefined>> {
     const renewed = await client.refresh(session.refreshToken);
     if (renewed.ok) {
@@ -33,7 +39,7 @@ export function createSessionManager(
       return renewed;
     }
     if (renewed.error.kind !== "retryable") {
-      await store.clear();
+      await clearCredentials();
       return { ok: true, value: undefined };
     }
     return renewed;
@@ -60,13 +66,14 @@ export function createSessionManager(
       if (!result.ok) {
         return result;
       }
+      await wipeAccountData();
       await store.save(result.value);
       return { ok: true, value: result.value.user };
     },
 
     async signOut() {
       const session = await store.load();
-      await store.clear();
+      await clearCredentials();
       if (session) {
         await client.signOut(session.accessToken);
       }

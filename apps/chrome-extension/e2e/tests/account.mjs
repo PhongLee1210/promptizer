@@ -1,6 +1,7 @@
 import { runCase, extensionId } from "../harness.mjs";
 
-const API_PATH_PREFIX = "/api/auth/";
+const API_PATH_PREFIXES = ["/api/auth/", "/api/library/"];
+const LIBRARY_STORAGE_KEY = "promptizer.librarySnapshot";
 const ACCESS_TOKEN_LIFETIME_SECONDS = 3600;
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -8,6 +9,29 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 const SIGNED_IN_USER = { id: "user-1", email: "ada@example.com", name: "Ada" };
+
+function promptFixture(id, title, category) {
+  const timestamp = new Date().toISOString();
+  return {
+    id,
+    title,
+    text: `${title} text`,
+    model: null,
+    category,
+    tags: [],
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+}
+
+function libraryBody() {
+  const workPack = { id: "pack-1", name: "Work" };
+  return {
+    prompts: [promptFixture("prompt-1", "Weekly report", workPack), promptFixture("prompt-2", "Bug triage", null)],
+    packs: [{ ...workPack, promptCount: 1 }],
+    fetchedAt: Math.floor(Date.now() / 1000),
+  };
+}
 
 function sessionBody() {
   return {
@@ -22,7 +46,7 @@ async function mockAuthApi(page, state) {
   await page.setRequestInterception(true);
   page.on("request", (request) => {
     const url = new URL(request.url());
-    if (!url.pathname.startsWith(API_PATH_PREFIX)) {
+    if (!API_PATH_PREFIXES.some((prefix) => url.pathname.startsWith(prefix))) {
       request.continue();
       return;
     }
@@ -38,6 +62,10 @@ async function mockAuthApi(page, state) {
         headers: json,
         body: JSON.stringify({ code: "invalid_credentials", message: "Email or password is incorrect." }),
       });
+      return;
+    }
+    if (url.pathname.endsWith("/library/snapshot")) {
+      request.respond({ status: 200, headers: json, body: JSON.stringify(libraryBody()) });
       return;
     }
     if (url.pathname.endsWith("/me")) {
@@ -59,6 +87,11 @@ async function openAccountScreen(browser, state) {
   const accountNav = await popup.waitForSelector("aria/Account", { timeout: 5000 });
   await accountNav.click();
   return popup;
+}
+
+async function storedLibrary(page) {
+  const stored = await page.evaluate((key) => chrome.storage.local.get(key), LIBRARY_STORAGE_KEY);
+  return stored[LIBRARY_STORAGE_KEY];
 }
 
 async function waitForText(page, pattern, timeoutMs = 5000) {
@@ -87,6 +120,9 @@ await runCase("account", async (_page, check, browser) => {
   await waitForText(popup, SIGNED_IN_USER.email);
   check("successful sign-in shows the signed-in identity", true);
 
+  await waitForText(popup, "2 prompts, 1 packs");
+  check("sign-in caches the account's library locally", (await storedLibrary(popup))?.prompts.length === 2);
+
   await popup.close();
   popup = await openAccountScreen(browser, state);
   await waitForText(popup, SIGNED_IN_USER.email);
@@ -104,4 +140,5 @@ await runCase("account", async (_page, check, browser) => {
   popup = await openAccountScreen(browser, state);
   await waitForText(popup, "Use your Promptizer account");
   check("sign-out wiped the stored credentials", true);
+  check("sign-out wiped the local library copy", (await storedLibrary(popup)) === undefined);
 });
