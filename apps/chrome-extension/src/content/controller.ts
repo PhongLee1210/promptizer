@@ -1,7 +1,7 @@
 import { API_ORIGIN } from "../account/api-origin";
 import { hasStoredSession, onStoredSessionChanged } from "../account/session-store";
 import { performActionWithRealProviders } from "./action-router";
-import { placeRail, placeWindow } from "./anchor";
+import { placePicker, placeRail, placeWindow } from "./anchor";
 import { PromptizerChip } from "./chip";
 import {
   currentResult,
@@ -16,6 +16,7 @@ import { getEditorText, isContentEditableElement, resolveEditableTarget } from "
 import { disableGlobally, isGloballyEnabled, onGlobalEnabledChanged } from "./global-enabled";
 import { evictWarmSessions, prepareNano, prewarmNano, type NanoAvailability } from "./nano";
 import { presentResult } from "./present-result";
+import { PromptPicker } from "./prompt-picker";
 import { ActionRail } from "./rail";
 import { ResultWindow } from "./result-window";
 import type { ActionId, ActionSource, RefineResult } from "./action-types";
@@ -65,7 +66,7 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
     onSelectLeaf: (action) => runAction(action, "text"),
     onToggleGroup: (group) => dispatch({ type: "group-toggled", group }),
     onRecentOpened: () => dispatch({ type: "recent-opened" }),
-    onMyPromptsOpened: () => openMyPrompts(),
+    onMyPromptsOpened: () => dispatch({ type: "picker-opened" }),
     onTurnOff: () => turnOff(),
   });
   const resultWindow = new ResultWindow({
@@ -82,6 +83,11 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
     onRetry: () => retry(),
     onClose: () => closeWindow(),
   });
+  const picker = new PromptPicker({
+    onPick: () => closeWindow(),
+    onOpenDashboard: () => openDashboard(),
+    onClose: () => closeWindow(),
+  });
   const chip = new PromptizerChip(
     () => dispatch({ type: "chip-clicked" }),
     () => handleEscape(),
@@ -89,6 +95,7 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
   );
   chip.attachRail(rail.node());
   chip.attachWindow(resultWindow.node());
+  chip.attachWindow(picker.node());
   chip.mount();
 
   const resizeObserver = new ResizeObserver(() => updatePosition());
@@ -113,6 +120,10 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
       rail.focusFirstItem();
       return;
     }
+    if (state.view.kind === "picker") {
+      picker.focusSearch();
+      return;
+    }
     if (state.view.kind === "result" && event.type === "outcome-arrived") {
       resultWindow.focusPrimary();
       return;
@@ -129,6 +140,7 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
     chip.setUndoVisible(state.replaced);
     rail.render(state.view, context, state.results.length > 0, signedIn);
     resultWindow.render(state);
+    picker.render(state.view.kind === "picker");
     updatePosition();
   }
 
@@ -143,6 +155,8 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
         rail.node(),
         placeRail(chip.anchorRect(), railItemCount(state.results.length > 0, signedIn), viewport),
       );
+    } else if (state.view.kind === "picker") {
+      chip.applyPanelPlacement(picker.node(), placePicker(chip.anchorRect(), viewport));
     } else if (state.view.kind !== "closed") {
       chip.applyPanelPlacement(resultWindow.node(), placeWindow(chip.anchorRect(), viewport));
     }
@@ -151,6 +165,9 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
   function handleEscape(): void {
     if (state.view.kind === "editing") {
       dispatch({ type: "edit-discarded" });
+      return;
+    }
+    if (state.view.kind === "picker" && picker.handleEscape()) {
       return;
     }
     if (state.view.kind === "rail" && state.view.openGroup !== null) {
@@ -217,7 +234,7 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
     void disableGlobally();
   }
 
-  function openMyPrompts(): void {
+  function openDashboard(): void {
     window.open(MY_PROMPTS_URL, "_blank", "noopener");
     dispatch({ type: "dismissed" });
     chip.focusTrigger();

@@ -18,6 +18,7 @@ export type Outcome = { kind: "ok"; title: string; text: string } | { kind: "err
 export type ChipView =
   | { kind: "closed" }
   | { kind: "rail"; openGroup: RailGroupId | null }
+  | { kind: "picker" }
   | { kind: "loading"; action: ActionId; source: ActionSource }
   | { kind: "preparing"; action: ActionId; source: ActionSource; percent: number }
   | { kind: "result" }
@@ -42,6 +43,7 @@ export type ChipEvent =
   | { type: "run-cancelled" }
   | { type: "step"; direction: -1 | 1 }
   | { type: "recent-opened" }
+  | { type: "picker-opened" }
   | { type: "delete-current" }
   | { type: "edit-started" }
   | { type: "edit-discarded" }
@@ -147,6 +149,9 @@ export function reduceChipState(state: ChipState, event: ChipEvent): ChipState {
         return state;
       }
       return { ...state, index: state.results.length - 1, view: { kind: "result" } };
+
+    case "picker-opened":
+      return state.view.kind === "rail" ? { ...state, view: { kind: "picker" } } : state;
 
     case "delete-current": {
       if (currentResult(state) === null) {

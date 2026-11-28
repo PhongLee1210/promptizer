@@ -1,6 +1,7 @@
 import { browser } from "wxt/browser";
 import designTokens from "@promptizer/ui/tokens.css?inline";
 import { icon } from "../utils/icons";
+import { PICKER_STYLE } from "./prompt-picker";
 import { RAIL_STYLE } from "./rail";
 import { RESULT_WINDOW_STYLE } from "./result-window";
 import { CHIP_MAX_SIZE, placeChip } from "./anchor";
@@ -213,7 +214,7 @@ export class PromptizerChip {
 
     const shadow = this.host.attachShadow({ mode: "closed" });
     const style = document.createElement("style");
-    style.textContent = designTokens + CHIP_STYLE + RAIL_STYLE + RESULT_WINDOW_STYLE;
+    style.textContent = designTokens + CHIP_STYLE + RAIL_STYLE + RESULT_WINDOW_STYLE + PICKER_STYLE;
 
     this.root = document.createElement("div");
     this.root.className = "pz-root";

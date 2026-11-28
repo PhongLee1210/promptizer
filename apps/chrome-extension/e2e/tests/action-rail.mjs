@@ -127,10 +127,7 @@ await runCase("action-rail", async (page, check, browser) => {
     focusedLabel,
   );
 
-  const dashboardTab = new Promise((resolve) => browser.once("targetcreated", (target) => resolve(target.url())));
-  await myPromptsHandle.click();
-  const openedUrl = await dashboardTab;
-  check("My Prompts opens the dashboard prompt list", new URL(openedUrl).pathname === "/prompts", openedUrl);
+  await page.keyboard.press("Escape");
 
   await setStoredSession(browser, null);
   await page.bringToFront();

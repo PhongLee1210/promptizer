@@ -218,7 +218,7 @@ export const WINDOW_STYLE = `
 
 export const RESULT_WINDOW_STYLE = WINDOW_STYLE + LOADING_STYLE;
 
-function button(
+export function button(
   iconName: IconName | null,
   text: string | null,
   label: string,
