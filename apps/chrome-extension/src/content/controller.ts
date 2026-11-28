@@ -98,6 +98,9 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
     }
     const prevView = state.view;
     state = next;
+    if (state.view.kind === "closed" && prevView.kind !== "loading" && prevView.kind !== "preparing") {
+      releasePendingEditor();
+    }
     render();
     focusAfterTransition(prevView, event);
   }
@@ -179,13 +182,17 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
     appliedDraft = null;
   }
 
-  function clearPendingWork(): void {
+  function releasePendingEditor(): void {
     const editor = pendingEditor;
     pendingEditor = null;
-    generation += 1;
     if (editor !== null) {
       stopObserving(editor);
     }
+  }
+
+  function clearPendingWork(): void {
+    generation += 1;
+    releasePendingEditor();
   }
 
   function stopObserving(editor: HTMLElement): void {
@@ -293,7 +300,7 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
   }
 
   function applySuggestion(): void {
-    const editor = pendingEditor;
+    const editor = anchorEditor();
     const entry = currentResult(state);
     if (editor === null || entry === null || !document.contains(editor)) {
       return;
