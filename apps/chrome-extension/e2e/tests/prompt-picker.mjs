@@ -469,9 +469,11 @@ await runCase("prompt-picker", async (page, check, browser) => {
 
   const UNREACHABLE_WRITE_MESSAGE = "Couldn't reach Promptizer, so nothing changed. Check your connection and retry.";
   const SIGNED_OUT_WRITE_MESSAGE = "Your Promptizer session ended. Sign in again from the Promptizer popup.";
-  const REJECTED_WRITE_MESSAGE =
-    "Promptizer couldn't accept this change. Your text is still here; check the prompt on the dashboard.";
+  const REJECTED_WRITE_MESSAGE = "Promptizer couldn't accept this change. Your text is still here.";
   let releaseHeldDelete = () => {};
+  const heldDeleteReply = new Promise((resolve) => {
+    releaseHeldDelete = () => resolve({ status: 409, body: { code: "conflict" } });
+  });
   const serverRenamed = {
     ...promptFixture("prompt-2", "Standup agenda (server)", WORK_PACK),
     text: "Standup notes text",
@@ -485,9 +487,7 @@ await runCase("prompt-picker", async (page, check, browser) => {
       return { status: 401, body: { code: "unauthenticated", message: "Unauthorized" } };
     }
     if (promptServerMode === "conflict" && request.method === "DELETE") {
-      return new Promise((resolve) => {
-        releaseHeldDelete = () => resolve({ status: 409, body: { code: "conflict" } });
-      });
+      return heldDeleteReply;
     }
     if (promptServerMode === "conflict") {
       return { status: 409, body: { code: "conflict" } };
@@ -601,7 +601,12 @@ await runCase("prompt-picker", async (page, check, browser) => {
   await page.keyboard.type("Bug triage v2");
   const conflictingSave = await page.waitForSelector('aria/Save changes[role="button"]');
   await conflictingSave.click();
-  await page.waitForFunction((saveButton) => saveButton.disabled, { timeout: 5000 }, conflictingSave);
+  await page.waitForFunction(
+    (saveButton, message) => saveButton.getRootNode().querySelector(".pz-picker")?.textContent?.includes(message),
+    { timeout: 5000 },
+    conflictingSave,
+    REJECTED_WRITE_MESSAGE,
+  );
   check(
     "a 409 on edit says Promptizer couldn't accept the change, keeps the typed title and offers no Retry",
     (await previewShows(page, REJECTED_WRITE_MESSAGE)) &&

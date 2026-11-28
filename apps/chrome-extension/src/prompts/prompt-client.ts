@@ -18,8 +18,15 @@ const RETRYABLE_ERROR: PromptClientError = {
   message: "Couldn't reach Promptizer. Check your connection and try again.",
 };
 
-const REJECTED_MESSAGE =
-  "Promptizer couldn't accept this change. Your text is still here; check the prompt on the dashboard.";
+const REJECTED_MESSAGE = "Promptizer couldn't accept this change. Your text is still here.";
+
+const UNREADABLE_REPLY_ERROR: PromptClientError = {
+  kind: "rejected",
+  message:
+    "Promptizer answered, but the reply couldn't be read, so this change may already be saved. Check the dashboard before trying again.",
+};
+
+const TEMPORARY_CLIENT_ERROR_STATUSES = new Set([408, 429]);
 
 const NOT_FOUND_MESSAGE =
   "This prompt was deleted elsewhere, so it can't be saved. Copy your text if you still need it.";
@@ -38,7 +45,7 @@ function mapFailure(status: number, body: ApiErrorBody | undefined, targetsExist
   if (targetsExistingPrompt && (status === 404 || body?.code === "not_found")) {
     return { kind: "not_found", message: NOT_FOUND_MESSAGE };
   }
-  if (status >= 400 && status < 500) {
+  if (status >= 400 && status < 500 && !TEMPORARY_CLIENT_ERROR_STATUSES.has(status)) {
     return { kind: "rejected", message: body?.message || REJECTED_MESSAGE };
   }
   return RETRYABLE_ERROR;
@@ -95,7 +102,7 @@ export function createPromptClient(apiOrigin: string, fetchImplementation: typeo
     try {
       return { ok: true, value: (await sent.value.json()) as Prompt };
     } catch {
-      return { ok: false, error: RETRYABLE_ERROR };
+      return { ok: false, error: UNREADABLE_REPLY_ERROR };
     }
   }
 

@@ -134,6 +134,20 @@ test("an API 401 on save, edit or delete is unauthenticated, a 409 is rejected a
     ["rejected", "rejected", "rejected"],
   );
   assert.ok(conflicting.every((result) => !result.ok && result.message.includes("couldn't accept this change")));
+  const throttled = await Promise.all(writesAgainst(respondWith(429, { code: "conflict", message: "" })));
+  assert.deepEqual(
+    throttled.map((result) => !result.ok && result.kind),
+    ["retryable", "retryable", "retryable"],
+  );
+});
+
+test("a confirmed save whose reply can't be read offers no Retry that could save it twice", async () => {
+  const unreadableFetch: typeof fetch = async () => new Response("<html>ok</html>", { status: 201 });
+  const result = await createSavePromptHandler(
+    tokenOk("access-token"),
+    createPromptClient("https://api.test", unreadableFetch),
+  )(DRAFT);
+  assert.ok(!result.ok && result.kind === "rejected" && result.message.includes("may already be saved"));
 });
 
 test("the save request identifies itself as the extension", async () => {

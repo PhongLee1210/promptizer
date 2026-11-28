@@ -532,6 +532,8 @@ export class ResultWindow {
         saveSettled = true;
         saveButton.innerHTML = "";
         saveButton.append(document.createTextNode("Saved"));
+        saveButton.setAttribute("aria-label", "Saved");
+        saveButton.dataset.tip = "Saved";
         if (outcome.showFirstSaveNotice) {
           cancelButton.disabled = false;
           cancelButton.innerHTML = "";
