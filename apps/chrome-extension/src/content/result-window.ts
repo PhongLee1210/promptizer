@@ -13,6 +13,8 @@ import {
 } from "./loading-ui";
 import { ACTION_COPY, PREPARING_CAPTION, PREPARING_TITLE } from "./present-result";
 
+export type SaveOutcome = { ok: true } | { ok: false; message: string };
+
 export interface ResultWindowCallbacks {
   onStep: (direction: -1 | 1) => void;
   onDeleteCurrent: () => void;
@@ -26,9 +28,23 @@ export interface ResultWindowCallbacks {
   onReplace: () => void;
   onRetry: () => void;
   onClose: () => void;
+  onSaveCancel: () => void;
+  onSaveConfirm: (title: string) => Promise<SaveOutcome>;
 }
 
 const SKELETON_LINE_WIDTHS = ["92%", "78%", "54%"] as const;
+const SAVE_CONFIRM_FLASH_MS = 900;
+const TITLE_PREFILL_MAX_LENGTH = 80;
+
+function prefillTitle(draft: string): string {
+  const firstLine = draft.split("\n")[0]?.trim() ?? "";
+  if (firstLine.length === 0) {
+    return "";
+  }
+  return firstLine.length > TITLE_PREFILL_MAX_LENGTH
+    ? `${firstLine.slice(0, TITLE_PREFILL_MAX_LENGTH).trimEnd()}…`
+    : firstLine;
+}
 const PREPARING_MODEL_NAME = "Gemini Nano";
 
 const TWEAK_LEAVES: ActionId[] = ["shorten", "grammar", "pro", "friendly", "direct", "vi", "en"];
@@ -285,7 +301,8 @@ export class ResultWindow {
       state.view.kind === "result" ||
       state.view.kind === "editing" ||
       state.view.kind === "tweak" ||
-      state.view.kind === "error";
+      state.view.kind === "error" ||
+      state.view.kind === "saving";
     const isBusy = state.view.kind === "loading" || state.view.kind === "preparing";
     const settlesIn = this.wasBusy && !isBusy;
     this.wasBusy = isBusy;
@@ -312,6 +329,9 @@ export class ResultWindow {
         break;
       case "error":
         this.renderError(state.view.action, state.view.message);
+        break;
+      case "saving":
+        this.renderSaving(state.view.draft);
         break;
       default:
         this.renderResult(state);
@@ -401,6 +421,66 @@ export class ResultWindow {
     this.bodyWrap.append(body);
 
     this.bottomBar.append(button("retry", null, "Try again", this.callbacks.onRetry));
+  }
+
+  private renderSaving(draft: string): void {
+    const title = document.createElement("span");
+    title.className = "pz-win__title";
+    title.textContent = "Save prompt";
+    const trailing = document.createElement("span");
+    trailing.className = "pz-win__trailing";
+    trailing.append(button("close", null, "Close", this.callbacks.onSaveCancel, "muted"));
+    this.topBar.append(document.createElement("span"), title, trailing);
+
+    const body = document.createElement("div");
+    body.className = "pz-win__body";
+    const titleInput = document.createElement("input");
+    titleInput.type = "text";
+    titleInput.setAttribute("aria-label", "Prompt title");
+    titleInput.placeholder = "Title";
+    titleInput.value = prefillTitle(draft);
+    titleInput.style.width = "100%";
+    titleInput.style.boxSizing = "border-box";
+    titleInput.style.border = "0";
+    titleInput.style.outline = "0";
+    titleInput.style.background = "transparent";
+    titleInput.style.font = "inherit";
+    titleInput.style.fontSize = "13px";
+    titleInput.style.color = "inherit";
+    body.append(titleInput);
+    const errorLine = document.createElement("p");
+    errorLine.className = "pz-win__body--error";
+    errorLine.setAttribute("role", "alert");
+    errorLine.style.margin = "8px 0 0";
+    errorLine.style.fontSize = "11px";
+    body.append(errorLine);
+    this.bodyWrap.append(body);
+
+    const cancelButton = button("close", null, "Cancel", this.callbacks.onSaveCancel);
+    const saveButton = button("check", null, "Save prompt", () => void handleSave(), "primary");
+    this.bottomBar.append(cancelButton, saveButton);
+
+    const handleSave = async (): Promise<void> => {
+      errorLine.textContent = "";
+      saveButton.disabled = true;
+      cancelButton.disabled = true;
+      const outcome = await this.callbacks.onSaveConfirm(titleInput.value.trim() || "Untitled prompt");
+      if (outcome.ok) {
+        saveButton.innerHTML = "";
+        saveButton.append(document.createTextNode("Saved"));
+        window.setTimeout(() => this.callbacks.onSaveCancel(), SAVE_CONFIRM_FLASH_MS);
+        return;
+      }
+      saveButton.disabled = false;
+      cancelButton.disabled = false;
+      errorLine.textContent = outcome.message;
+    };
+
+    window.setTimeout(() => titleInput.focus(), 0);
+  }
+
+  focusTitle(): void {
+    this.element.querySelector<HTMLInputElement>('input[aria-label="Prompt title"]')?.focus();
   }
 
   private renderResult(state: ChipState): void {

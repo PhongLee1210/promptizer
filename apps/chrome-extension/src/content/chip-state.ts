@@ -21,6 +21,7 @@ export type ChipView =
   | { kind: "closed" }
   | { kind: "rail"; openGroup: RailGroupId | null }
   | { kind: "picker" }
+  | { kind: "saving"; draft: string }
   | { kind: "loading"; action: ActionId; source: ActionSource }
   | { kind: "preparing"; action: ActionId; source: ActionSource; percent: number }
   | { kind: "result" }
@@ -46,6 +47,7 @@ export type ChipEvent =
   | { type: "step"; direction: -1 | 1 }
   | { type: "recent-opened" }
   | { type: "picker-opened" }
+  | { type: "save-opened"; draft: string }
   | { type: "prompt-picked"; id: string; title: string; text: string }
   | { type: "delete-current" }
   | { type: "edit-started" }
@@ -158,6 +160,9 @@ export function reduceChipState(state: ChipState, event: ChipEvent): ChipState {
 
     case "picker-opened":
       return state.view.kind === "rail" ? { ...state, view: { kind: "picker" } } : state;
+
+    case "save-opened":
+      return state.view.kind === "rail" ? { ...state, view: { kind: "saving", draft: event.draft } } : state;
 
     case "prompt-picked":
       if (state.view.kind !== "picker") {
