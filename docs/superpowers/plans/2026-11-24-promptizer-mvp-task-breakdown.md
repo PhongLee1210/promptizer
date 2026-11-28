@@ -526,7 +526,7 @@ after: T-5.2.2
 **T-5.2.4 · Offline read-only behavior** · 1h · feat
 after: T-5.2.2
 - [x] Offline: picker opens and inserts work from cache
-- [ ] Offline: edit/save actions are visibly disabled with one clear message
+- [x] Offline: edit/save actions are visibly disabled with one clear message
 - [x] Coming back online restores the actions without a restart
 
 **T-5.2.5 · Picker tests** · 1.5h · test ⇉
@@ -550,7 +550,7 @@ after: T-5.3.1
 
 ## Epic 6 — Save & sync from the extension · 17h
 
-**Status (2026-11-28):** the owner built Story 6.1 as draft PRs #37–#39 (stacked on #32, background worker relay = decision T-6.1.2 option A). Loop 15 found a sign-out race and fixed it in #40, then built T-6.3.4 (#41) and T-6.2.1 (#42) on top. T-6.1.4 is VERIFIED. T-6.2.2 and T-6.3.3 are next. T-6.3.2 and T-6.3.5 wait on decision T-6.3.1.
+**Status (2026-11-28):** the owner built Story 6.1 as draft PRs #37–#39 (stacked on #32, background worker relay = decision T-6.1.2 option A). Loop 15 found a sign-out race and fixed it in #40, then built T-6.3.4 (#41) and T-6.2.1 (#42) on top. T-6.1.2, T-6.1.3, T-6.1.4 and T-6.3.4 are VERIFIED; T-6.2.1 is in review. T-6.2.2 and T-6.3.3 are next. T-6.3.2 and T-6.3.5 wait on decision T-6.3.1.
 
 **Story 6.1 — Save prompt.**
 
@@ -562,15 +562,15 @@ after: T-5.1.2
 
 **T-6.1.2 · Rail "Save prompt" action + title step** · 2h · feat
 after: T-6.1.1
-- [ ] Rail action captures the field's current text only on explicit click
-- [ ] Title step before saving, prefilled sensibly, editable; cancel aborts with nothing sent
-- [ ] Saved → confirmation visible; library count updates
+- [x] Rail action captures the field's current text only on explicit click
+- [x] Title step before saving, prefilled sensibly, editable; cancel aborts with nothing sent
+- [x] Saved → confirmation visible; library count updates
 
 **T-6.1.3 · One-time first-save notice** · 1h · feat ⇉
 after: T-6.1.2
-- [ ] The first save ever shows the "stored in your Promptizer account" notice; never again after
-- [ ] Notice is dismissible and does not block the save
-- [ ] Flag stored locally; reset only on sign-out
+- [x] The first save ever shows the "stored in your Promptizer account" notice; never again after
+- [x] Notice is dismissible and does not block the save
+- [x] Flag stored locally; reset only on sign-out
 
 **T-6.1.4 · Save flow tests** · 1h · test ⇉
 after: T-6.1.2
@@ -618,8 +618,8 @@ after: T-6.2.1
 
 **T-6.3.4 · Offline save disabled state** · 1h · feat ⇉
 after: T-5.2.4
-- [ ] Offline: save/edit actions disabled with the read-only message
-- [ ] Nothing is queued in the MVP; behavior is explicit and honest
+- [x] Offline: save/edit actions disabled with the read-only message
+- [x] Nothing is queued in the MVP; behavior is explicit and honest
 
 **T-6.3.5 · Conflict & error tests** · 1.5h · test ⇉
 after: T-6.3.2, T-6.3.3
