@@ -29,6 +29,7 @@ export function createSessionManager(
 ): SessionManager {
   let credentialChangeCount = 0;
   let signInsWritingCredentials = 0;
+  const renewalsByRefreshToken = new Map<string, Promise<AuthClientResult<AuthSession | undefined>>>();
 
   async function clearCredentials(): Promise<void> {
     credentialChangeCount += 1;
@@ -36,7 +37,22 @@ export function createSessionManager(
     await wipeAccountData();
   }
 
-  async function renew(
+  function renew(
+    session: AuthSession,
+    credentialChangeCountAtRead: number,
+  ): Promise<AuthClientResult<AuthSession | undefined>> {
+    const inFlight = renewalsByRefreshToken.get(session.refreshToken);
+    if (inFlight) {
+      return inFlight;
+    }
+    const renewal = renewOnce(session, credentialChangeCountAtRead).finally(() => {
+      renewalsByRefreshToken.delete(session.refreshToken);
+    });
+    renewalsByRefreshToken.set(session.refreshToken, renewal);
+    return renewal;
+  }
+
+  async function renewOnce(
     session: AuthSession,
     credentialChangeCountAtRead: number,
   ): Promise<AuthClientResult<AuthSession | undefined>> {
