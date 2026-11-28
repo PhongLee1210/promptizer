@@ -7,6 +7,7 @@ export interface RailCallbacks {
   onSelectLeaf: (action: ActionId) => void;
   onToggleGroup: (group: RailGroupId) => void;
   onRecentOpened: () => void;
+  onMyPromptsOpened: () => void;
   onTurnOff: () => void;
 }
 
@@ -187,7 +188,7 @@ export class ActionRail {
     return this.element;
   }
 
-  render(view: ChipView, context: "chat" | "editor", hasHistory: boolean): void {
+  render(view: ChipView, context: "chat" | "editor", hasHistory: boolean, signedIn: boolean): void {
     const open = view.kind === "rail";
     this.element.dataset.open = String(open);
     this.element.replaceChildren();
@@ -202,6 +203,9 @@ export class ActionRail {
     this.appendLeaf("shorten");
     this.appendGroup("translate", openGroup === "translate");
     this.appendGroup("tone", openGroup === "tone");
+    if (signedIn) {
+      this.appendMyPrompts();
+    }
     if (hasHistory) {
       this.appendRecent();
     }
@@ -260,6 +264,13 @@ export class ActionRail {
     const item = document.createElement("span");
     item.className = "pz-rail__item";
     item.append(createButton({ iconName: "clock" }, "Recent results", () => this.callbacks.onRecentOpened()));
+    this.element.append(item);
+  }
+
+  private appendMyPrompts(): void {
+    const item = document.createElement("span");
+    item.className = "pz-rail__item";
+    item.append(createButton({ iconName: "menu" }, "My Prompts", () => this.callbacks.onMyPromptsOpened()));
     this.element.append(item);
   }
 

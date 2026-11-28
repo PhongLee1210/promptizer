@@ -1,4 +1,12 @@
-import { runCase, focusAndType, findAccessibleName, ORIGINAL_PROMPT } from "../harness.mjs";
+import { runCase, focusAndType, findAccessibleName, extensionId, ORIGINAL_PROMPT } from "../harness.mjs";
+
+const SESSION_STORAGE_KEY = "promptizer.accountSession";
+const STORED_SESSION = {
+  accessToken: "access-token",
+  refreshToken: "refresh-token",
+  expiresAt: Math.floor(Date.now() / 1000) + 3600,
+  user: { id: "user-1", email: "ada@example.com", name: "Ada" },
+};
 
 async function openRail(page) {
   const chip = await page.waitForSelector("aria/Promptizer actions", { timeout: 5000 });
@@ -7,13 +15,33 @@ async function openRail(page) {
   return chip;
 }
 
+async function setStoredSession(browser, session) {
+  const extensionPage = await browser.newPage();
+  await extensionPage.goto(`chrome-extension://${extensionId()}/popup.html`);
+  await extensionPage.evaluate(
+    (key, value) => (value === null ? chrome.storage.local.remove(key) : chrome.storage.local.set({ [key]: value })),
+    SESSION_STORAGE_KEY,
+    session,
+  );
+  await extensionPage.close();
+}
+
+async function railHasItem(page, label) {
+  try {
+    await page.waitForSelector(`aria/${label}`, { timeout: 1000 });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function closeResult(page) {
   const closeBtn = await page.waitForSelector("aria/Close", { timeout: 5000 });
   await closeBtn.click();
   await new Promise((r) => setTimeout(r, 200));
 }
 
-await runCase("action-rail", async (page, check) => {
+await runCase("action-rail", async (page, check, browser) => {
   await focusAndType(page);
 
   // Test A: a plain top-level leaf (not refine) runs end-to-end on the ORIGINAL prompt.
@@ -75,4 +103,38 @@ await runCase("action-rail", async (page, check) => {
     escapeClosedRail = true;
   }
   check("Escape closes the rail", escapeClosedRail);
+
+  await openRail(page);
+  check("signed-out rail never shows My Prompts", !(await railHasItem(page, "My Prompts")));
+  await page.keyboard.press("Escape");
+
+  await setStoredSession(browser, STORED_SESSION);
+  await page.bringToFront();
+  await page.click("#composer");
+  await openRail(page);
+  check("signed-in rail shows My Prompts without a reload", await railHasItem(page, "My Prompts"));
+
+  await page.keyboard.press("End");
+  await page.keyboard.press("ArrowUp");
+  await page.keyboard.press("ArrowUp");
+  const myPromptsHandle = await page.waitForSelector("aria/My Prompts");
+  const focusedLabel = await myPromptsHandle.evaluate(
+    (node) => node.getRootNode().activeElement?.getAttribute("aria-label") ?? null,
+  );
+  check(
+    "My Prompts joins the rail's keyboard order before Recent results",
+    focusedLabel === "My Prompts",
+    focusedLabel,
+  );
+
+  const dashboardTab = new Promise((resolve) => browser.once("targetcreated", (target) => resolve(target.url())));
+  await myPromptsHandle.click();
+  const openedUrl = await dashboardTab;
+  check("My Prompts opens the dashboard prompt list", new URL(openedUrl).pathname === "/prompts", openedUrl);
+
+  await setStoredSession(browser, null);
+  await page.bringToFront();
+  await page.click("#composer");
+  await openRail(page);
+  check("signing out removes My Prompts from the rail", !(await railHasItem(page, "My Prompts")));
 });
