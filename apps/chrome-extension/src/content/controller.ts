@@ -2,6 +2,7 @@ import { API_ORIGIN } from "../account/api-origin";
 import { hasStoredSession, onStoredSessionChanged } from "../account/session-store";
 import { createLibraryCache } from "../library/library-cache.ts";
 import { createBrowserSnapshotStore } from "../library/snapshot-store.ts";
+import { hasShownFirstSaveNotice, markFirstSaveNoticeShown } from "../prompts/first-save-notice.ts";
 import { performActionWithRealProviders } from "./action-router";
 import { placePicker, placeRail, placeWindow } from "./anchor";
 import { PromptizerChip } from "./chip";
@@ -277,7 +278,11 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
       return { ok: false, message: result.message };
     }
     await cacheSavedPrompt(result.prompt);
-    return { ok: true };
+    const showFirstSaveNotice = !(await hasShownFirstSaveNotice());
+    if (showFirstSaveNotice) {
+      await markFirstSaveNoticeShown();
+    }
+    return { ok: true, showFirstSaveNotice };
   }
 
   async function cacheSavedPrompt(prompt: Prompt): Promise<void> {

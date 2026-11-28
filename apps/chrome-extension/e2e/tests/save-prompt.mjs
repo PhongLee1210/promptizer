@@ -2,6 +2,7 @@ import { runCase, extensionId, focusAndType, ORIGINAL_PROMPT } from "../harness.
 
 const SESSION_STORAGE_KEY = "promptizer.accountSession";
 const SIGNED_IN_STORAGE_KEY = "promptizer.signedIn";
+const FIRST_SAVE_NOTICE_KEY = "promptizer.firstSaveNoticeShown";
 const STORED_SESSION = {
   accessToken: "access-token",
   refreshToken: "refresh-token",
@@ -20,6 +21,17 @@ async function setStoredSession(browser, session) {
     SESSION_STORAGE_KEY,
     SIGNED_IN_STORAGE_KEY,
     session,
+  );
+  await extensionPage.close();
+}
+
+async function setFirstSaveNoticeShown(browser, shown) {
+  const extensionPage = await browser.newPage();
+  await extensionPage.goto(`chrome-extension://${extensionId()}/popup.html`);
+  await extensionPage.evaluate(
+    (key, value) => (value ? chrome.storage.local.set({ [key]: true }) : chrome.storage.local.remove(key)),
+    FIRST_SAVE_NOTICE_KEY,
+    shown,
   );
   await extensionPage.close();
 }
@@ -46,6 +58,7 @@ async function mockSavePromptApi(browser, respond) {
 
 await runCase("save-prompt", async (page, check, browser) => {
   await setStoredSession(browser, STORED_SESSION);
+  await setFirstSaveNoticeShown(browser, true);
   await focusAndType(page);
 
   const rail = await page.waitForSelector("aria/Promptizer actions", { timeout: 5000 });
@@ -108,5 +121,50 @@ await runCase("save-prompt", async (page, check, browser) => {
     (btn) => btn.isConnected && getComputedStyle(btn).display !== "none" && btn.offsetParent !== null,
   );
   check("the confirmation closes the step on its own", !stillOpen);
+  await client.detach();
+
+  await setFirstSaveNoticeShown(browser, false);
+  await rail.click();
+  await new Promise((r) => setTimeout(r, 200));
+  await (await page.waitForSelector("aria/Save prompt", { timeout: 5000 })).click();
+  await page.waitForSelector('aria/Prompt title[role="textbox"]', { timeout: 5000 });
+
+  ({ client, requests } = await mockSavePromptApi(browser, () => ({
+    status: 201,
+    body: {
+      id: "p3",
+      title: ORIGINAL_PROMPT,
+      text: ORIGINAL_PROMPT,
+      model: null,
+      category: null,
+      tags: [],
+      createdAt: "",
+      updatedAt: "",
+    },
+  })));
+  const firstSaveConfirm = await page.waitForSelector('aria/Save prompt[role="button"]', { timeout: 5000 });
+  await firstSaveConfirm.click();
+  await page.waitForFunction(
+    (btn) =>
+      btn
+        .closest(".pz-win")
+        ?.querySelector('[role="status"]')
+        ?.textContent?.includes("Stored in your Promptizer account"),
+    { timeout: 5000 },
+    firstSaveConfirm,
+  );
+  check("the first-ever save shows the account-storage notice", true);
+
+  await new Promise((r) => setTimeout(r, 1500));
+  const stillOpenAfterFirstSave = await firstSaveConfirm.evaluate(
+    (btn) => btn.isConnected && btn.offsetParent !== null,
+  );
+  check("the first-save notice does not auto-close (stays until dismissed)", stillOpenAfterFirstSave);
+
+  const doneButton = await page.waitForSelector('aria/Done[role="button"]', { timeout: 5000 });
+  await doneButton.click();
+  await new Promise((r) => setTimeout(r, 300));
+  const closedAfterDone = await firstSaveConfirm.evaluate((btn) => !btn.isConnected || btn.offsetParent === null);
+  check("dismissing the first-save notice closes the step", closedAfterDone);
   await client.detach();
 });
