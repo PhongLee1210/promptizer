@@ -415,3 +415,25 @@ test("a token request that starts during a sign-in cannot renew the previous acc
   await tokenRequest;
   assert.equal(store.current?.accessToken, "access-b");
 });
+
+test("concurrent token requests share one renewal so a reused refresh token cannot sign the user out", async () => {
+  const store = memoryStore(sessionExpiringAt(NOW_SECONDS + 10));
+  let refreshCalls = 0;
+  const client = createAuthClient(
+    "https://api.test",
+    routedFetch({
+      "/api/auth/refresh": () => {
+        refreshCalls += 1;
+        return refreshCalls === 1
+          ? new Response(JSON.stringify(sessionExpiringAt(NOW_SECONDS + 3600, "access-2")))
+          : new Response(JSON.stringify({ code: "unauthenticated", message: "reused" }), { status: 401 });
+      },
+    }),
+  );
+  const manager = createSessionManager(client, store, () => NOW_SECONDS * 1000);
+  const [first, second] = await Promise.all([manager.getAccessToken(), manager.getAccessToken()]);
+  assert.deepEqual(first, { ok: true, value: "access-2" });
+  assert.deepEqual(second, { ok: true, value: "access-2" });
+  assert.equal(refreshCalls, 1);
+  assert.equal(store.current?.accessToken, "access-2");
+});
