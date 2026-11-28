@@ -84,6 +84,12 @@ async function previewShows(page, text) {
   return findAccessibleName(snapshot, (name) => name === text) !== null;
 }
 
+async function historyTotal(page) {
+  const snapshot = await page.accessibility.snapshot({ interestingOnly: false });
+  const counter = findAccessibleName(snapshot, (name) => /^\d+\/\d+$/.test(name));
+  return counter === null ? null : Number(counter.split("/")[1]);
+}
+
 async function activeOptionLabel(searchHandle) {
   return searchHandle.evaluate((input) => {
     const id = input.getAttribute("aria-activedescendant");
@@ -166,6 +172,46 @@ await runCase("prompt-picker", async (page, check, browser) => {
     (await textareaPage.$eval("#plain-textarea", (textarea) => textarea.value)) === "Standup notes text",
   );
   await textareaPage.close();
+
+  await page.click("#composer");
+  await (await page.waitForSelector("aria/Promptizer actions")).click();
+  await (await page.waitForSelector("aria/Recent results", { timeout: 5000 })).click();
+  const historyBeforePick = await historyTotal(page);
+  await (await page.waitForSelector("aria/Close")).click();
+  await new Promise((resolve) => setTimeout(resolve, 200));
+
+  await page.$eval("#composer", (composer) => {
+    composer.innerText = "";
+  });
+  await page.type("#composer", "slow request");
+  await (await page.waitForSelector("aria/Promptizer actions")).click();
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  await (await page.waitForSelector("aria/Fix grammar", { timeout: 5000 })).click();
+  await (await page.waitForSelector("aria/Promptizer actions")).click();
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  await (await page.waitForSelector("aria/Promptizer actions")).click();
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  await (await page.waitForSelector("aria/My Prompts", { timeout: 5000 })).click();
+  await page.waitForSelector("aria/Search prompts", { timeout: 5000 });
+  await page.keyboard.type("bug");
+  const bugRow = await page.waitForSelector("aria/Bug triage");
+  await bugRow.evaluate((row) => {
+    row.click();
+    row.click();
+  });
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+  check(
+    "a late model answer cannot replace a picked prompt's preview",
+    (await previewShows(page, "Bug triage text")) && !(await previewShows(page, "Slow request.")),
+  );
+  const historyAfterPick = await historyTotal(page);
+  check(
+    "a duplicate pick adds a single preview entry",
+    historyAfterPick === historyBeforePick + 1,
+    `${historyBeforePick} -> ${historyAfterPick}`,
+  );
+  await (await page.waitForSelector("aria/Close")).click();
+  await new Promise((resolve) => setTimeout(resolve, 200));
 
   const offlineMessage = "You're offline. Showing your last synced library.";
   await page.bringToFront();
