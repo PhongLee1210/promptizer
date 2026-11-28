@@ -2,7 +2,8 @@ import { browser } from "wxt/browser";
 import type { AuthUser } from "@promptizer/shared";
 import { accountSession, API_ORIGIN } from "../../account/account-session";
 import type { AuthClientError } from "../../account/auth-client";
-import { banner, button, footerNote, headerSub, screenShell, sectionHeading, setButtonBusy } from "../components";
+import { banner, button, headerSub, screenShell, sectionHeading, setButtonBusy } from "../components";
+import { renderSyncStatus } from "./account-sync.ts";
 import { el } from "../dom";
 import type { Dispatch } from "../types";
 
@@ -60,7 +61,7 @@ function renderSignedIn(dispatch: Dispatch, user: AuthUser): HTMLElement[] {
   return [
     sectionHeading("Signed in", user.email),
     el("p", { class: "pz-body" }, [user.name]),
-    footerNote("Library sync will appear here."),
+    renderSyncStatus(),
     button({ label: "Open dashboard", variant: "outline", onClick: () => openInTab(DASHBOARD_URL) }),
     button({
       label: "Sign out",

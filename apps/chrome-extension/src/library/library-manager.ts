@@ -6,6 +6,7 @@ export interface LibraryStatus {
   prompts: Prompt[];
   packs: PackSummary[];
   isStale: boolean;
+  fetchedAt?: number;
   lastError?: string;
 }
 
@@ -28,7 +29,12 @@ export function createLibraryManager(client: LibraryClient, cache: LibraryCache)
         return { ...previous, lastError: result.error.message };
       }
       await cache.save(result.value);
-      return { prompts: result.value.prompts, packs: result.value.packs, isStale: false };
+      return {
+        prompts: result.value.prompts,
+        packs: result.value.packs,
+        isStale: false,
+        fetchedAt: result.value.fetchedAt,
+      };
     },
 
     wipe() {
