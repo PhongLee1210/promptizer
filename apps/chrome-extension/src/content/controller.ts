@@ -2,7 +2,11 @@ import { API_ORIGIN } from "../account/api-origin";
 import { hasStoredSession, onStoredSessionChanged } from "../account/session-store";
 import { createLibraryCache } from "../library/library-cache.ts";
 import { createBrowserSnapshotStore } from "../library/snapshot-store.ts";
-import { hasShownFirstSaveNotice, markFirstSaveNoticeShown } from "../prompts/first-save-notice.ts";
+import {
+  clearFirstSaveNotice,
+  hasShownFirstSaveNotice,
+  markFirstSaveNoticeShown,
+} from "../prompts/first-save-notice.ts";
 import { performActionWithRealProviders } from "./action-router";
 import { placePicker, placeRail, placeWindow } from "./anchor";
 import { PromptizerChip } from "./chip";
@@ -30,6 +34,7 @@ import { writeEditorText } from "./write-editor";
 import type { Prompt } from "@promptizer/shared";
 
 const FOCUS_OUT_GRACE_MS = 120;
+const UNSYNCED_FETCHED_AT = 0;
 const COPY_FLASH_MS = 1200;
 const RAIL_BASE_ITEM_COUNT = 6;
 const MY_PROMPTS_URL = `${API_ORIGIN}/prompts`;
@@ -60,6 +65,7 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
   let context: "chat" | "editor" = "chat";
   let globallyEnabled = true;
   let signedIn = false;
+  let signedInChangeCount = 0;
   let focusedEditor: HTMLElement | null = null;
   let pendingEditor: HTMLElement | null = null;
   let appliedDraft: AppliedDraft | null = null;
@@ -273,26 +279,44 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
     if (state.view.kind !== "saving") {
       return { ok: false, message: "Something went wrong. Please try again." };
     }
+    const signedInChangeCountAtRequest = signedInChangeCount;
     const result = await requestSavePrompt({ title, text: state.view.draft });
     if (!result.ok) {
       return { ok: false, message: result.message };
     }
-    await cacheSavedPrompt(result.prompt);
-    const showFirstSaveNotice = !(await hasShownFirstSaveNotice());
-    if (showFirstSaveNotice) {
-      await markFirstSaveNoticeShown();
-    }
+    const showFirstSaveNotice = await keepSavedPromptLocally(result.prompt, signedInChangeCountAtRequest);
     return { ok: true, showFirstSaveNotice };
   }
 
-  async function cacheSavedPrompt(prompt: Prompt): Promise<void> {
+  async function isSameAccountSignedIn(signedInChangeCountAtRequest: number): Promise<boolean> {
+    return signedInChangeCount === signedInChangeCountAtRequest && (await hasStoredSession());
+  }
+
+  async function keepSavedPromptLocally(prompt: Prompt, signedInChangeCountAtRequest: number): Promise<boolean> {
+    if (!(await isSameAccountSignedIn(signedInChangeCountAtRequest))) {
+      return false;
+    }
     const cache = createLibraryCache(createBrowserSnapshotStore());
     const current = await cache.read();
     await cache.save({
       prompts: [prompt, ...current.prompts],
       packs: current.packs,
-      fetchedAt: current.fetchedAt ?? Math.floor(Date.now() / 1000),
+      fetchedAt: current.fetchedAt ?? UNSYNCED_FETCHED_AT,
     });
+    const showFirstSaveNotice = !(await hasShownFirstSaveNotice());
+    if (showFirstSaveNotice) {
+      await markFirstSaveNoticeShown();
+    }
+    if (!(await isSameAccountSignedIn(signedInChangeCountAtRequest))) {
+      await Promise.all([cache.clear(), clearFirstSaveNotice()]);
+      return false;
+    }
+    return showFirstSaveNotice;
+  }
+
+  function countSignedInChange(nextSignedIn: boolean): void {
+    signedInChangeCount += 1;
+    setSignedIn(nextSignedIn);
   }
 
   function setSignedIn(nextSignedIn: boolean): void {
@@ -547,7 +571,7 @@ export function startChipController(options: ChipControllerOptions = {}): () => 
 
   const unsubscribeGlobalEnabled = onGlobalEnabledChanged(setGloballyEnabled);
   void isGloballyEnabled().then(setGloballyEnabled);
-  const unsubscribeStoredSession = onStoredSessionChanged(setSignedIn);
+  const unsubscribeStoredSession = onStoredSessionChanged(countSignedInChange);
   void hasStoredSession().then(setSignedIn);
 
   return function stopChipController(): void {
