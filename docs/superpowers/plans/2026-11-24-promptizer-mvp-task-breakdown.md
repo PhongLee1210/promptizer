@@ -501,38 +501,38 @@ after: T-5.1.4
 
 **T-5.1.6 · Sync tests** · 1.5h · test ⇉
 after: T-5.1.4
-- [ ] Sign-in → cached; refresh → updated; wipe → empty; corrupt → recoverable
-- [ ] Two-account sequence never leaks one library into the other's cache
+- [x] Sign-in → cached; refresh → updated; wipe → empty; corrupt → recoverable
+- [x] Two-account sequence never leaks one library into the other's cache
 
 **Story 5.2 — Prompt picker.**
 
 **T-5.2.1 · Rail "My Prompts" item** · 1h · feat
 after: T-5.1.3
-- [ ] Rail shows the item only when signed in; never for signed-out users (regression-checked)
-- [ ] Item follows existing rail conventions (icons, order, keyboard navigation)
+- [x] Rail shows the item only when signed in; never for signed-out users (regression-checked)
+- [x] Item follows existing rail conventions (icons, order, keyboard navigation)
 
 **T-5.2.2 · Picker UI** · 2.5h · feat
 after: T-5.2.1
-- [ ] Pack browse + search by title, in the existing result-window shell conventions
-- [ ] Keyboard navigation and Esc behavior match the rail's rules
-- [ ] Empty library shows the honest empty state with a pointer to the dashboard
+- [x] Pack browse + search by title, in the existing result-window shell conventions
+- [x] Keyboard navigation and Esc behavior match the rail's rules
+- [x] Empty library shows the honest empty state with a pointer to the dashboard
 
 **T-5.2.3 · Insert into preview** · 1.5h · feat
 after: T-5.2.2
-- [ ] Picking a prompt places its text into the existing editable preview, then Replace/Dismiss as usual
-- [ ] Insert works in the same field types the chip already supports
-- [ ] The existing write-back path is used unchanged
+- [x] Picking a prompt places its text into the existing editable preview, then Replace/Dismiss as usual
+- [x] Insert works in the same field types the chip already supports
+- [x] The existing write-back path is used unchanged
 
 **T-5.2.4 · Offline read-only behavior** · 1h · feat
 after: T-5.2.2
-- [ ] Offline: picker opens and inserts work from cache
+- [x] Offline: picker opens and inserts work from cache
 - [ ] Offline: edit/save actions are visibly disabled with one clear message
-- [ ] Coming back online restores the actions without a restart
+- [x] Coming back online restores the actions without a restart
 
 **T-5.2.5 · Picker tests** · 1.5h · test ⇉
 after: T-5.2.3
-- [ ] Signed-in gating, search, insert path, offline gating all pinned
-- [ ] Late/duplicate interactions cannot corrupt the open preview (existing generation discipline)
+- [x] Signed-in gating, search, insert path, offline gating all pinned
+- [x] Late/duplicate interactions cannot corrupt the open preview (existing generation discipline)
 
 **Story 5.3 — Sign-out wipes.**
 

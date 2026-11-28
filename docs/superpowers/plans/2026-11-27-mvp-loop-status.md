@@ -6,7 +6,8 @@ Driven by `/mvp-loop` (`.claude/commands/mvp-loop.md`), every 2 hours. States: R
 
 1. **Owner decisions (block Epic 6):** `decisions/T-6.1.2.md` (content-script write channel; rec. A, background service worker relay, no new permissions) and `decisions/T-6.3.1.md` (conflict rule; rec. A, `baseUpdatedAt` compare-and-set, 409 carries `current`). Also still empty: `T-3.0.1.md` and `T-3.1.1.md` `APPROVED:` lines, though the owner's PRs treat T-3.0.1 as A and T-5.1.1 as A. Write `APPROVED: A` to make the ledger match.
 2. Once T-6.1.2 is approved: build T-6.1.2 (worker + rail Save + title step) stacked on the Epic 5 tip `mvp/T-5.1.5-plural-counts` (#31), then T-6.1.3, T-6.1.4, T-6.3.4. T-6.2.x and T-6.3.2 need T-6.3.1 too.
-3. Stack order today (bottom → top): main ← #11 ← #13 ← #14 ← #15 ← #16 ← #17 ← #18 ← #19 ← #20 ← #21 ← #22 ← #23 ← #24 ← #25 ← #26 ← #28 ← #29 ← #31. Independent of it, on `main`: #9, #10 (← #12), #27, #30. #27 and the stack both edit `content/controller.ts`, so expect a small rebase.
+3. First job: fresh-verify #32 (F-13/F-14 fixes). On PASS, promote T-5.3.1 and T-5.3.2 to VERIFIED and tick their boxes. Then fresh-verify #27 (F-10) and #30 (docs).
+   Stack order today (bottom → top): main ← #11 ← #13 ← #14 ← #15 ← #16 ← #17 ← #18 ← #19 ← #20 ← #21 ← #22 ← #23 ← #24 ← #25 ← #26 ← #28 ← #29 ← #31 ← #32. Independent of it, on `main`: #9, #10 (← #12), #27, #30. #27 and the stack both edit `content/controller.ts`, so expect a small rebase.
 4. Supabase is still unreachable from cloud (F-1). The owner's local runs are the only evidence for #11, #13–#17.
 5. Without decisions: F-6 test seam, or fresh-verifier passes on whatever is still NEEDS-REVIEW.
 
@@ -25,6 +26,8 @@ Cloud E2E recipe (extension): run per app, not through turbo (turbo strips env):
 - **F-10 · medium · Journey A (pre-existing on `main`)** — After any result, `pendingEditor` stayed pinned to that editor, so on a page with two editors the chip never followed focus and later actions read and wrote the first editor. Fix: draft PR #27 (base `main`), with an E2E check that fails on `main` and passes with the fix. NEEDS-MANUAL on ChatGPT's edit-message box.
 - **F-11 · low · T-5.1.5** — Popup said "1 prompts, 0 packs". Fix: draft PR #31 (stack tip).
 - **F-12 · low · docs** — README, features.md and architecture.md on `main` claimed "no network calls at all" after Epic 2 shipped sign-in. Fix: draft PR #30 (T-7.2.3).
+- **F-13 · high · T-5.3.1** — A refresh in flight at sign-out (or during a sign-in as another account) wrote the old library back. Found by a fresh verifier. Fix in draft PR #32, with a unit test that fails without the fix and an E2E check. Re-verify next loop.
+- **F-14 · medium · T-5.2.1** — The content script read the full session (tokens) to learn the signed-in state, and the picker stayed open after sign-out. Both fixed in #32: a separate `promptizer.signedIn` flag, and the picker is dismissed on sign-out. Upgrade note: already signed-in users get the flag on their next session save.
 - **F-8 · NEEDS-MANUAL · T-1.1.7** — Journey A smoke with the unpacked build (chip appears, one real Nano rewrite). Cloud cannot run it.
 
 Proposed Serena memory edit (apply to `web_prompts` once PR #10 merges): "Load failures under prompts are caught by error.tsx in both trees (shared components/prompts-error-state.tsx). Retry does router.refresh()+reset() in startTransition, since reset() alone doesn't re-fetch the server page. error.tsx keeps notFound() 404 status; loading.tsx does not."
@@ -95,14 +98,14 @@ Proposed Serena memory edit (apply to `web_prompts` once PR #10 merges): "Load f
 | T-5.1.3 | Extension cache layer | feat |  | VERIFIED | mvp/T-5.1.3-extension-cache | mvp/T-5.1.2-snapshot-endpoint | #18 (owner-built; cloud unit+E2E green) |
 | T-5.1.4 | Refresh flow | feat |  | VERIFIED | mvp/T-5.1.4-refresh-flow | mvp/T-5.1.3-extension-cache | #19 (owner-built; cloud unit+E2E green) |
 | T-5.1.5 | Sync status display | feat | ⇉ | NEEDS-MANUAL | mvp/T-5.1.5-sync-status | mvp/T-5.1.4-refresh-flow | #20 (owner-built); plural fix #31 |
-| T-5.1.6 | Sync tests | test | ⇉ | NEEDS-REVIEW | mvp/T-5.1.6-sync-tests | mvp/T-5.3.1-sign-out-wipe | #22 |
-| T-5.2.1 | Rail "My Prompts" item | feat |  | NEEDS-REVIEW | mvp/T-5.2.1-rail-my-prompts | mvp/T-5.1.6-sync-tests | #23 |
-| T-5.2.2 | Picker UI | feat |  | NEEDS-REVIEW | mvp/T-5.2.2-picker-ui | mvp/T-5.2.1-rail-my-prompts | #24 |
-| T-5.2.3 | Insert into preview | feat |  | NEEDS-REVIEW | mvp/T-5.2.3-insert-into-preview | mvp/T-5.2.2-picker-ui | #25 |
-| T-5.2.4 | Offline read-only behavior | feat |  | NEEDS-REVIEW | mvp/T-5.2.4-offline-picker | mvp/T-5.3.2-wipe-tests | #28 (save/edit disabling deferred to T-6.3.4) |
-| T-5.2.5 | Picker tests | test | ⇉ | NEEDS-REVIEW | mvp/T-5.2.5-picker-tests | mvp/T-5.2.4-offline-picker | #29 |
-| T-5.3.1 | Sign-out wipe | feat |  | NEEDS-REVIEW | mvp/T-5.3.1-sign-out-wipe | mvp/T-5.1.5-sync-status | #21 |
-| T-5.3.2 | Wipe tests | test | ⇉ | NEEDS-REVIEW | mvp/T-5.3.2-wipe-tests | mvp/T-5.2.3-insert-into-preview | #26 |
+| T-5.1.6 | Sync tests | test | ⇉ | VERIFIED | mvp/T-5.1.6-sync-tests | mvp/T-5.3.1-sign-out-wipe | #22 (fresh verifier PASS) |
+| T-5.2.1 | Rail "My Prompts" item | feat |  | VERIFIED | mvp/T-5.2.1-rail-my-prompts | mvp/T-5.1.6-sync-tests | #23 (verifier PASS; token-read and picker-on-sign-out fixes in #32); real-site look NEEDS-MANUAL |
+| T-5.2.2 | Picker UI | feat |  | VERIFIED | mvp/T-5.2.2-picker-ui | mvp/T-5.2.1-rail-my-prompts | #24 (verifier PASS); real-site look and keyboard NEEDS-MANUAL |
+| T-5.2.3 | Insert into preview | feat |  | VERIFIED | mvp/T-5.2.3-insert-into-preview | mvp/T-5.2.2-picker-ui | #25 (verifier PASS) |
+| T-5.2.4 | Offline read-only behavior | feat |  | VERIFIED | mvp/T-5.2.4-offline-picker | mvp/T-5.3.2-wipe-tests | #28 (verifier PASS; box 2 moved to T-6.3.4) |
+| T-5.2.5 | Picker tests | test | ⇉ | VERIFIED | mvp/T-5.2.5-picker-tests | mvp/T-5.2.4-offline-picker | #29 (verifier PASS) |
+| T-5.3.1 | Sign-out wipe | feat |  | NEEDS-REVIEW | mvp/T-5.3.1-sign-out-wipe | mvp/T-5.1.5-sync-status | #21 verifier FAIL (refresh-after-wipe race) → fix #32 (base #31), awaiting re-verify |
+| T-5.3.2 | Wipe tests | test | ⇉ | NEEDS-REVIEW | mvp/T-5.3.2-wipe-tests | mvp/T-5.2.3-insert-into-preview | #26 verifier FAIL (race uncovered) → race test in #32, awaiting re-verify |
 | T-6.1.1 | Save-prompt endpoint | feat |  | NEEDS-SUPABASE | main | | no new endpoint: existing `POST /api/prompts` (T-3.1.3) meets all 3 boxes; see decisions/T-6.1.2.md |
 | T-6.1.2 | Rail "Save prompt" action + title step | feat |  | BLOCKED-DECISION | | | decisions/T-6.1.2.md (content-script write channel) |
 | T-6.1.3 | One-time first-save notice | feat | ⇉ | PENDING | | | |
@@ -136,3 +139,4 @@ Proposed Serena memory edit (apply to `web_prompts` once PR #10 merges): "Load f
 - 2026-11-28 — owner verified PR #10 locally (comment on #10): T-3.2.4 → VERIFIED, plan boxes ticked.
 - 2026-11-28 — owner verified PR #9 locally with real Supabase e2e (comment on #9): T-3.4.3 → VERIFIED, plan boxes ticked.
 - 2026-11-28 loop 7 (cloud, ~25 min) — Decisions T-3.0.1 / T-3.1.1 still have an empty `APPROVED:`. `main` unchanged (abf75d2). Found owner-built draft PR #11 (T-4.1.1, category-as-pack, the body says T-3.0.1 approved as A). Static review in cloud: typecheck, prettier and build pass; web tests 52/12, same as `main` (the 12 failures are Supabase suites, F-1); code follows the prompt-route patterns (nit: category ids are validated with `isPromptId`) → NEEDS-SUPABASE. Built F-2 remainder: draft PR #12 `mvp/T-3.2.4-global-error` → base #10 (root `error.tsx` + `global-error.tsx`, `PromptsErrorState` takes `description`). Typecheck, prettier and build pass; Playwright check against `next dev` with a temporary throwing page shows the boundary, Try again and the `/prompts` link. T-4.1.2 not started: the decision file is still unapproved. Supabase still proxy 403. Owner notified about the decision-file mismatch.
+- 2026-11-28 loop 8 (cloud, ~95 min) — Decision files T-3.0.1 / T-3.1.1 are still unapproved, but the owner built and opened Epic 4–5 drafts #13–#20 overnight (treating T-3.0.1 and T-5.1.1 as A). Cloud checks at stack tip #20: extension typecheck, unit 25/25, E2E green; web typecheck and build pass; web tests fail only in the Supabase suites (F-1, proxy still 403). Reviewed #18/#19 code → T-5.1.3 and T-5.1.4 VERIFIED. Built the rest of Epic 5 as stacked drafts: #21 T-5.3.1, #22 T-5.1.6, #23 T-5.2.1, #24 T-5.2.2 (picker), #25 T-5.2.3, #26 T-5.3.2, #28 T-5.2.4, #29 T-5.2.5, #31 plural fix. Off `main`: #27 F-10 Journey A anchor-editor fix (E2E fails on `main`, passes with fix) and #30 T-7.2.3 docs. A fresh verifier passed 7 of 9; it failed T-5.3.1 and T-5.3.2 on the refresh-after-wipe race. Fixed in #32 with F-13 and F-14 plus 2 low items. Wrote decisions T-6.1.2 (write channel) and T-6.3.1 (conflict rule); Epic 6 is blocked on them. T-6.1.1 is met by the existing `POST /api/prompts`. Plan boxes ticked: T-5.1.3, T-5.1.4, T-5.1.6, T-5.2.1, T-5.2.2, T-5.2.3, T-5.2.4 (boxes 1 and 3), T-5.2.5. All PR CI suites green.
