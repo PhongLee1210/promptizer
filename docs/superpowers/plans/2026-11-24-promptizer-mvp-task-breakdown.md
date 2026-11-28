@@ -628,6 +628,8 @@ after: T-6.3.2, T-6.3.3
 
 ## Epic 7 — End-to-end hardening & release · 14h
 
+**Status (2026-11-28):** T-7.2.3 drafted early and VERIFIED (draft PR #30, base `main`). F-10 Journey A fix VERIFIED in draft PR #27 (base `main`), ahead of the T-7.1.1 pass. Everything else waits on Epics 5–6.
+
 **Story 7.1 — Journey verification.**
 
 **T-7.1.1 · Journey A regression pass** · 1.5h · qa
@@ -664,8 +666,8 @@ after: T-7.2.1
 
 **T-7.2.3 · Permission-change explanation** · 1h · docs ⇉
 after: T-2.4.1 outcome known (can be drafted much earlier)
-- [ ] The extension's new network reach is explained in one sentence a user can understand
-- [ ] Justification text ready for the store's permission declaration
+- [x] The extension's new network reach is explained in one sentence a user can understand
+- [x] Justification text ready for the store's permission declaration
 
 **Story 7.3 — Release readiness.**
 
