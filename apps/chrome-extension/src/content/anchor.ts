@@ -112,6 +112,7 @@ export const RAIL_GAP = 2;
 export const STRIP_OFFSET = 5;
 export const WINDOW_WIDTH = 280;
 export const WINDOW_HEIGHT = 148;
+export const PICKER_HEIGHT = 260;
 
 /** The rail is a fixed 28px-wide capsule; only its height grows with the item count. */
 export function placeRail(chipRect: Rect, itemCount: number, viewport: Viewport): PanelPlacement {
@@ -123,6 +124,11 @@ export function placeRail(chipRect: Rect, itemCount: number, viewport: Viewport)
 /** The result window is a fixed 280x148px panel in every state; height never varies. */
 export function placeWindow(chipRect: Rect, viewport: Viewport): PanelPlacement {
   const placed = placePanel(chipRect, WINDOW_HEIGHT, viewport);
+  return { ...placed, maxWidth: WINDOW_WIDTH };
+}
+
+export function placePicker(chipRect: Rect, viewport: Viewport): PanelPlacement {
+  const placed = placePanel(chipRect, PICKER_HEIGHT, viewport);
   return { ...placed, maxWidth: WINDOW_WIDTH };
 }
 
