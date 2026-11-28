@@ -435,6 +435,119 @@ await runCase("prompt-picker", async (page, check, browser) => {
   check("back online, Edit and Delete are available again", true);
   await page.keyboard.press("Escape");
 
+  const UNREACHABLE_WRITE_MESSAGE = "Couldn't reach Promptizer, so nothing changed. Check your connection and retry.";
+  const SIGNED_OUT_WRITE_MESSAGE = "Your Promptizer session ended. Sign in again from the Promptizer popup.";
+  const serverRenamed = {
+    ...promptFixture("prompt-2", "Standup agenda (server)", WORK_PACK),
+    text: "Standup notes text",
+  };
+  let promptServerMode = "unreachable";
+  const flakyApi = await mockPromptApi(browser, (request) => {
+    if (promptServerMode === "unreachable") {
+      return { status: 503, body: { code: "service_unavailable", message: "The service is unreachable." } };
+    }
+    if (promptServerMode === "signed-out") {
+      return { status: 401, body: { code: "unauthenticated", message: "Unauthorized" } };
+    }
+    return request.method === "DELETE" ? { status: 204, body: null } : { status: 200, body: serverRenamed };
+  });
+  pickerSearch = await openPicker(page);
+  await page.keyboard.type("standup");
+  await (await page.waitForSelector('aria/Edit selected prompt[role="button"]')).click();
+  titleField = await page.waitForSelector('aria/Prompt title[role="textbox"]', { timeout: 5000 });
+  await titleField.evaluate((input) => input.select());
+  await page.keyboard.type("Standup agenda");
+  const { [LIBRARY_STORAGE_KEY]: cacheBeforeFailures } = await readStorage(browser, [LIBRARY_STORAGE_KEY]);
+  const saveChanges = await page.waitForSelector('aria/Save changes[role="button"]');
+  await saveChanges.click();
+  await page.waitForFunction(
+    (saveButton) => saveButton.getAttribute("aria-label") === "Retry save" && !saveButton.disabled,
+    { timeout: 5000 },
+    saveChanges,
+  );
+  check(
+    "a network failure on edit says Promptizer couldn't be reached, keeps the typed title and offers Retry",
+    (await previewShows(page, UNREACHABLE_WRITE_MESSAGE)) &&
+      (await titleField.evaluate((input) => input.value)) === "Standup agenda",
+  );
+  const { [LIBRARY_STORAGE_KEY]: cacheAfterEditFailure } = await readStorage(browser, [LIBRARY_STORAGE_KEY]);
+  check(
+    "a failed edit leaves the cache untouched",
+    JSON.stringify(cacheAfterEditFailure) === JSON.stringify(cacheBeforeFailures),
+  );
+
+  promptServerMode = "reachable";
+  await saveChanges.click();
+  check(
+    "Retry after the server recovers lists the server-confirmed edit",
+    (await isShown(page, "Standup agenda (server)", 5000)) && !(await isShown(page, "Standup notes", 300)),
+  );
+  const retriedEdits = flakyApi.requests.map((request) => request.body);
+  const { [LIBRARY_STORAGE_KEY]: cacheAfterEditRetry } = await readStorage(browser, [LIBRARY_STORAGE_KEY]);
+  check(
+    "the retried edit re-sends the same change and the cache reflects the server",
+    retriedEdits.length === 2 &&
+      retriedEdits.every((body) => body === '{"title":"Standup agenda"}') &&
+      cacheAfterEditRetry?.prompts?.find((prompt) => prompt.id === "prompt-2")?.title === "Standup agenda (server)",
+    JSON.stringify(retriedEdits),
+  );
+
+  promptServerMode = "signed-out";
+  await (await page.waitForSelector('aria/Delete selected prompt[role="button"]')).click();
+  const deleteButton = await page.waitForSelector('aria/Delete prompt[role="button"]', { timeout: 5000 });
+  await deleteButton.click();
+  await page.waitForFunction(
+    (button) => button.getAttribute("aria-label") === "Delete prompt" && button.disabled,
+    { timeout: 5000 },
+    deleteButton,
+  );
+  check(
+    "a 401 on delete shows the signed-out message, not the network one, with no Retry",
+    (await previewShows(page, SIGNED_OUT_WRITE_MESSAGE)) &&
+      !(await previewShows(page, UNREACHABLE_WRITE_MESSAGE)) &&
+      !(await isShown(page, "Retry delete", 300)),
+  );
+  await (await page.waitForSelector('aria/Cancel[role="button"]')).click();
+
+  promptServerMode = "unreachable";
+  const { [LIBRARY_STORAGE_KEY]: cacheBeforeDeleteFailure } = await readStorage(browser, [LIBRARY_STORAGE_KEY]);
+  await (await page.waitForSelector('aria/Delete selected prompt[role="button"]')).click();
+  const retryableDelete = await page.waitForSelector('aria/Delete prompt[role="button"]', { timeout: 5000 });
+  await retryableDelete.click();
+  await page.waitForFunction(
+    (button) => button.getAttribute("aria-label") === "Retry delete" && !button.disabled,
+    { timeout: 5000 },
+    retryableDelete,
+  );
+  const { [LIBRARY_STORAGE_KEY]: cacheAfterDeleteFailure } = await readStorage(browser, [LIBRARY_STORAGE_KEY]);
+  check(
+    "a network failure on delete offers Retry and keeps the prompt in the cache",
+    (await previewShows(page, UNREACHABLE_WRITE_MESSAGE)) &&
+      JSON.stringify(cacheAfterDeleteFailure) === JSON.stringify(cacheBeforeDeleteFailure),
+  );
+
+  promptServerMode = "reachable";
+  await retryableDelete.click();
+  check(
+    "Retry delete after the server recovers removes the prompt from the picker",
+    await page
+      .waitForFunction(
+        (input) => input.getRootNode().querySelector('[aria-label="Standup agenda (server)"]') === null,
+        { timeout: 5000 },
+        pickerSearch,
+      )
+      .then(() => true)
+      .catch(() => false),
+  );
+  const { [LIBRARY_STORAGE_KEY]: cacheAfterDeleteRetry } = await readStorage(browser, [LIBRARY_STORAGE_KEY]);
+  check(
+    "the retried delete drops the prompt from the cache",
+    cacheAfterDeleteRetry?.prompts?.every((prompt) => prompt.id !== "prompt-2") &&
+      flakyApi.requests.filter((request) => request.method === "DELETE").length === 3,
+  );
+  await page.keyboard.press("Escape");
+  await flakyApi.client.detach();
+
   await writeStorage(browser, { [LIBRARY_STORAGE_KEY]: storedLibrary([], []) });
   await page.bringToFront();
   await openPicker(page);

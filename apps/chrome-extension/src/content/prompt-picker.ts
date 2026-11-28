@@ -3,8 +3,8 @@ import { createLibraryCache, withoutPrompt } from "../library/library-cache";
 import { createBrowserSnapshotStore } from "../library/snapshot-store";
 import type { PromptDeleteResponse, PromptEdit, PromptWriteResponse } from "../prompts/save-prompt-message";
 import { PICKER_HEIGHT } from "./anchor";
-import { OFFLINE_SAVE_MESSAGE } from "./present-result";
-import { button } from "./result-window";
+import { describeWriteFailure, OFFLINE_SAVE_MESSAGE } from "./present-result";
+import { button, relabelButton } from "./result-window";
 
 export interface PickerLibrary {
   prompts: Prompt[];
@@ -23,8 +23,8 @@ type PickerRow = { kind: "pack"; pack: PackSummary } | { kind: "prompt"; prompt:
 
 type PickerMode =
   | { kind: "browsing" }
-  | { kind: "editing"; prompt: Prompt; isSaving: boolean }
-  | { kind: "confirming-delete"; prompt: Prompt; isDeleting: boolean };
+  | { kind: "editing"; prompt: Prompt; isSaving: boolean; isBlocked: boolean }
+  | { kind: "confirming-delete"; prompt: Prompt; isDeleting: boolean; isBlocked: boolean };
 
 const LIST_ID = "pz-picker-list";
 const ROW_ID_PREFIX = "pz-picker-row-";
@@ -567,7 +567,12 @@ export class PromptPicker {
       return;
     }
     const thisOpening = this.openCount;
-    const editing: Extract<PickerMode, { kind: "editing" }> = { kind: "editing", prompt, isSaving: false };
+    const editing: Extract<PickerMode, { kind: "editing" }> = {
+      kind: "editing",
+      prompt,
+      isSaving: false,
+      isBlocked: false,
+    };
     this.mode = editing;
     this.openPanel("Edit prompt");
 
@@ -594,14 +599,14 @@ export class PromptPicker {
 
     this.applyPanelAvailability = (online) => {
       offlineNote.hidden = online;
-      if (!editing.isSaving) {
+      if (!editing.isSaving && !editing.isBlocked) {
         saveButton.disabled = !online;
       }
     };
     this.applyPanelAvailability(navigator.onLine);
 
     const save = async (): Promise<void> => {
-      if (editing.isSaving || !navigator.onLine) {
+      if (editing.isSaving || editing.isBlocked || !navigator.onLine) {
         return;
       }
       const changes = changedFields(prompt, titleInput.value.trim(), textArea.value);
@@ -628,15 +633,28 @@ export class PromptPicker {
         this.returnToList(response.prompt.id);
         return;
       }
-      saveButton.disabled = !navigator.onLine;
+      const failure = describeWriteFailure(response, navigator.onLine);
+      editing.isBlocked = failure.recovery === "blocked";
+      saveButton.disabled = editing.isBlocked || !navigator.onLine;
       cancelButton.disabled = false;
+      if (failure.recovery === "retry") {
+        relabelButton(saveButton, "retry", "Retry save");
+      } else {
+        relabelButton(saveButton, "check", "Save changes");
+      }
       const fieldErrors = response.kind === "validation" ? response.fields : {};
       showFieldError(titleInput, titleError, fieldErrors.title);
       showFieldError(textArea, textError, fieldErrors.text);
       if (fieldErrors.title === undefined && fieldErrors.text === undefined) {
-        formError.textContent = response.message;
+        formError.textContent = failure.message;
       }
-      (fieldErrors.title !== undefined ? titleInput : fieldErrors.text !== undefined ? textArea : saveButton).focus();
+      const fallbackFocus = editing.isBlocked ? cancelButton : saveButton;
+      (fieldErrors.title !== undefined
+        ? titleInput
+        : fieldErrors.text !== undefined
+          ? textArea
+          : fallbackFocus
+      ).focus();
     };
 
     titleInput.addEventListener("keydown", (event) => {
@@ -657,6 +675,7 @@ export class PromptPicker {
       kind: "confirming-delete",
       prompt,
       isDeleting: false,
+      isBlocked: false,
     };
     this.mode = confirming;
     this.openPanel("Delete prompt");
@@ -680,14 +699,14 @@ export class PromptPicker {
 
     this.applyPanelAvailability = (online) => {
       offlineNote.hidden = online;
-      if (!confirming.isDeleting) {
+      if (!confirming.isDeleting && !confirming.isBlocked) {
         deleteButton.disabled = !online;
       }
     };
     this.applyPanelAvailability(navigator.onLine);
 
     const remove = async (): Promise<void> => {
-      if (confirming.isDeleting || !navigator.onLine) {
+      if (confirming.isDeleting || confirming.isBlocked || !navigator.onLine) {
         return;
       }
       failure.textContent = "";
@@ -705,11 +724,18 @@ export class PromptPicker {
         this.returnToList(null);
         return;
       }
-      deleteButton.setAttribute("aria-label", "Delete prompt");
-      deleteButton.disabled = !navigator.onLine;
+      const notice = describeWriteFailure(response, navigator.onLine);
+      confirming.isBlocked = notice.recovery === "blocked";
+      deleteButton.disabled = confirming.isBlocked || !navigator.onLine;
       cancelButton.disabled = false;
-      failure.textContent = response.message;
-      cancelButton.focus();
+      failure.textContent = notice.message;
+      const canRetry = notice.recovery === "retry";
+      if (canRetry) {
+        relabelButton(deleteButton, "retry", "Retry delete");
+      } else {
+        relabelButton(deleteButton, "trash", "Delete prompt");
+      }
+      (canRetry ? deleteButton : cancelButton).focus();
     };
 
     cancelButton.focus();

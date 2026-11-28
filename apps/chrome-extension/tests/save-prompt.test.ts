@@ -107,6 +107,29 @@ test("a network failure while saving is reported as retryable, distinct from una
   assert.ok(!result.ok && result.kind === "retryable");
 });
 
+test("an API 401 on save, edit or delete is unauthenticated while a 5xx stays retryable", async () => {
+  const writesAgainst = (fetchImplementation: typeof fetch) => {
+    const client = createPromptClient("https://api.test", fetchImplementation);
+    return [
+      createSavePromptHandler(tokenOk("access-token"), client)(DRAFT),
+      createUpdatePromptHandler(tokenOk("access-token"), client)("p1", { title: "x" }),
+      createDeletePromptHandler(tokenOk("access-token"), client)("p1"),
+    ];
+  };
+  const rejected = await Promise.all(
+    writesAgainst(respondWith(401, { code: "unauthenticated", message: "Session expired." })),
+  );
+  assert.deepEqual(
+    rejected.map((result) => !result.ok && result.kind),
+    ["unauthenticated", "unauthenticated", "unauthenticated"],
+  );
+  const unavailable = await Promise.all(writesAgainst(respondWith(503, { code: "service_unavailable", message: "" })));
+  assert.deepEqual(
+    unavailable.map((result) => !result.ok && result.kind),
+    ["retryable", "retryable", "retryable"],
+  );
+});
+
 test("the save request identifies itself as the extension", async () => {
   const seenHeaders: Headers[] = [];
   const recordingFetch: typeof fetch = async (_input, init) => {

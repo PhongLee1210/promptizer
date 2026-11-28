@@ -4,6 +4,9 @@ const SESSION_STORAGE_KEY = "promptizer.accountSession";
 const SIGNED_IN_STORAGE_KEY = "promptizer.signedIn";
 const FIRST_SAVE_NOTICE_KEY = "promptizer.firstSaveNoticeShown";
 const OFFLINE_SAVE_MESSAGE = "You're offline. Your library is read-only until you reconnect.";
+const UNREACHABLE_WRITE_MESSAGE = "Couldn't reach Promptizer, so nothing changed. Check your connection and retry.";
+const SIGNED_OUT_WRITE_MESSAGE = "Your Promptizer session ended. Sign in again from the Promptizer popup.";
+const LIBRARY_STORAGE_KEY = "promptizer.librarySnapshot";
 const STORED_SESSION = {
   accessToken: "access-token",
   refreshToken: "refresh-token",
@@ -246,21 +249,106 @@ await runCase("save-prompt", async (page, check, browser) => {
   await (await page.waitForSelector("aria/Save prompt", { timeout: 5000 })).click();
   await page.waitForSelector('aria/Prompt title[role="textbox"]', { timeout: 5000 });
 
-  ({ client, requests } = await mockSavePromptApi(browser, () => ({
-    status: 502,
-    body: { code: "service_unavailable", message: "The service is unreachable. Please try again." },
-  })));
+  await page.keyboard.type(" (retry)");
+  const retryTitle = await (
+    await page.waitForSelector('aria/Prompt title[role="textbox"]', { timeout: 5000 })
+  ).evaluate((input) => input.value);
+  const { [LIBRARY_STORAGE_KEY]: cacheBeforeFailure } = await readStorage(browser, [LIBRARY_STORAGE_KEY]);
+  let serverReachable = false;
+  ({ client, requests } = await mockSavePromptApi(browser, () =>
+    serverReachable
+      ? {
+          status: 201,
+          body: {
+            id: "p-retry",
+            title: retryTitle,
+            text: ORIGINAL_PROMPT,
+            model: null,
+            category: null,
+            tags: [],
+            createdAt: "",
+            updatedAt: "",
+          },
+        }
+      : {
+          status: 502,
+          body: { code: "service_unavailable", message: "The service is unreachable. Please try again." },
+        },
+  ));
   const retryConfirm = await page.waitForSelector('aria/Save prompt[role="button"]', { timeout: 5000 });
   await retryConfirm.click();
   await page.waitForFunction(
-    (btn) =>
-      btn.closest(".pz-win")?.querySelector('[role="alert"]')?.textContent?.includes("Couldn't reach Promptizer"),
+    (btn, message) => btn.closest(".pz-win")?.querySelector('[role="alert"]')?.textContent === message,
     { timeout: 5000 },
     retryConfirm,
+    UNREACHABLE_WRITE_MESSAGE,
   );
-  check("a failed save surfaces the server's error message", true);
-  const stillOpenAfterFailure = await retryConfirm.evaluate((btn) => btn.isConnected && btn.offsetParent !== null);
-  check("a failed save leaves the step open so the user can retry", stillOpenAfterFailure);
+  check("a failed save says Promptizer couldn't be reached", true);
+  const afterFailure = await retryConfirm.evaluate((btn) => ({
+    label: btn.getAttribute("aria-label"),
+    disabled: btn.disabled,
+    open: btn.isConnected && btn.offsetParent !== null,
+    title: btn.closest(".pz-win")?.querySelector('input[aria-label="Prompt title"]')?.value,
+  }));
+  check(
+    "a failed save stays open with the typed title and offers Retry",
+    afterFailure.open &&
+      afterFailure.label === "Retry save" &&
+      !afterFailure.disabled &&
+      afterFailure.title === retryTitle,
+    JSON.stringify(afterFailure),
+  );
+  const { [LIBRARY_STORAGE_KEY]: cacheAfterFailure } = await readStorage(browser, [LIBRARY_STORAGE_KEY]);
+  check(
+    "a failed save writes nothing to the cache",
+    JSON.stringify(cacheAfterFailure) === JSON.stringify(cacheBeforeFailure),
+  );
+
+  serverReachable = true;
+  await retryConfirm.click();
+  await page.waitForFunction((btn) => btn.textContent?.trim() === "Saved", { timeout: 5000 }, retryConfirm);
+  const retriedDrafts = requests.map((request) => JSON.parse(request.body));
+  check(
+    "Retry re-sends the same title and text and succeeds once the server recovers",
+    retriedDrafts.length === 2 &&
+      retriedDrafts[0].title === retryTitle &&
+      retriedDrafts[0].text.startsWith(ORIGINAL_PROMPT) &&
+      JSON.stringify(retriedDrafts[0]) === JSON.stringify(retriedDrafts[1]),
+    JSON.stringify(retriedDrafts),
+  );
+  const { [LIBRARY_STORAGE_KEY]: cacheAfterRetry } = await readStorage(browser, [LIBRARY_STORAGE_KEY]);
+  check(
+    "the retried save lands in the cache exactly once",
+    cacheAfterRetry?.prompts?.filter((prompt) => prompt.id === "p-retry").length === 1,
+  );
+  await client.detach();
+  await new Promise((r) => setTimeout(r, 1200));
+
+  await rail.click();
+  await new Promise((r) => setTimeout(r, 200));
+  await (await page.waitForSelector("aria/Save prompt", { timeout: 5000 })).click();
+  await page.waitForSelector('aria/Prompt title[role="textbox"]', { timeout: 5000 });
+  ({ client, requests } = await mockSavePromptApi(browser, () => ({
+    status: 401,
+    body: { code: "unauthenticated", message: "Unauthorized" },
+  })));
+  const signedOutConfirm = await page.waitForSelector('aria/Save prompt[role="button"]', { timeout: 5000 });
+  await signedOutConfirm.click();
+  await page.waitForFunction(
+    (btn, message) => btn.closest(".pz-win")?.querySelector('[role="alert"]')?.textContent === message,
+    { timeout: 5000 },
+    signedOutConfirm,
+    SIGNED_OUT_WRITE_MESSAGE,
+  );
+  const afterSignedOut = await signedOutConfirm.evaluate((btn) => ({
+    label: btn.getAttribute("aria-label"),
+    disabled: btn.disabled,
+  }));
+  check(
+    "a 401 on save shows the signed-out message with no Retry",
+    afterSignedOut.label === "Save prompt" && afterSignedOut.disabled && (await page.$("aria/Retry save")) === null,
+    JSON.stringify(afterSignedOut),
+  );
   await client.detach();
 
   await page.keyboard.press("Escape");

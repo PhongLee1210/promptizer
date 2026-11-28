@@ -12,8 +12,9 @@ import {
   updateProgressBar,
 } from "./loading-ui";
 import { ACTION_COPY, OFFLINE_SAVE_MESSAGE, PREPARING_CAPTION, PREPARING_TITLE } from "./present-result";
+import type { WriteFailureNotice, WriteFailureRecovery } from "./present-result";
 
-export type SaveOutcome = { ok: true; showFirstSaveNotice: boolean } | { ok: false; message: string };
+export type SaveOutcome = { ok: true; showFirstSaveNotice: boolean } | ({ ok: false } & WriteFailureNotice);
 
 export interface ResultWindowCallbacks {
   onStep: (direction: -1 | 1) => void;
@@ -255,6 +256,12 @@ export function button(
   return el;
 }
 
+export function relabelButton(target: HTMLButtonElement, iconName: IconName, label: string): void {
+  target.setAttribute("aria-label", label);
+  target.dataset.tip = label;
+  target.innerHTML = icon(iconName, 14);
+}
+
 export class ResultWindow {
   private readonly element: HTMLDivElement;
   private readonly topBar: HTMLDivElement;
@@ -470,9 +477,10 @@ export class ResultWindow {
 
     let saveSettled = false;
     let saveInFlight = false;
+    let saveBlocked = false;
     const applyAvailability = (online: boolean): void => {
       offlineNote.hidden = online;
-      if (!saveInFlight && !saveSettled) {
+      if (!saveInFlight && !saveSettled && !saveBlocked) {
         saveButton.disabled = !online;
       }
     };
@@ -480,6 +488,9 @@ export class ResultWindow {
     applyAvailability(navigator.onLine);
 
     const handleSave = async (): Promise<void> => {
+      if (saveInFlight || saveSettled || saveBlocked) {
+        return;
+      }
       errorLine.textContent = "";
       saveInFlight = true;
       saveButton.disabled = true;
@@ -504,9 +515,21 @@ export class ResultWindow {
         window.setTimeout(() => this.callbacks.onSaveCancel(), SAVE_CONFIRM_FLASH_MS);
         return;
       }
-      saveButton.disabled = !navigator.onLine;
+      saveBlocked = outcome.recovery === "blocked";
+      saveButton.disabled = saveBlocked || !navigator.onLine;
       cancelButton.disabled = false;
       errorLine.textContent = outcome.message;
+      if (outcome.recovery === "retry") {
+        relabelButton(saveButton, "retry", "Retry save");
+      } else {
+        relabelButton(saveButton, "check", "Save prompt");
+      }
+      const focusAfterFailure: Record<WriteFailureRecovery, HTMLElement> = {
+        retry: saveButton,
+        "fix-input": titleInput,
+        blocked: cancelButton,
+      };
+      focusAfterFailure[outcome.recovery].focus();
     };
 
     window.setTimeout(() => titleInput.focus(), 0);
