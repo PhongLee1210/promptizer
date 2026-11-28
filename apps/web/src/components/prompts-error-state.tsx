@@ -7,10 +7,11 @@ import { TriangleAlertIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface PromptsErrorStateProps {
+  description: string;
   reset: () => void;
 }
 
-export function PromptsErrorState({ reset }: PromptsErrorStateProps) {
+export function PromptsErrorState({ description, reset }: PromptsErrorStateProps) {
   const router = useRouter();
   const retry = () => {
     startTransition(() => {
@@ -25,9 +26,7 @@ export function PromptsErrorState({ reset }: PromptsErrorStateProps) {
       </span>
       <div className="flex max-w-sm flex-col gap-1">
         <h1 className="text-xl font-semibold">Could not load this page</h1>
-        <p className="text-sm text-muted-foreground">
-          Something went wrong while loading your prompts. Try again, or go back to all prompts.
-        </p>
+        <p className="text-sm text-muted-foreground">{description}</p>
       </div>
       <div className="flex flex-wrap justify-center gap-2">
         <Button onClick={retry}>Try again</Button>
