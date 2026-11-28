@@ -349,9 +349,9 @@ after: T-3.2.2
 
 **T-3.2.4 · Empty & no-result states** · 1h · feat ⇉
 after: T-3.2.2
-- [ ] New account: an honest empty state with "create your first prompt" as the primary action
-- [ ] No search hits: guidance + clear-filters
-- [ ] No dead ends anywhere in the list surface
+- [x] New account: an honest empty state with "create your first prompt" as the primary action
+- [x] No search hits: guidance + clear-filters
+- [x] No dead ends anywhere in the list surface
 
 **T-3.2.5 · List tests** · 1.5h · test ⇉
 after: T-3.2.3
