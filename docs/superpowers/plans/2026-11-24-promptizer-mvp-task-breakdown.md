@@ -550,7 +550,7 @@ after: T-5.3.1
 
 ## Epic 6 — Save & sync from the extension · 17h
 
-**Status (2026-11-28):** the owner built Story 6.1 as draft PRs #37–#39 (stacked on #32, background worker relay = decision T-6.1.2 option A). Loop 15 found a sign-out race and fixed it in #40, then built T-6.3.4 (#41) and T-6.2.1 (#42). Loop 16 verified T-6.2.1 and built T-6.2.2 (#43) and T-6.3.3 (#44). T-6.1.2, T-6.1.3, T-6.1.4, T-6.2.1 and T-6.3.4 are VERIFIED; T-6.2.2 and T-6.3.3 are in review. T-6.2.3 needs Supabase (dashboard side). T-6.3.2 and T-6.3.5 wait on decision T-6.3.1.
+**Status (2026-11-28):** the owner built Story 6.1 as draft PRs #37–#39 (stacked on #32, background worker relay = decision T-6.1.2 option A). Loop 15 found a sign-out race and fixed it in #40, then built T-6.3.4 (#41) and T-6.2.1 (#42). Loop 16 verified T-6.2.1 and built T-6.2.2 (#43) and T-6.3.3 (#44). T-6.1.2, T-6.1.3, T-6.1.4, T-6.2.1, T-6.2.2 and T-6.3.4 are VERIFIED; T-6.3.3 is in review. T-6.2.3 needs Supabase (dashboard side). T-6.3.2 and T-6.3.5 wait on decision T-6.3.1.
 
 **Story 6.1 — Save prompt.**
 
@@ -587,9 +587,9 @@ after: T-5.2.3, T-3.3.1
 
 **T-6.2.2 · Edit UI in the picker** · 2h · feat
 after: T-6.2.1
-- [ ] Edit affordance on a saved prompt; title/text editable; save/cancel explicit
-- [ ] Delete affordance with confirmation (same rules as the dashboard)
-- [ ] Flows through the preview conventions, not a second editing paradigm
+- [x] Edit affordance on a saved prompt; title/text editable; save/cancel explicit
+- [x] Delete affordance with confirmation (same rules as the dashboard)
+- [x] Flows through the preview conventions, not a second editing paradigm
 
 **T-6.2.3 · Edit sync tests** · 1h · test ⇉
 after: T-6.2.2
