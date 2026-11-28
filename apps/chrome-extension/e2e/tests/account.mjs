@@ -9,6 +9,9 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 const SIGNED_IN_USER = { id: "user-1", email: "ada@example.com", name: "Ada" };
+const SECOND_USER = { id: "user-2", email: "grace@example.com", name: "Grace" };
+const USERS_BY_EMAIL = { [SIGNED_IN_USER.email]: SIGNED_IN_USER, [SECOND_USER.email]: SECOND_USER };
+const WORK_PACK = { id: "pack-1", name: "Work" };
 
 function promptFixture(id, title, category) {
   const timestamp = new Date().toISOString();
@@ -24,21 +27,31 @@ function promptFixture(id, title, category) {
   };
 }
 
-function libraryBody() {
-  const workPack = { id: "pack-1", name: "Work" };
+function initialLibraries() {
   return {
-    prompts: [promptFixture("prompt-1", "Weekly report", workPack), promptFixture("prompt-2", "Bug triage", null)],
-    packs: [{ ...workPack, promptCount: 1 }],
-    fetchedAt: Math.floor(Date.now() / 1000),
+    [SIGNED_IN_USER.id]: {
+      prompts: [promptFixture("prompt-1", "Weekly report", WORK_PACK), promptFixture("prompt-2", "Bug triage", null)],
+      packs: [{ ...WORK_PACK, promptCount: 1 }],
+    },
+    [SECOND_USER.id]: { prompts: [promptFixture("prompt-9", "Grace only", null)], packs: [] },
   };
 }
 
-function sessionBody() {
+function accessTokenFor(user) {
+  return `access-${user.id}`;
+}
+
+function userForRequest(request) {
+  const authorization = request.headers()["authorization"] ?? "";
+  return Object.values(USERS_BY_EMAIL).find((user) => authorization === `Bearer ${accessTokenFor(user)}`);
+}
+
+function sessionBody(user) {
   return {
-    accessToken: "access-token",
-    refreshToken: "refresh-token",
+    accessToken: accessTokenFor(user),
+    refreshToken: `refresh-${user.id}`,
     expiresAt: Math.floor(Date.now() / 1000) + ACCESS_TOKEN_LIFETIME_SECONDS,
-    user: SIGNED_IN_USER,
+    user,
   };
 }
 
@@ -65,15 +78,22 @@ async function mockAuthApi(page, state) {
       return;
     }
     if (url.pathname.endsWith("/library/snapshot")) {
-      request.respond({ status: 200, headers: json, body: JSON.stringify(libraryBody()) });
+      const user = userForRequest(request);
+      if (state.libraryUnreachable || !user) {
+        request.respond({ status: 503, headers: json, body: JSON.stringify({ code: "unavailable", message: "Down" }) });
+        return;
+      }
+      const library = { ...state.libraries[user.id], fetchedAt: Math.floor(Date.now() / 1000) };
+      request.respond({ status: 200, headers: json, body: JSON.stringify(library) });
       return;
     }
     if (url.pathname.endsWith("/me")) {
-      request.respond({ status: 200, headers: json, body: JSON.stringify(SIGNED_IN_USER) });
+      request.respond({ status: 200, headers: json, body: JSON.stringify(userForRequest(request)) });
       return;
     }
     if (url.pathname.endsWith("/sign-in")) {
-      request.respond({ status: 200, headers: json, body: JSON.stringify(sessionBody()) });
+      const { email } = JSON.parse(request.postData() ?? "{}");
+      request.respond({ status: 200, headers: json, body: JSON.stringify(sessionBody(USERS_BY_EMAIL[email])) });
       return;
     }
     request.respond({ status: 204, headers: CORS_HEADERS });
@@ -103,7 +123,7 @@ async function waitForText(page, pattern, timeoutMs = 5000) {
 }
 
 await runCase("account", async (_page, check, browser) => {
-  const state = { acceptCredentials: false, requests: [] };
+  const state = { acceptCredentials: false, libraryUnreachable: false, libraries: initialLibraries(), requests: [] };
   let popup = await openAccountScreen(browser, state);
 
   await waitForText(popup, "Use your Promptizer account");
@@ -128,6 +148,27 @@ await runCase("account", async (_page, check, browser) => {
   await waitForText(popup, SIGNED_IN_USER.email);
   check("reopening the popup keeps the user signed in", true);
 
+  state.libraries[SIGNED_IN_USER.id].prompts.push(promptFixture("prompt-3", "Release notes", WORK_PACK));
+  await (await popup.waitForSelector('aria/Refresh[role="button"]')).click();
+  await waitForText(popup, "3 prompts, 1 packs");
+  check("refresh replaces the cache with the updated library", (await storedLibrary(popup))?.prompts.length === 3);
+
+  state.libraryUnreachable = true;
+  await (await popup.waitForSelector('aria/Refresh[role="button"]')).click();
+  await waitForText(popup, "Couldn't reach Promptizer");
+  check(
+    "failed refresh keeps the previous cache with an honest error",
+    (await storedLibrary(popup))?.prompts.length === 3 &&
+      /3 prompts, 1 packs/.test(await popup.$eval("body", (body) => body.innerText)),
+  );
+  state.libraryUnreachable = false;
+
+  await popup.evaluate((key) => chrome.storage.local.set({ [key]: { prompts: "corrupt" } }), LIBRARY_STORAGE_KEY);
+  await popup.close();
+  popup = await openAccountScreen(browser, state);
+  await waitForText(popup, "3 prompts, 1 packs");
+  check("corrupt cache recovers through an automatic refresh", (await storedLibrary(popup))?.prompts.length === 3);
+
   await (await popup.waitForSelector('aria/Sign out[role="button"]')).click();
   await waitForText(popup, "Use your Promptizer account");
   check("sign-out returns to the signed-out form", true);
@@ -141,4 +182,16 @@ await runCase("account", async (_page, check, browser) => {
   await waitForText(popup, "Use your Promptizer account");
   check("sign-out wiped the stored credentials", true);
   check("sign-out wiped the local library copy", (await storedLibrary(popup)) === undefined);
+
+  await (await popup.waitForSelector("aria/Email")).type(SECOND_USER.email);
+  await (await popup.waitForSelector("aria/Password")).type("second-password");
+  await (await popup.waitForSelector('aria/Sign in[role="button"]')).click();
+  await waitForText(popup, SECOND_USER.email);
+  await waitForText(popup, "1 prompts, 0 packs");
+  const secondAccountIds = (await storedLibrary(popup))?.prompts.map((prompt) => prompt.id);
+  check(
+    "a second account's cache holds only its own library",
+    JSON.stringify(secondAccountIds) === JSON.stringify(["prompt-9"]),
+    String(secondAccountIds),
+  );
 });
