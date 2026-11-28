@@ -2,7 +2,8 @@
 
 Promptizer is a Chrome extension with two moving parts and no server. A **content script** lives on
 the page you are typing on; a **popup** is the settings surface. There is no background worker, no
-backend, and no third-party runtime code. Nothing ever leaves the machine.
+backend for rewrites, and no third-party runtime code. Rewrites never leave the machine. The only network
+traffic is the optional account sign-in, sent from the popup to the Promptizer service in `apps/web`.
 
 ## The whole system
 
