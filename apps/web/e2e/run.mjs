@@ -1159,6 +1159,27 @@ async function packJourney(browser, session) {
     const withCount = await visibleText(page);
     check("pack shows an updated prompt count", /Research notes[\s\S]*1/.test(withCount));
 
+    await page.click(`a[href="/packs/${packId}"]`);
+    await waitForPath(page, `/packs/${packId}`);
+    const packViewText = await visibleText(page);
+    check("pack view shows the pack name and its prompt", packViewText.includes("Filed under research"));
+    await page.click(`a[href="/prompts/${inPack.id}"][data-testid="prompt-card"]`);
+    await waitForPath(page, `/prompts/${inPack.id}`);
+    await page.goBack();
+    await waitForPath(page, `/packs/${packId}`);
+    check("back from the opened prompt returns to the pack", true);
+
+    const { data: emptyPack } = await createAdminClient()
+      .from("category")
+      .insert({ user_id: session.user.id, name: "Empty pack" })
+      .select("id")
+      .single();
+    await page.goto(`${BASE_URL}/packs/${emptyPack.id}`);
+    await waitForText(page, "This pack is empty");
+    check("empty pack shows guidance, not a blank page", (await visibleText(page)).includes("This pack is empty"));
+
+    await page.goto(`${BASE_URL}/packs`);
+    await waitForText(page, "Research notes");
     await page.click(`a[href="/packs/${packId}/edit"]`);
     await waitForPath(page, `/packs/${packId}/edit`);
     await fillField(page, "Name", "Renamed research");
