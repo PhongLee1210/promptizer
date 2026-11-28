@@ -56,6 +56,39 @@ async function mockSavePromptApi(browser, respond) {
   return { client, requests };
 }
 
+async function readStorage(browser, keys) {
+  const extensionPage = await browser.newPage();
+  await extensionPage.goto(`chrome-extension://${extensionId()}/popup.html`);
+  const stored = await extensionPage.evaluate((wanted) => chrome.storage.local.get(wanted), keys);
+  await extensionPage.close();
+  return stored;
+}
+
+async function holdSavePromptApi(browser) {
+  const workerTarget = await browser.waitForTarget((target) => target.type() === "service_worker", {
+    timeout: 5000,
+  });
+  const client = await workerTarget.createCDPSession();
+  let pausedRequestId;
+  let resolvePaused;
+  const paused = new Promise((resolve) => {
+    resolvePaused = resolve;
+  });
+  await client.send("Fetch.enable", { patterns: [{ urlPattern: "*/api/prompts*", requestStage: "Request" }] });
+  client.on("Fetch.requestPaused", (event) => {
+    pausedRequestId = event.requestId;
+    resolvePaused();
+  });
+  const release = (status, body) =>
+    client.send("Fetch.fulfillRequest", {
+      requestId: pausedRequestId,
+      responseCode: status,
+      responseHeaders: [{ name: "Content-Type", value: "application/json" }],
+      body: Buffer.from(JSON.stringify(body)).toString("base64"),
+    });
+  return { client, paused, release };
+}
+
 await runCase("save-prompt", async (page, check, browser) => {
   await setStoredSession(browser, STORED_SESSION);
   await setFirstSaveNoticeShown(browser, true);
@@ -115,6 +148,12 @@ await runCase("save-prompt", async (page, check, browser) => {
   await confirmButton.click();
   await page.waitForFunction((button) => button.textContent?.trim() === "Saved", { timeout: 5000 }, confirmButton);
   check("saving reaches the server with the edited title", requests.length === 1, String(requests.length));
+  const { "promptizer.librarySnapshot": unsyncedSnapshot } = await readStorage(browser, ["promptizer.librarySnapshot"]);
+  check(
+    "a save before any sync keeps the cache marked out of date",
+    unsyncedSnapshot?.prompts?.length === 1 && unsyncedSnapshot.fetchedAt === 0,
+    JSON.stringify(unsyncedSnapshot?.fetchedAt),
+  );
 
   await new Promise((r) => setTimeout(r, 1500));
   const stillOpen = await confirmButton.evaluate(
@@ -222,4 +261,41 @@ await runCase("save-prompt", async (page, check, browser) => {
   const stillOpenAfterFailure = await retryConfirm.evaluate((btn) => btn.isConnected && btn.offsetParent !== null);
   check("a failed save leaves the step open so the user can retry", stillOpenAfterFailure);
   await client.detach();
+
+  await page.keyboard.press("Escape");
+  await new Promise((r) => setTimeout(r, 300));
+  await rail.click();
+  await new Promise((r) => setTimeout(r, 200));
+  await (await page.waitForSelector("aria/Save prompt", { timeout: 5000 })).click();
+  await page.waitForSelector('aria/Prompt title[role="textbox"]', { timeout: 5000 });
+  const held = await holdSavePromptApi(browser);
+  await (await page.waitForSelector('aria/Save prompt[role="button"]', { timeout: 5000 })).click();
+  await held.paused;
+  await setStoredSession(browser, null);
+  await browser.newPage().then(async (extensionPage) => {
+    await extensionPage.goto(`chrome-extension://${extensionId()}/popup.html`);
+    await extensionPage.evaluate(
+      (keys) => chrome.storage.local.remove(keys),
+      ["promptizer.librarySnapshot", FIRST_SAVE_NOTICE_KEY],
+    );
+    await extensionPage.close();
+  });
+  await held.release(201, {
+    id: "p-late",
+    title: ORIGINAL_PROMPT,
+    text: ORIGINAL_PROMPT,
+    model: null,
+    category: null,
+    tags: [],
+    createdAt: "",
+    updatedAt: "",
+  });
+  await new Promise((r) => setTimeout(r, 800));
+  const afterSignOut = await readStorage(browser, ["promptizer.librarySnapshot", FIRST_SAVE_NOTICE_KEY]);
+  check(
+    "a save that finishes after sign-out writes nothing back into storage",
+    Object.keys(afterSignOut).length === 0,
+    JSON.stringify(Object.keys(afterSignOut)),
+  );
+  await held.client.detach();
 });
