@@ -63,13 +63,25 @@ async function focusedLabel(handle) {
   });
 }
 
-async function openPicker(page) {
-  await page.click("#composer");
+async function openPicker(page, editorSelector = "#composer") {
+  await page.click(editorSelector);
   await new Promise((resolve) => setTimeout(resolve, 200));
   await (await page.waitForSelector("aria/Promptizer actions", { timeout: 5000 })).click();
   await new Promise((resolve) => setTimeout(resolve, 200));
   await (await page.waitForSelector("aria/My Prompts", { timeout: 5000 })).click();
   return page.waitForSelector("aria/Search prompts", { timeout: 5000 });
+}
+
+async function pickBySearch(page, query) {
+  await openPicker(page);
+  await page.keyboard.type(query);
+  await page.keyboard.press("Enter");
+  return page.waitForSelector("aria/Replace text", { timeout: 5000 });
+}
+
+async function previewShows(page, text) {
+  const snapshot = await page.accessibility.snapshot({ interestingOnly: false });
+  return findAccessibleName(snapshot, (name) => name === text) !== null;
 }
 
 async function activeOptionLabel(searchHandle) {
@@ -123,6 +135,37 @@ await runCase("prompt-picker", async (page, check, browser) => {
   check("Escape at the top level closes the picker", !(await isShown(page, "Search prompts", 500)));
   const trigger = await page.waitForSelector("aria/Promptizer actions");
   check("closing the picker returns focus to the chip", (await focusedLabel(trigger)) === "Promptizer actions");
+
+  const replaceButton = await pickBySearch(page, "bug");
+  check("picking a prompt shows its text in the editable preview", await previewShows(page, "Bug triage text"));
+  check("a picked prompt offers no Regenerate", !(await isShown(page, "Regenerate", 300)));
+  await replaceButton.click();
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  const composerText = () => page.$eval("#composer", (composer) => composer.innerText.trim());
+  check("Replace writes the picked prompt into the composer", (await composerText()) === "Bug triage text");
+
+  await pickBySearch(page, "weekly");
+  await (await page.waitForSelector("aria/Close")).click();
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  check("dismissing the preview leaves the composer untouched", (await composerText()) === "Bug triage text");
+
+  const textareaPage = await browser.newPage();
+  await textareaPage.goto(page.url(), { waitUntil: "networkidle0" });
+  await textareaPage.evaluate(() => {
+    const textarea = document.createElement("textarea");
+    textarea.id = "plain-textarea";
+    document.body.append(textarea);
+  });
+  await openPicker(textareaPage, "#plain-textarea");
+  await textareaPage.keyboard.type("standup");
+  await textareaPage.keyboard.press("Enter");
+  await (await textareaPage.waitForSelector("aria/Replace text", { timeout: 5000 })).click();
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  check(
+    "insert also works in a plain textarea",
+    (await textareaPage.$eval("#plain-textarea", (textarea) => textarea.value)) === "Standup notes text",
+  );
+  await textareaPage.close();
 
   await writeStorage(browser, { [LIBRARY_STORAGE_KEY]: storedLibrary([], []) });
   await page.bringToFront();

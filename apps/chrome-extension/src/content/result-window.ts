@@ -1,6 +1,6 @@
 import { icon, type IconName } from "../utils/icons";
 import type { ActionId } from "./action-types";
-import { currentResult, type ChipState } from "./chip-state";
+import { currentResult, LIBRARY_ORIGIN, type ChipState } from "./chip-state";
 import {
   LOADING_STYLE,
   SlowHintTimer,
@@ -479,7 +479,11 @@ export class ResultWindow {
     this.bottomBar.append(
       button("edit", null, "Edit", this.callbacks.onEditStart),
       button("tweak", null, "Tweak", this.callbacks.onTweakToggle),
-      button("retry", null, "Regenerate", this.callbacks.onRegenerate),
+    );
+    if (entry.action !== LIBRARY_ORIGIN) {
+      this.bottomBar.append(button("retry", null, "Regenerate", this.callbacks.onRegenerate));
+    }
+    this.bottomBar.append(
       button("copy", null, state.copied ? "Copied" : "Copy", this.callbacks.onCopy),
       button("replace", null, "Replace text", this.callbacks.onReplace, "primary"),
     );

@@ -4,9 +4,11 @@ export const UNDO_WINDOW_MS = 6000;
 export const HISTORY_LIMIT = 10;
 export const EMPTY_TEXT_MESSAGE = "Type something first.";
 
+export const LIBRARY_ORIGIN = "library";
+
 export interface ResultEntry {
   readonly id: string;
-  readonly action: ActionId;
+  readonly action: ActionId | typeof LIBRARY_ORIGIN;
   readonly source: ActionSource;
   readonly title: string;
   readonly text: string;
@@ -44,6 +46,7 @@ export type ChipEvent =
   | { type: "step"; direction: -1 | 1 }
   | { type: "recent-opened" }
   | { type: "picker-opened" }
+  | { type: "prompt-picked"; id: string; title: string; text: string }
   | { type: "delete-current" }
   | { type: "edit-started" }
   | { type: "edit-discarded" }
@@ -71,6 +74,11 @@ function closeView(state: ChipState): ChipState {
 
 function clampIndex(index: number, length: number): number {
   return Math.min(Math.max(index, 0), length - 1);
+}
+
+function appendResult(state: ChipState, entry: ResultEntry): ChipState {
+  const results = [...state.results, entry].slice(-HISTORY_LIMIT);
+  return { ...state, results, index: results.length - 1, view: { kind: "result" } };
 }
 
 export function currentResult(state: ChipState): ResultEntry | null {
@@ -106,16 +114,14 @@ export function reduceChipState(state: ChipState, event: ChipEvent): ChipState {
           view: { kind: "error", action: event.action, source: event.source, message: event.outcome.message },
         };
       }
-      const entry: ResultEntry = {
+      return appendResult(state, {
         id: event.id,
         action: event.action,
         source: event.source,
         title: event.outcome.title,
         text: event.outcome.text,
         edited: false,
-      };
-      const results = [...state.results, entry].slice(-HISTORY_LIMIT);
-      return { ...state, results, index: results.length - 1, view: { kind: "result" } };
+      });
     }
 
     case "prepare-progress": {
@@ -152,6 +158,19 @@ export function reduceChipState(state: ChipState, event: ChipEvent): ChipState {
 
     case "picker-opened":
       return state.view.kind === "rail" ? { ...state, view: { kind: "picker" } } : state;
+
+    case "prompt-picked":
+      if (state.view.kind !== "picker") {
+        return state;
+      }
+      return appendResult(state, {
+        id: event.id,
+        action: LIBRARY_ORIGIN,
+        source: "text",
+        title: event.title,
+        text: event.text,
+        edited: false,
+      });
 
     case "delete-current": {
       if (currentResult(state) === null) {
