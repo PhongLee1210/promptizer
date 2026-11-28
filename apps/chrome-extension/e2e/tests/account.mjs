@@ -114,6 +114,29 @@ async function storedLibrary(page) {
   return stored[LIBRARY_STORAGE_KEY];
 }
 
+async function everyStoredValue(page) {
+  return page.evaluate(async () => {
+    const areas = await Promise.all([
+      chrome.storage.local.get(null),
+      chrome.storage.session.get(null),
+      chrome.storage.sync.get(null),
+    ]);
+    return JSON.stringify(areas);
+  });
+}
+
+async function signIn(popup, email) {
+  await (await popup.waitForSelector("aria/Email")).type(email);
+  await (await popup.waitForSelector("aria/Password")).type("password");
+  await (await popup.waitForSelector('aria/Sign in[role="button"]')).click();
+  await waitForText(popup, email);
+}
+
+async function signOut(popup) {
+  await (await popup.waitForSelector('aria/Sign out[role="button"]')).click();
+  await waitForText(popup, "Use your Promptizer account");
+}
+
 async function waitForText(page, pattern, timeoutMs = 5000) {
   await page.waitForFunction(
     (source) => new RegExp(source, "i").test(document.body.innerText),
@@ -182,16 +205,30 @@ await runCase("account", async (_page, check, browser) => {
   await waitForText(popup, "Use your Promptizer account");
   check("sign-out wiped the stored credentials", true);
   check("sign-out wiped the local library copy", (await storedLibrary(popup)) === undefined);
+  const storedAfterSignOut = await everyStoredValue(popup);
+  check(
+    "no prompt content or token remains in any extension storage after sign-out",
+    !["Weekly report", "Release notes", "access-user-1", "refresh-user-1"].some((secret) =>
+      storedAfterSignOut.includes(secret),
+    ),
+  );
 
-  await (await popup.waitForSelector("aria/Email")).type(SECOND_USER.email);
-  await (await popup.waitForSelector("aria/Password")).type("second-password");
-  await (await popup.waitForSelector('aria/Sign in[role="button"]')).click();
-  await waitForText(popup, SECOND_USER.email);
+  await signIn(popup, SECOND_USER.email);
   await waitForText(popup, "1 prompts, 0 packs");
   const secondAccountIds = (await storedLibrary(popup))?.prompts.map((prompt) => prompt.id);
   check(
     "a second account's cache holds only its own library",
     JSON.stringify(secondAccountIds) === JSON.stringify(["prompt-9"]),
     String(secondAccountIds),
+  );
+
+  await signOut(popup);
+  await signIn(popup, SIGNED_IN_USER.email);
+  await waitForText(popup, "3 prompts, 1 packs");
+  const rebuiltIds = (await storedLibrary(popup))?.prompts.map((prompt) => prompt.id);
+  check(
+    "signing back in rebuilds the cache from the account",
+    JSON.stringify(rebuiltIds) === JSON.stringify(["prompt-1", "prompt-2", "prompt-3"]),
+    String(rebuiltIds),
   );
 });
