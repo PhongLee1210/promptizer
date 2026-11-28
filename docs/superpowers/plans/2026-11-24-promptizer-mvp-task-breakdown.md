@@ -465,7 +465,7 @@ after: T-4.3.1, T-3.2.2
 
 ## Epic 5 — Extension library access · 19h
 
-**Status (2026-11-28):** all 13 tasks built as one stacked line of draft PRs: owner #17–#20, loop 8 #21–#26, #28, #29 and #31. Extension unit and E2E tests are green in cloud at the stack tip. T-5.1.2 needs Supabase. T-5.2.4's save/edit-disabled box moves to T-6.3.4 because no server save/edit exists yet.
+**Status (2026-11-28):** all 13 tasks built as one stacked line of draft PRs: owner #17–#20, loop 8 #21–#26, #28, #29 and #31. Extension unit and E2E tests are green in cloud at the stack tip. T-5.1.2 needs Supabase. T-5.2.4's save/edit-disabled box moves to T-6.3.4 because no server save/edit exists yet. Loop 9: T-5.3.1 and T-5.3.2 VERIFIED after the library-wipe and session-renewal race fixes in #32.
 
 **Story 5.1 — Library sync.**
 
@@ -538,13 +538,13 @@ after: T-5.2.3
 
 **T-5.3.1 · Sign-out wipe** · 1h · feat
 after: T-5.1.3, T-2.4.4
-- [ ] Sign-out removes credentials and the entire local library copy
-- [ ] Wipe verified for the popup, the rail, and the cache store itself
+- [x] Sign-out removes credentials and the entire local library copy
+- [x] Wipe verified for the popup, the rail, and the cache store itself
 
 **T-5.3.2 · Wipe tests** · 1h · test ⇉
 after: T-5.3.1
-- [ ] After sign-out: no prompt content remains on the machine; chip works exactly as Journey A
-- [ ] Re-sign-in rebuilds the cache from the account
+- [x] After sign-out: no prompt content remains on the machine; chip works exactly as Journey A
+- [x] Re-sign-in rebuilds the cache from the account
 
 ---
 
