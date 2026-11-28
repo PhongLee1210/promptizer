@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { LibrarySnapshot } from "@promptizer/shared";
-import { createLibraryCache } from "../src/library/library-cache.ts";
+import { createLibraryCache, replaceCachedPrompt } from "../src/library/library-cache.ts";
 import type { SnapshotStore } from "../src/library/library-cache.ts";
 import { createLibraryClient } from "../src/library/library-client.ts";
 import { createLibraryManager } from "../src/library/library-manager.ts";
@@ -191,4 +191,25 @@ test("a refresh that lands after a wipe never writes the old library back", asyn
   const status = await pendingRefresh;
   assert.equal(store.current, undefined);
   assert.equal(status.prompts.length, 0);
+});
+
+test("a confirmed edit replaces the cached prompt and keeps the snapshot's sync time", async () => {
+  const store = memoryStore(snapshotAt(NOW_SECONDS));
+  const cache = createLibraryCache(store, () => NOW_SECONDS * 1000);
+  const edited = { ...snapshotAt(NOW_SECONDS).prompts[0]!, title: "Edited", text: "new text" };
+  assert.equal(await replaceCachedPrompt(cache, edited), true);
+  const after = store.current as LibrarySnapshot;
+  assert.deepEqual(after.prompts, [edited]);
+  assert.equal(after.fetchedAt, NOW_SECONDS);
+  assert.deepEqual(after.packs, snapshotAt(NOW_SECONDS).packs);
+});
+
+test("a confirmed edit never recreates a wiped cache or adds an unknown prompt", async () => {
+  const wiped = memoryStore(undefined);
+  const edited = { ...snapshotAt(NOW_SECONDS).prompts[0]!, title: "Edited" };
+  assert.equal(await replaceCachedPrompt(createLibraryCache(wiped), edited), false);
+  assert.equal(wiped.current, undefined);
+  const other = memoryStore(snapshotAt(NOW_SECONDS));
+  assert.equal(await replaceCachedPrompt(createLibraryCache(other), { ...edited, id: "p-unknown" }), false);
+  assert.deepEqual(other.current, snapshotAt(NOW_SECONDS));
 });

@@ -59,3 +59,16 @@ export function createLibraryCache(store: SnapshotStore, now: () => number = () 
     },
   };
 }
+
+export async function replaceCachedPrompt(cache: LibraryCache, prompt: Prompt): Promise<boolean> {
+  const current = await cache.read();
+  if (current.fetchedAt === undefined || !current.prompts.some((cached) => cached.id === prompt.id)) {
+    return false;
+  }
+  await cache.save({
+    prompts: current.prompts.map((cached) => (cached.id === prompt.id ? prompt : cached)),
+    packs: current.packs,
+    fetchedAt: current.fetchedAt,
+  });
+  return true;
+}
