@@ -27,13 +27,23 @@ export function createSessionManager(
   now: () => number = () => Date.now(),
   wipeAccountData: () => Promise<void> = async () => {},
 ): SessionManager {
+  let credentialChangeCount = 0;
+  let signInsWritingCredentials = 0;
+
   async function clearCredentials(): Promise<void> {
+    credentialChangeCount += 1;
     await store.clear();
     await wipeAccountData();
   }
 
-  async function renew(session: AuthSession): Promise<AuthClientResult<AuthSession | undefined>> {
+  async function renew(
+    session: AuthSession,
+    credentialChangeCountAtRead: number,
+  ): Promise<AuthClientResult<AuthSession | undefined>> {
     const renewed = await client.refresh(session.refreshToken);
+    if (credentialChangeCount !== credentialChangeCountAtRead || signInsWritingCredentials > 0) {
+      return { ok: true, value: await store.load() };
+    }
     if (renewed.ok) {
       await store.save(renewed.value);
       return renewed;
@@ -46,6 +56,7 @@ export function createSessionManager(
   }
 
   async function getAccessToken(): Promise<AuthClientResult<string | undefined>> {
+    const credentialChangeCountAtRead = credentialChangeCount;
     const session = await store.load();
     if (!session) {
       return { ok: true, value: undefined };
@@ -53,7 +64,7 @@ export function createSessionManager(
     if (!isExpiringSoon(session, Math.floor(now() / 1000))) {
       return { ok: true, value: session.accessToken };
     }
-    const renewed = await renew(session);
+    const renewed = await renew(session, credentialChangeCountAtRead);
     if (!renewed.ok) {
       return renewed as { ok: false; error: AuthClientError };
     }
@@ -66,8 +77,15 @@ export function createSessionManager(
       if (!result.ok) {
         return result;
       }
-      await wipeAccountData();
-      await store.save(result.value);
+      credentialChangeCount += 1;
+      signInsWritingCredentials += 1;
+      try {
+        await wipeAccountData();
+        await store.save(result.value);
+      } finally {
+        credentialChangeCount += 1;
+        signInsWritingCredentials -= 1;
+      }
       return { ok: true, value: result.value.user };
     },
 
@@ -101,8 +119,9 @@ export function createSessionManager(
       if (confirmation.error.kind !== "unauthenticated") {
         return stored?.user;
       }
+      const credentialChangeCountAtRead = credentialChangeCount;
       const current = await store.load();
-      const renewed = current ? await renew(current) : undefined;
+      const renewed = current ? await renew(current, credentialChangeCountAtRead) : undefined;
       return renewed?.ok ? renewed.value?.user : stored?.user;
     },
   };

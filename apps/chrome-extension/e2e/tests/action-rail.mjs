@@ -1,6 +1,7 @@
 import { runCase, focusAndType, findAccessibleName, extensionId, ORIGINAL_PROMPT } from "../harness.mjs";
 
 const SESSION_STORAGE_KEY = "promptizer.accountSession";
+const SIGNED_IN_STORAGE_KEY = "promptizer.signedIn";
 const STORED_SESSION = {
   accessToken: "access-token",
   refreshToken: "refresh-token",
@@ -19,8 +20,12 @@ async function setStoredSession(browser, session) {
   const extensionPage = await browser.newPage();
   await extensionPage.goto(`chrome-extension://${extensionId()}/popup.html`);
   await extensionPage.evaluate(
-    (key, value) => (value === null ? chrome.storage.local.remove(key) : chrome.storage.local.set({ [key]: value })),
+    (key, flagKey, value) =>
+      value === null
+        ? chrome.storage.local.remove([key, flagKey])
+        : chrome.storage.local.set({ [key]: value, [flagKey]: true }),
     SESSION_STORAGE_KEY,
+    SIGNED_IN_STORAGE_KEY,
     session,
   );
   await extensionPage.close();

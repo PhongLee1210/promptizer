@@ -326,7 +326,10 @@ export class PromptPicker {
     if (row.kind === "pack") {
       label.textContent = row.pack.name;
       meta.textContent = String(row.pack.promptCount);
-      element.setAttribute("aria-label", `${row.pack.name} pack, ${row.pack.promptCount} prompts`);
+      element.setAttribute(
+        "aria-label",
+        `${row.pack.name} pack, ${row.pack.promptCount} ${row.pack.promptCount === 1 ? "prompt" : "prompts"}`,
+      );
     } else {
       label.textContent = row.prompt.title;
       meta.textContent = this.openPack === null ? (row.prompt.category?.name ?? "") : "";
