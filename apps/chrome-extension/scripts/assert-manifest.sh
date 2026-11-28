@@ -8,15 +8,18 @@ if [ ! -f "$manifest" ]; then
   exit 1
 fi
 
-failures="$(jq -r '
+if ! failures="$(jq -r '
   def require(passes; message): if passes then empty else message end;
   require(.manifest_version == 3; "manifest_version must be 3, got \(.manifest_version)"),
-  require((.minimum_chrome_version // "0" | tonumber) >= 138; "minimum_chrome_version must be at least 138, got \(.minimum_chrome_version)"),
+  require((.minimum_chrome_version // "0" | tonumber? // 0) >= 138; "minimum_chrome_version must be at least 138, got \(.minimum_chrome_version)"),
   require(.host_permissions // [] | length == 0; "host_permissions must be empty, got \(.host_permissions)"),
   require(.optional_permissions // [] | length == 0; "optional_permissions must be empty, got \(.optional_permissions)"),
   require(.optional_host_permissions // [] | length == 0; "optional_host_permissions must be empty, got \(.optional_host_permissions)"),
   require((.permissions // []) | sort == ["activeTab", "storage"]; "permissions must be exactly [\"activeTab\",\"storage\"], got \(.permissions // [] | tojson)")
-' "$manifest")"
+' "$manifest" 2>/dev/null)"; then
+  echo "assert-manifest: $manifest is not valid JSON" >&2
+  exit 1
+fi
 
 if [ -n "$failures" ]; then
   while IFS= read -r failure; do
