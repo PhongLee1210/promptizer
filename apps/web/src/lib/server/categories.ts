@@ -1,8 +1,9 @@
-import type { CategoryChanges, CategoryDraft, CategorySummary } from "@promptizer/shared";
+import type { CategoryChanges, CategoryDraft, CategorySummary, PackSummary } from "@promptizer/shared";
 import { isPromptId } from "../prompts/prompts.ts";
 import type { AuthenticatedCaller } from "./authenticate.ts";
 import { CATEGORY_NOT_FOUND, SERVICE_UNAVAILABLE, UNAUTHENTICATED, fail, succeed } from "./outcome.ts";
 import type { Outcome } from "./outcome.ts";
+import { selectAllRows } from "./prompts.ts";
 import { createUserClient } from "./supabase.ts";
 
 interface DatabaseError {
@@ -74,4 +75,41 @@ export async function deleteCategory(accessToken: string, id: string): Promise<O
     return failureForDatabaseError(deleted);
   }
   return deleted.data.length > 0 ? succeed(null) : CATEGORY_NOT_FOUND;
+}
+
+export async function findCategory(accessToken: string, id: string): Promise<Outcome<CategorySummary>> {
+  if (!isPromptId(id)) {
+    return CATEGORY_NOT_FOUND;
+  }
+  const found = await createUserClient(accessToken).from("category").select("id, name").eq("id", id).maybeSingle();
+  if (found.error) {
+    return failureForDatabaseError(found);
+  }
+  return found.data ? succeed(found.data as CategorySummary) : CATEGORY_NOT_FOUND;
+}
+
+export async function listPacksWithCounts(accessToken: string): Promise<Outcome<PackSummary[]>> {
+  const client = createUserClient(accessToken);
+  const categories = await client.from("category").select("id, name").order("name");
+  if (categories.error) {
+    return failureForDatabaseError(categories);
+  }
+  const assignments = await selectAllRows<{ category_id: string | null }>(() =>
+    client.from("prompt").select("category_id").not("category_id", "is", null),
+  );
+  if (!assignments.ok) {
+    return assignments;
+  }
+  const counts = new Map<string, number>();
+  for (const { category_id } of assignments.value) {
+    if (category_id) {
+      counts.set(category_id, (counts.get(category_id) ?? 0) + 1);
+    }
+  }
+  return succeed(
+    (categories.data as CategorySummary[]).map((category) => ({
+      ...category,
+      promptCount: counts.get(category.id) ?? 0,
+    })),
+  );
 }

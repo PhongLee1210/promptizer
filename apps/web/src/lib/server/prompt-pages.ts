@@ -1,10 +1,11 @@
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { cache } from "react";
-import type { CategorySummary, Prompt, PromptListPage } from "@promptizer/shared";
+import type { CategorySummary, PackSummary, Prompt, PromptListPage } from "@promptizer/shared";
 import { PROMPTS_PAGE_SIZE } from "@promptizer/shared";
 import { isPromptId } from "../prompts/prompts.ts";
 import type { PromptsListParams } from "../prompts/prompts.ts";
+import { findCategory, listPacksWithCounts } from "./categories.ts";
 import { findPrompt, listCategories, listPrompts, listTagCounts } from "./prompts.ts";
 import { ACCESS_COOKIE } from "./session-cookies.ts";
 
@@ -43,6 +44,33 @@ export async function loadCategoriesForSession(): Promise<CategorySummary[]> {
     throw new Error("Could not load categories");
   }
   return categories.value;
+}
+
+export async function loadPacksForSession(): Promise<PackSummary[]> {
+  const accessToken = await readSessionAccessToken();
+  if (!accessToken) {
+    return [];
+  }
+  const packs = await listPacksWithCounts(accessToken);
+  if (!packs.ok) {
+    throw new Error("Could not load packs");
+  }
+  return packs.value;
+}
+
+export async function loadPackOrNotFound(id: string): Promise<CategorySummary> {
+  const accessToken = await readSessionAccessToken();
+  if (!accessToken || !isPromptId(id)) {
+    notFound();
+  }
+  const found = await findCategory(accessToken, id);
+  if (found.ok) {
+    return found.value;
+  }
+  if (found.failure.body.code === "not_found") {
+    notFound();
+  }
+  throw new Error("Could not load pack");
 }
 
 export async function loadPromptListForSession(params: PromptsListParams): Promise<PromptListForSession> {

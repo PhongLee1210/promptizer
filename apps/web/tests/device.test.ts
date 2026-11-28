@@ -42,13 +42,17 @@ test("only registered routes are rewritten for mobile", () => {
     "/prompts/x/edit",
     "/prompts/x/delete",
     "/account/password",
+    "/packs",
+    "/packs/new",
+    "/packs/x/edit",
+    "/packs/x/delete",
   ]) {
     assert.equal(isMobileSplitRoute(route), true, route);
   }
   for (const route of [
     "/sign-in",
     "/sign-up",
-    "/packs",
+    "/packs/x/y",
     "/m/prompts",
     "/prompts/a/b/c",
     "/prompts/x/unknown",

@@ -506,13 +506,16 @@ async function desktopShellJourney(browser) {
       navLabels: [...document.querySelectorAll('[data-sidebar="menu-button"]')].map((item) => item.textContent.trim()),
     }));
     check("desktop shows a single new-prompt action", sidebar.newPromptActions === 1, String(sidebar.newPromptActions));
-    check("sidebar lists prompt navigation only", !sidebar.navLabels.some((label) => /pack/i.test(label)));
+    check(
+      "sidebar lists a packs section",
+      sidebar.navLabels.some((label) => /pack/i.test(label)),
+    );
 
     await page.click('[data-sidebar="menu-button"][href="/prompts/new"]');
     await waitForPath(page, "/prompts/new");
 
     const packsResponse = await page.goto(`${BASE_URL}/packs`);
-    check("packs route no longer exists", packsResponse?.status() === 404, String(packsResponse?.status()));
+    check("packs route exists", packsResponse?.status() === 200, String(packsResponse?.status()));
 
     await page.goto(`${BASE_URL}${SIGNED_IN_LANDING_PATH}`);
     await page.waitForSelector("a[href^='/prompts/']");
@@ -625,7 +628,7 @@ async function mobileShellJourney(browser) {
     check("mobile has no duplicate new-prompt button in the page header", layout.newPromptActions === 0);
     check(
       "mobile tabs are tappable",
-      layout.tabHeights.length === 2 && layout.tabHeights.every((height) => height >= MINIMUM_TAP_TARGET_PX),
+      layout.tabHeights.length === 3 && layout.tabHeights.every((height) => height >= MINIMUM_TAP_TARGET_PX),
       layout.tabHeights.join(","),
     );
 
@@ -1129,6 +1132,72 @@ async function deleteJourney(browser, session) {
   }
 }
 
+async function packJourney(browser, session) {
+  const { context, page } = await openSignedInPage(browser, session);
+  try {
+    await page.goto(`${BASE_URL}/packs/new`);
+    await fillField(page, "Name", "Research notes");
+    await submit(page, "Create pack");
+    await waitForPath(page, "/packs");
+    const afterCreate = await visibleText(page);
+    check("created pack appears in the list", afterCreate.includes("Research notes"));
+
+    const { data: created } = await createAdminClient()
+      .from("category")
+      .select("id")
+      .eq("user_id", session.user.id)
+      .eq("name", "Research notes")
+      .single();
+    const packId = created.id;
+
+    const inPack = await createPromptViaApi(session, {
+      title: "Filed under research",
+      text: "x",
+      categoryId: packId,
+    });
+    await page.reload();
+    const withCount = await visibleText(page);
+    check("pack shows an updated prompt count", /Research notes[\s\S]*1/.test(withCount));
+
+    await page.click(`a[href="/packs/${packId}/edit"]`);
+    await waitForPath(page, `/packs/${packId}/edit`);
+    await fillField(page, "Name", "Renamed research");
+    await submit(page, "Save pack");
+    await waitForPath(page, "/packs");
+    const afterRename = await visibleText(page);
+    check(
+      "renamed pack shows its new name",
+      afterRename.includes("Renamed research") && !afterRename.includes("Research notes"),
+    );
+
+    await page.click(`a[href="/packs/${packId}/delete"]`);
+    await waitForPath(page, `/packs/${packId}/delete`);
+    const confirmation = await visibleText(page);
+    check(
+      "delete confirmation names the pack and explains prompts are kept",
+      confirmation.includes("Renamed research") && confirmation.includes("kept"),
+    );
+    await submit(page, "Delete pack");
+    await waitForPath(page, "/packs");
+    const afterDelete = await visibleText(page);
+    check("deleted pack leaves the list", !afterDelete.includes("Renamed research"));
+
+    const keptPrompt = await readPromptViaApi(session, inPack.id);
+    check(
+      "the pack's prompt survives, uncategorized",
+      keptPrompt?.title === "Filed under research" && keptPrompt?.category === null,
+    );
+    await page.goto(`${BASE_URL}/prompts`);
+    await waitForText(page, "All prompts");
+    check(
+      "the pack's prompt still appears under All prompts",
+      (await visibleText(page)).includes("Filed under research"),
+    );
+  } finally {
+    await context.close();
+  }
+}
+
 async function mobilePromptPagesJourney(browser, session) {
   const target = await createPromptViaApi(session, { title: "Mobile prompt page", text: "## Mobile\n- item" });
   const { context, page, consoleProblems } = await openSignedInPage(browser, session, MOBILE_DEVICE_PROFILE);
@@ -1189,6 +1258,7 @@ try {
   await journey("create and view prompt", () => createAndViewJourney(browser, ownerSession));
   await journey("auto-save", () => autoSaveJourney(browser, ownerSession));
   await journey("delete prompt", () => deleteJourney(browser, ownerSession));
+  await journey("pack create, rename and delete", () => packJourney(browser, ownerSession));
   await journey("mobile prompt pages", () => mobilePromptPagesJourney(browser, ownerSession));
 } finally {
   await browser?.close();
