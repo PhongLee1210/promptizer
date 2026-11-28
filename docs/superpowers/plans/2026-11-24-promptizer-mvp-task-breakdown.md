@@ -407,6 +407,8 @@ after: T-3.4.2
 
 ## Epic 4 — Prompt packs · 14.5h
 
+**Status (2026-11-28):** built by the owner as single-pack-per-prompt (T-3.0.1 option A), stacked draft PRs #11, #13–#16. Owner reports the web and e2e suites green against live Supabase. Cloud static checks (typecheck, prettier, build) pass. Boxes stay unticked until a Supabase-backed run is recorded (ledger F-1). Sidebar pack counts (T-4.3.2 box 1) were deferred by the owner.
+
 **Story 4.1 — Pack management.**
 
 **T-4.1.1 · Pack persistence & endpoints** · 2.5h · feat
@@ -463,6 +465,8 @@ after: T-4.3.1, T-3.2.2
 
 ## Epic 5 — Extension library access · 19h
 
+**Status (2026-11-28):** all 13 tasks built as one stacked line of draft PRs: owner #17–#20, loop 8 #21–#26, #28, #29 and #31. Extension unit and E2E tests are green in cloud at the stack tip. T-5.1.2 needs Supabase. T-5.2.4's save/edit-disabled box moves to T-6.3.4 because no server save/edit exists yet.
+
 **Story 5.1 — Library sync.**
 
 **T-5.1.1 · Snapshot & cache decision** · 1h · decision
@@ -480,15 +484,15 @@ after: T-5.1.1
 
 **T-5.1.3 · Extension cache layer** · 2h · feat
 after: T-5.1.1
-- [ ] Snapshot stored locally per the decision; readable by popup and content flow
-- [ ] Cache invalidation/wipe API exists and is unit-tested
-- [ ] Corrupt or missing cache degrades to "empty library, refresh needed," never an error state
+- [x] Snapshot stored locally per the decision; readable by popup and content flow
+- [x] Cache invalidation/wipe API exists and is unit-tested
+- [x] Corrupt or missing cache degrades to "empty library, refresh needed," never an error state
 
 **T-5.1.4 · Refresh flow** · 2h · feat
 after: T-5.1.2, T-5.1.3
-- [ ] Refresh on sign-in, on manual trigger, and when stale per policy
-- [ ] Refresh preserves in-progress UI (no flicker/lost state in the picker)
-- [ ] Refresh failure leaves the previous cache usable with an honest status
+- [x] Refresh on sign-in, on manual trigger, and when stale per policy
+- [x] Refresh preserves in-progress UI (no flicker/lost state in the picker)
+- [x] Refresh failure leaves the previous cache usable with an honest status
 
 **T-5.1.5 · Sync status display** · 1h · feat ⇉
 after: T-5.1.4

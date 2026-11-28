@@ -4,12 +4,13 @@ Driven by `/mvp-loop` (`.claude/commands/mvp-loop.md`), every 2 hours. States: R
 
 ## Next loop
 
-1. **Owner action:** PR #11 (owner-built T-4.1.1) treats `category` as the pack ("approved T-3.0.1 decision, one pack per prompt", which is option A). But `decisions/T-3.0.1.md` still has an empty `APPROVED:`. Once that line reads `APPROVED: A` (or D), tick the T-3.0.1 boxes that A/D satisfy and build T-4.1.2 (pack management UI) stacked on `mvp/T-4.1.1-pack-endpoints`, then T-4.1.3, then T-4.2.1. Under A, the T-3.0.1 decision's remaining gaps (`category.updated_at`, DB check on body length) are optional migration files.
-2. If `T-3.1.1.md` is approved (A), tick T-3.1.1 and T-3.1.2 boxes in the plan.
-3. Probe Supabase first (`curl ... /auth/v1/health`). If it answers, run `pnpm -C apps/web test` and `test:e2e` on `main` and on PRs #11/#12, then promote NEEDS-SUPABASE rows.
-4. Without Supabase or a decision: F-6 test seam proposal (see F-6). Every other open item needs Supabase or the owner.
+1. **Owner decisions (block Epic 6):** `decisions/T-6.1.2.md` (content-script write channel; rec. A, background service worker relay, no new permissions) and `decisions/T-6.3.1.md` (conflict rule; rec. A, `baseUpdatedAt` compare-and-set, 409 carries `current`). Also still empty: `T-3.0.1.md` and `T-3.1.1.md` `APPROVED:` lines, though the owner's PRs treat T-3.0.1 as A and T-5.1.1 as A. Write `APPROVED: A` to make the ledger match.
+2. Once T-6.1.2 is approved: build T-6.1.2 (worker + rail Save + title step) stacked on the Epic 5 tip `mvp/T-5.1.5-plural-counts` (#31), then T-6.1.3, T-6.1.4, T-6.3.4. T-6.2.x and T-6.3.2 need T-6.3.1 too.
+3. Stack order today (bottom → top): main ← #11 ← #13 ← #14 ← #15 ← #16 ← #17 ← #18 ← #19 ← #20 ← #21 ← #22 ← #23 ← #24 ← #25 ← #26 ← #28 ← #29 ← #31. Independent of it, on `main`: #9, #10 (← #12), #27, #30. #27 and the stack both edit `content/controller.ts`, so expect a small rebase.
+4. Supabase is still unreachable from cloud (F-1). The owner's local runs are the only evidence for #11, #13–#17.
+5. Without decisions: F-6 test seam, or fresh-verifier passes on whatever is still NEEDS-REVIEW.
 
-Cloud E2E recipe (extension): run per app, not through turbo (turbo strips env): `cd apps/chrome-extension && CI=1 PUPPETEER_EXECUTABLE_PATH=/opt/pw-browsers/chromium xvfb-run -a pnpm run test`. Green on `main` abf75d2 in loop 1.
+Cloud E2E recipe (extension): run per app, not through turbo (turbo strips env): `cd apps/chrome-extension && CI=1 PUPPETEER_EXECUTABLE_PATH=/opt/pw-browsers/chromium xvfb-run -a pnpm run test`. A single suite: copy `e2e/shim/e2e-fake-nano.content.ts` to `src/entrypoints/`, `pnpm build`, `xvfb-run -a node e2e/tests/<suite>.mjs`, then delete the shim copy and rebuild. Kill stale node/chromium if port 4173 is busy.
 
 ## Open findings
 
@@ -21,6 +22,9 @@ Cloud E2E recipe (extension): run per app, not through turbo (turbo strips env):
 - **F-6 · low · T-3.1.2** — Render-failure inline alert (`markdown-preview.tsx` error boundary) has no test.
 - **F-7 · low · T-3.0.1** — Text limit (20 000 code points) is app-only; `prompt_version.body` has no DB check. Folded into the T-3.0.1 decision.
 - **F-9 · medium · T-3.2.4** — PR #10 adds no e2e coverage for the error boundary (failed load shows Try again / Go to all prompts, retry recovers, missing prompt still 404). Also low: `error` prop/digest unused; error screen replaces the app shell.
+- **F-10 · medium · Journey A (pre-existing on `main`)** — After any result, `pendingEditor` stayed pinned to that editor, so on a page with two editors the chip never followed focus and later actions read and wrote the first editor. Fix: draft PR #27 (base `main`), with an E2E check that fails on `main` and passes with the fix. NEEDS-MANUAL on ChatGPT's edit-message box.
+- **F-11 · low · T-5.1.5** — Popup said "1 prompts, 0 packs". Fix: draft PR #31 (stack tip).
+- **F-12 · low · docs** — README, features.md and architecture.md on `main` claimed "no network calls at all" after Epic 2 shipped sign-in. Fix: draft PR #30 (T-7.2.3).
 - **F-8 · NEEDS-MANUAL · T-1.1.7** — Journey A smoke with the unpacked build (chip appears, one real Nano rewrite). Cloud cannot run it.
 
 Proposed Serena memory edit (apply to `web_prompts` once PR #10 merges): "Load failures under prompts are caught by error.tsx in both trees (shared components/prompts-error-state.tsx). Retry does router.refresh()+reset() in startTransition, since reset() alone doesn't re-fetch the server page. error.tsx keeps notFound() 404 status; loading.tsx does not."
@@ -79,44 +83,44 @@ Proposed Serena memory edit (apply to `web_prompts` once PR #10 merges): "Load f
 | T-3.4.2 | Delete confirmation flow | feat | ⇉ | NEEDS-SUPABASE | main |  |  |
 | T-3.4.3 | Delete tests | test | ⇉ | VERIFIED | mvp/T-3.4.3-delete-tests | main | #9 |
 | T-4.1.1 | Pack persistence & endpoints | feat |  | NEEDS-SUPABASE | mvp/T-4.1.1-pack-endpoints | main | #11 (owner-built; owner reports 82/82 live; cloud static PASS) |
-| T-4.1.2 | Pack management UI | feat | ⇉ | PENDING | | | |
-| T-4.1.3 | Pack-deletion preservation tests | test | ⇉ | PENDING | | | |
-| T-4.2.1 | Membership endpoints | feat |  | PENDING | | | |
-| T-4.2.2 | Membership UI | feat |  | PENDING | | | |
-| T-4.2.3 | Membership & count tests | test | ⇉ | PENDING | | | |
-| T-4.3.1 | Pack view page | feat |  | PENDING | | | |
-| T-4.3.2 | Navigation orientation pass | feat |  | PENDING | | | |
-| T-5.1.1 | Snapshot & cache decision | decision |  | PENDING | | | |
-| T-5.1.2 | Library snapshot endpoint | feat |  | PENDING | | | |
-| T-5.1.3 | Extension cache layer | feat |  | PENDING | | | |
-| T-5.1.4 | Refresh flow | feat |  | PENDING | | | |
-| T-5.1.5 | Sync status display | feat | ⇉ | PENDING | | | |
-| T-5.1.6 | Sync tests | test | ⇉ | PENDING | | | |
-| T-5.2.1 | Rail "My Prompts" item | feat |  | PENDING | | | |
-| T-5.2.2 | Picker UI | feat |  | PENDING | | | |
-| T-5.2.3 | Insert into preview | feat |  | PENDING | | | |
-| T-5.2.4 | Offline read-only behavior | feat |  | PENDING | | | |
-| T-5.2.5 | Picker tests | test | ⇉ | PENDING | | | |
-| T-5.3.1 | Sign-out wipe | feat |  | PENDING | | | |
-| T-5.3.2 | Wipe tests | test | ⇉ | PENDING | | | |
-| T-6.1.1 | Save-prompt endpoint | feat |  | PENDING | | | |
-| T-6.1.2 | Rail "Save prompt" action + title step | feat |  | PENDING | | | |
+| T-4.1.2 | Pack management UI | feat | ⇉ | NEEDS-SUPABASE | mvp/T-4.1.2-pack-ui | mvp/T-4.1.1-pack-endpoints | #13 (owner-built; owner reports web tests + e2e green live) |
+| T-4.1.3 | Pack-deletion preservation tests | test | ⇉ | NEEDS-SUPABASE | | | no own PR: owner reports covered by #11 preservation tests + #13 packJourney; not separately verified |
+| T-4.2.1 | Membership endpoints | feat |  | NEEDS-SUPABASE | | | no own PR: owner reports satisfied by existing `PATCH categoryId` under single-pack (T-3.0.1 A) |
+| T-4.2.2 | Membership UI | feat |  | NEEDS-SUPABASE | mvp/T-4.2.2-pack-membership-ui | mvp/T-4.3.1-pack-view | #15 (owner-built) |
+| T-4.2.3 | Membership & count tests | test | ⇉ | NEEDS-SUPABASE | mvp/T-4.2.2-pack-membership-ui | | covered inside #15 (owner) |
+| T-4.3.1 | Pack view page | feat |  | NEEDS-SUPABASE | mvp/T-4.3.1-pack-view | mvp/T-4.1.2-pack-ui | #14 (owner-built) |
+| T-4.3.2 | Navigation orientation pass | feat |  | NEEDS-SUPABASE | mvp/T-4.3.2-nav-orientation | mvp/T-4.2.2-pack-membership-ui | #16 (owner-built; sidebar pack counts deferred by owner) |
+| T-5.1.1 | Snapshot & cache decision | decision |  | DONE | | | owner-approved option A per #17/#18 bodies; no decision file on loop-state |
+| T-5.1.2 | Library snapshot endpoint | feat |  | NEEDS-SUPABASE | mvp/T-5.1.2-snapshot-endpoint | mvp/T-4.3.2-nav-orientation | #17 (owner-built; owner reports 85/85 live) |
+| T-5.1.3 | Extension cache layer | feat |  | VERIFIED | mvp/T-5.1.3-extension-cache | mvp/T-5.1.2-snapshot-endpoint | #18 (owner-built; cloud unit+E2E green) |
+| T-5.1.4 | Refresh flow | feat |  | VERIFIED | mvp/T-5.1.4-refresh-flow | mvp/T-5.1.3-extension-cache | #19 (owner-built; cloud unit+E2E green) |
+| T-5.1.5 | Sync status display | feat | ⇉ | NEEDS-MANUAL | mvp/T-5.1.5-sync-status | mvp/T-5.1.4-refresh-flow | #20 (owner-built); plural fix #31 |
+| T-5.1.6 | Sync tests | test | ⇉ | NEEDS-REVIEW | mvp/T-5.1.6-sync-tests | mvp/T-5.3.1-sign-out-wipe | #22 |
+| T-5.2.1 | Rail "My Prompts" item | feat |  | NEEDS-REVIEW | mvp/T-5.2.1-rail-my-prompts | mvp/T-5.1.6-sync-tests | #23 |
+| T-5.2.2 | Picker UI | feat |  | NEEDS-REVIEW | mvp/T-5.2.2-picker-ui | mvp/T-5.2.1-rail-my-prompts | #24 |
+| T-5.2.3 | Insert into preview | feat |  | NEEDS-REVIEW | mvp/T-5.2.3-insert-into-preview | mvp/T-5.2.2-picker-ui | #25 |
+| T-5.2.4 | Offline read-only behavior | feat |  | NEEDS-REVIEW | mvp/T-5.2.4-offline-picker | mvp/T-5.3.2-wipe-tests | #28 (save/edit disabling deferred to T-6.3.4) |
+| T-5.2.5 | Picker tests | test | ⇉ | NEEDS-REVIEW | mvp/T-5.2.5-picker-tests | mvp/T-5.2.4-offline-picker | #29 |
+| T-5.3.1 | Sign-out wipe | feat |  | NEEDS-REVIEW | mvp/T-5.3.1-sign-out-wipe | mvp/T-5.1.5-sync-status | #21 |
+| T-5.3.2 | Wipe tests | test | ⇉ | NEEDS-REVIEW | mvp/T-5.3.2-wipe-tests | mvp/T-5.2.3-insert-into-preview | #26 |
+| T-6.1.1 | Save-prompt endpoint | feat |  | NEEDS-SUPABASE | main | | no new endpoint: existing `POST /api/prompts` (T-3.1.3) meets all 3 boxes; see decisions/T-6.1.2.md |
+| T-6.1.2 | Rail "Save prompt" action + title step | feat |  | BLOCKED-DECISION | | | decisions/T-6.1.2.md (content-script write channel) |
 | T-6.1.3 | One-time first-save notice | feat | ⇉ | PENDING | | | |
 | T-6.1.4 | Save flow tests | test | ⇉ | PENDING | | | |
 | T-6.2.1 | Edit push from the extension | feat |  | PENDING | | | |
 | T-6.2.2 | Edit UI in the picker | feat |  | PENDING | | | |
 | T-6.2.3 | Edit sync tests | test | ⇉ | PENDING | | | |
-| T-6.3.1 | Conflict detection decision | decision |  | PENDING | | | |
+| T-6.3.1 | Conflict detection decision | decision |  | BLOCKED-DECISION | | | decisions/T-6.3.1.md |
 | T-6.3.2 | Conflict refusal & "updated elsewhere" UI | feat |  | PENDING | | | |
 | T-6.3.3 | Network error retry states | feat |  | PENDING | | | |
 | T-6.3.4 | Offline save disabled state | feat | ⇉ | PENDING | | | |
 | T-6.3.5 | Conflict & error tests | test | ⇉ | PENDING | | | |
-| T-7.1.1 | Journey A regression pass | qa |  | PENDING | | | |
+| T-7.1.1 | Journey A regression pass | qa |  | PENDING | mvp/T-7.1.1-release-anchor-editor | main | F-10 fix #27 (NEEDS-REVIEW) |
 | T-7.1.2 | Journey B end-to-end pass | qa |  | PENDING | | | |
 | T-7.1.3 | Journeys C & D pass | qa | ⇉ | PENDING | | | |
 | T-7.2.1 | Privacy principles verification | qa |  | PENDING | | | |
 | T-7.2.2 | Documentation update | docs | ⇉ | PENDING | | | |
-| T-7.2.3 | Permission-change explanation | docs | ⇉ | PENDING | | | |
+| T-7.2.3 | Permission-change explanation | docs | ⇉ | NEEDS-REVIEW | mvp/T-7.2.3-network-reach | main | #30 (store declaration draft in PR body) |
 | T-7.3.1 | Service deployment & smoke test | infra |  | PENDING | | | |
 | T-7.3.2 | Extension version bump & release | feat |  | PENDING | | | |
 
