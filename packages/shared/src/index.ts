@@ -108,3 +108,9 @@ export interface ApiErrorBody {
 export function countCharacters(value: string): number {
   return Array.from(value).length;
 }
+
+export interface LibrarySnapshot {
+  prompts: Prompt[];
+  packs: PackSummary[];
+  fetchedAt: number;
+}

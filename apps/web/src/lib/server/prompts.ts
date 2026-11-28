@@ -336,6 +336,18 @@ export async function listPrompts(accessToken: string, query: PromptListQuery): 
   return query.query || query.tag ? listFilteredByText(client, query) : listUnfilteredByText(client, query);
 }
 
+export async function listAllPrompts(accessToken: string): Promise<Outcome<Prompt[]>> {
+  const client = createUserClient(accessToken);
+  const rows = await selectAllRows<PromptRow>(() =>
+    client
+      .from("prompt")
+      .select(PROMPT_COLUMNS)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false }),
+  );
+  return rows.ok ? succeed(rows.value.map(toPrompt)) : rows;
+}
+
 export async function listCategories(accessToken: string): Promise<Outcome<CategorySummary[]>> {
   const listed = await createUserClient(accessToken).from("category").select("id, name").order("name");
   return listed.error ? failureForDatabaseError(listed) : succeed(listed.data as CategorySummary[]);
