@@ -637,6 +637,9 @@ export class PromptPicker {
       editing.isBlocked = failure.recovery === "blocked";
       saveButton.disabled = editing.isBlocked || !navigator.onLine;
       cancelButton.disabled = false;
+      if (response.kind === "not_found") {
+        this.library = withoutPrompt(this.library, prompt.id);
+      }
       if (failure.recovery === "retry") {
         relabelButton(saveButton, "retry", "Retry save");
       } else {
@@ -713,7 +716,7 @@ export class PromptPicker {
       confirming.isDeleting = true;
       deleteButton.disabled = true;
       cancelButton.disabled = true;
-      deleteButton.setAttribute("aria-label", "Deleting…");
+      relabelButton(deleteButton, "trash", "Deleting…");
       const response = await this.callbacks.onDelete(prompt.id);
       if (thisOpening !== this.openCount || !this.isOpen) {
         return;

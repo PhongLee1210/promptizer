@@ -48,6 +48,9 @@ async function writeStorage(browser, entries) {
   await extensionPage.close();
 }
 
+const NOT_FOUND_EDIT_MESSAGE =
+  "This prompt was deleted elsewhere, so it can't be saved. Copy your text if you still need it.";
+
 async function isShown(page, label, timeoutMs = 1000) {
   try {
     await page.waitForSelector(`aria/${label}`, { timeout: timeoutMs });
@@ -281,6 +284,9 @@ await runCase("prompt-picker", async (page, check, browser) => {
     if (request.method === "DELETE") {
       return { status: 204, body: null };
     }
+    if (request.url.endsWith("/api/prompts/prompt-2")) {
+      return { status: 404, body: { code: "not_found", message: "Prompt not found." } };
+    }
     const changes = JSON.parse(request.postData ?? "{}");
     if (changes.text === "rejected draft") {
       return {
@@ -398,6 +404,32 @@ await runCase("prompt-picker", async (page, check, browser) => {
     JSON.stringify(deleteRequest),
   );
   await page.keyboard.press("Escape");
+
+  await openPicker(page);
+  await page.keyboard.type("standup");
+  await (await page.waitForSelector('aria/Edit selected prompt[role="button"]')).click();
+  await page.waitForSelector('aria/Prompt title[role="textbox"]', { timeout: 5000 });
+  const goneTextField = await page.waitForSelector('aria/Prompt text[role="textbox"]');
+  await goneTextField.evaluate((area) => area.select());
+  await goneTextField.type("standup kept locally");
+  const goneSave = await page.waitForSelector('aria/Save changes[role="button"]');
+  await goneSave.click();
+  await page.waitForFunction(
+    (saveButton) => saveButton.getRootNode().querySelector(".pz-picker")?.textContent?.includes("deleted elsewhere"),
+    { timeout: 5000 },
+    goneSave,
+  );
+  const { [LIBRARY_STORAGE_KEY]: goneCache } = await readStorage(browser, [LIBRARY_STORAGE_KEY]);
+  check(
+    "an edit of a prompt deleted elsewhere says so, keeps the text, and stops offering Save",
+    (await previewShows(page, NOT_FOUND_EDIT_MESSAGE)) &&
+      (await goneTextField.evaluate((area) => area.value)) === "standup kept locally" &&
+      (await goneSave.evaluate((saveButton) => saveButton.disabled)) &&
+      goneCache?.prompts?.every((prompt) => prompt.id !== "prompt-2"),
+  );
+  await page.keyboard.press("Escape");
+  check("the prompt deleted elsewhere leaves the picker", !(await isShown(page, "Standup notes", 300)));
+  await page.keyboard.press("Escape");
   await api.client.detach();
 
   pickerSearch = await openPicker(page);
@@ -451,6 +483,8 @@ await runCase("prompt-picker", async (page, check, browser) => {
     }
     return request.method === "DELETE" ? { status: 204, body: null } : { status: 200, body: serverRenamed };
   });
+  await writeStorage(browser, { [LIBRARY_STORAGE_KEY]: FULL_LIBRARY });
+  await page.bringToFront();
   pickerSearch = await openPicker(page);
   await page.keyboard.type("standup");
   await (await page.waitForSelector('aria/Edit selected prompt[role="button"]')).click();

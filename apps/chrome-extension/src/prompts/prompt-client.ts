@@ -18,7 +18,8 @@ const RETRYABLE_ERROR: PromptClientError = {
   message: "Couldn't reach Promptizer. Check your connection and try again.",
 };
 
-const NOT_FOUND_MESSAGE = "This prompt is no longer in your account. Refresh your library.";
+const NOT_FOUND_MESSAGE =
+  "This prompt was deleted elsewhere, so it can't be saved. Copy your text if you still need it.";
 
 function mapFailure(status: number, body: ApiErrorBody | undefined, targetsExistingPrompt: boolean): PromptClientError {
   if (status === 401 || body?.code === "unauthenticated") {
