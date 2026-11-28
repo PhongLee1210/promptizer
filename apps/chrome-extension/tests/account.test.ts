@@ -270,7 +270,9 @@ test("a renewal for the previous account does not overwrite a newer sign-in", as
   assert.equal(store.current?.accessToken, "access-b");
 });
 
-function queuedStore(initial: AuthSession): SessionStore & { current: AuthSession | undefined } {
+function queuedStore(
+  initial: AuthSession,
+): SessionStore & { current: AuthSession | undefined; onSaveQueued: () => void } {
   const STORAGE_ROUND_TRIP_MS = 5;
   let queue: Promise<unknown> = Promise.resolve();
   function enqueue<T>(operation: () => T): Promise<T> {
@@ -282,11 +284,15 @@ function queuedStore(initial: AuthSession): SessionStore & { current: AuthSessio
   }
   const store = {
     current: initial as AuthSession | undefined,
+    onSaveQueued: () => {},
     load: () => enqueue(() => store.current),
-    save: (session: AuthSession) =>
-      enqueue(() => {
+    save: (session: AuthSession) => {
+      const saved = enqueue(() => {
         store.current = session;
-      }),
+      });
+      store.onSaveQueued();
+      return saved;
+    },
     clear: () =>
       enqueue(() => {
         store.current = undefined;
@@ -324,6 +330,88 @@ test("a token request issued during a sign-in cannot renew the previous account 
   const tokenRequest = manager.getAccessToken();
   await signIn;
   releaseRefresh();
+  await tokenRequest;
+  assert.equal(store.current?.accessToken, "access-b");
+});
+
+const SECOND_ACCOUNT: AuthSession = {
+  accessToken: "access-b",
+  refreshToken: "refresh-b",
+  expiresAt: NOW_SECONDS + 3600,
+  user: { id: "user-2", email: "grace@example.com", name: "Grace" },
+};
+
+function heldRefreshResponse(refreshResponse: () => Response) {
+  let releaseRefresh: () => void = () => {};
+  const refreshHeld = new Promise<void>((resolve) => {
+    releaseRefresh = resolve;
+  });
+  const client = createAuthClient(
+    "https://api.test",
+    routedFetch({
+      "/api/auth/refresh": refreshResponse,
+      "/api/auth/sign-in": () => new Response(JSON.stringify(SECOND_ACCOUNT)),
+    }),
+  );
+  const heldClient = {
+    ...client,
+    refresh: async (refreshToken: string) => {
+      await refreshHeld;
+      return client.refresh(refreshToken);
+    },
+  };
+  return { client: heldClient, releaseRefresh };
+}
+
+test("a renewal that lands while a new sign-in is being saved cannot overwrite it", async () => {
+  const store = queuedStore(sessionExpiringAt(NOW_SECONDS + 10));
+  const { client, releaseRefresh } = heldRefreshResponse(
+    () => new Response(JSON.stringify(sessionExpiringAt(NOW_SECONDS + 3600, "access-2"))),
+  );
+  const manager = createSessionManager(client, store, () => NOW_SECONDS * 1000);
+  const tokenRequest = manager.getAccessToken();
+  store.onSaveQueued = releaseRefresh;
+  await manager.signIn("grace@example.com", "pw");
+  await tokenRequest;
+  assert.equal(store.current?.accessToken, "access-b");
+});
+
+test("a rejected renewal that lands while a new sign-in is being saved does not sign the new account out", async () => {
+  const store = queuedStore(sessionExpiringAt(NOW_SECONDS + 10));
+  const { client, releaseRefresh } = heldRefreshResponse(() => new Response("{}", { status: 401 }));
+  let wipes = 0;
+  const manager = createSessionManager(
+    client,
+    store,
+    () => NOW_SECONDS * 1000,
+    async () => {
+      wipes += 1;
+    },
+  );
+  const tokenRequest = manager.getAccessToken();
+  store.onSaveQueued = releaseRefresh;
+  await manager.signIn("grace@example.com", "pw");
+  await tokenRequest;
+  assert.equal(store.current?.accessToken, "access-b");
+  assert.equal(wipes, 1);
+});
+
+test("a token request that starts during a sign-in cannot renew the previous account over the new one", async () => {
+  const store = queuedStore(sessionExpiringAt(NOW_SECONDS + 10));
+  const { client, releaseRefresh } = heldRefreshResponse(
+    () => new Response(JSON.stringify(sessionExpiringAt(NOW_SECONDS + 3600, "access-2"))),
+  );
+  let tokenRequest: Promise<unknown> = Promise.resolve();
+  const manager = createSessionManager(
+    client,
+    store,
+    () => NOW_SECONDS * 1000,
+    async () => {
+      tokenRequest = manager.getAccessToken();
+    },
+  );
+  store.onSaveQueued = releaseRefresh;
+  await manager.signIn("grace@example.com", "pw");
   await tokenRequest;
   assert.equal(store.current?.accessToken, "access-b");
 });

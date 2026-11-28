@@ -28,6 +28,7 @@ export function createSessionManager(
   wipeAccountData: () => Promise<void> = async () => {},
 ): SessionManager {
   let credentialChangeCount = 0;
+  let signInsWritingCredentials = 0;
 
   async function clearCredentials(): Promise<void> {
     credentialChangeCount += 1;
@@ -40,7 +41,7 @@ export function createSessionManager(
     credentialChangeCountAtRead: number,
   ): Promise<AuthClientResult<AuthSession | undefined>> {
     const renewed = await client.refresh(session.refreshToken);
-    if (credentialChangeCount !== credentialChangeCountAtRead) {
+    if (credentialChangeCount !== credentialChangeCountAtRead || signInsWritingCredentials > 0) {
       return { ok: true, value: await store.load() };
     }
     if (renewed.ok) {
@@ -76,9 +77,15 @@ export function createSessionManager(
       if (!result.ok) {
         return result;
       }
-      await wipeAccountData();
-      await store.save(result.value);
       credentialChangeCount += 1;
+      signInsWritingCredentials += 1;
+      try {
+        await wipeAccountData();
+        await store.save(result.value);
+      } finally {
+        credentialChangeCount += 1;
+        signInsWritingCredentials -= 1;
+      }
       return { ok: true, value: result.value.user };
     },
 
