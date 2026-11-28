@@ -1169,6 +1169,31 @@ async function packJourney(browser, session) {
     await waitForPath(page, `/packs/${packId}`);
     check("back from the opened prompt returns to the pack", true);
 
+    const unfiled = await createPromptViaApi(session, { title: "Unfiled note", text: "x" });
+    await fillField(page, "Search prompts to add", "Unfiled note");
+    await submit(page, "Search");
+    await page.waitForFunction(() => document.body.innerText.includes("Unfiled note"), { timeout: 15000 });
+    await submit(page, "Add");
+    await page.waitForFunction(
+      () => ![...document.querySelectorAll("li")].some((item) => item.textContent?.includes("Unfiled note")),
+      { timeout: 15000 },
+    );
+    const addedPrompt = await readPromptViaApi(session, unfiled.id);
+    check("add-to-pack picker assigns the prompt to this pack", addedPrompt?.category?.id === packId);
+    await page.waitForFunction(() => document.body.innerText.includes("Unfiled note"), { timeout: 15000 });
+    check("added prompt appears as a card in the pack after refresh", true);
+
+    const removedUnfiled = await page.evaluate(() => {
+      const buttons = [...document.querySelectorAll('[aria-label="Remove from pack"]')];
+      const target = buttons.find((button) => button.closest(".relative")?.textContent?.includes("Unfiled note"));
+      (target instanceof HTMLElement ? target : undefined)?.click();
+      return Boolean(target);
+    });
+    check("inline remove button found on the right card", removedUnfiled);
+    await page.waitForFunction(() => !document.body.innerText.includes("Unfiled note"), { timeout: 15000 });
+    const removedPrompt = await readPromptViaApi(session, unfiled.id);
+    check("inline remove clears the prompt's pack", removedPrompt?.category === null);
+
     const { data: emptyPack } = await createAdminClient()
       .from("category")
       .insert({ user_id: session.user.id, name: "Empty pack" })
