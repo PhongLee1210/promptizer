@@ -1,21 +1,34 @@
 import { browser } from "wxt/browser";
 import { accountSession, API_ORIGIN } from "../account/account-session.ts";
 import { createPromptClient } from "../prompts/prompt-client.ts";
-import { createSavePromptHandler, createUpdatePromptHandler } from "../prompts/save-prompt-handler.ts";
-import { isSavePromptMessage, isUpdatePromptMessage, pickPromptEdit } from "../prompts/save-prompt-message.ts";
-import type { PromptWriteResponse } from "../prompts/save-prompt-message.ts";
+import {
+  createDeletePromptHandler,
+  createSavePromptHandler,
+  createUpdatePromptHandler,
+} from "../prompts/save-prompt-handler.ts";
+import {
+  isDeletePromptMessage,
+  isSavePromptMessage,
+  isUpdatePromptMessage,
+  pickPromptEdit,
+} from "../prompts/save-prompt-message.ts";
+import type { PromptDeleteResponse, PromptWriteResponse } from "../prompts/save-prompt-message.ts";
 
 const promptClient = createPromptClient(API_ORIGIN);
 const getAccessToken = () => accountSession.getAccessToken();
 const handleSavePrompt = createSavePromptHandler(getAccessToken, promptClient);
 const handleUpdatePrompt = createUpdatePromptHandler(getAccessToken, promptClient);
+const handleDeletePrompt = createDeletePromptHandler(getAccessToken, promptClient);
 
-function handlePromptWrite(message: unknown): Promise<PromptWriteResponse> | undefined {
+function handlePromptWrite(message: unknown): Promise<PromptWriteResponse | PromptDeleteResponse> | undefined {
   if (isSavePromptMessage(message)) {
     return handleSavePrompt(message.draft);
   }
   if (isUpdatePromptMessage(message)) {
     return handleUpdatePrompt(message.id, pickPromptEdit(message.changes));
+  }
+  if (isDeletePromptMessage(message)) {
+    return handleDeletePrompt(message.id);
   }
   return undefined;
 }

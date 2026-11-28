@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { LibrarySnapshot } from "@promptizer/shared";
-import { createLibraryCache, replaceCachedPrompt } from "../src/library/library-cache.ts";
+import { createLibraryCache, removeCachedPrompt, replaceCachedPrompt } from "../src/library/library-cache.ts";
 import type { SnapshotStore } from "../src/library/library-cache.ts";
 import { createLibraryClient } from "../src/library/library-client.ts";
 import { createLibraryManager } from "../src/library/library-manager.ts";
@@ -212,4 +212,20 @@ test("a confirmed edit never recreates a wiped cache or adds an unknown prompt",
   const other = memoryStore(snapshotAt(NOW_SECONDS));
   assert.equal(await replaceCachedPrompt(createLibraryCache(other), { ...edited, id: "p-unknown" }), false);
   assert.deepEqual(other.current, snapshotAt(NOW_SECONDS));
+});
+
+test("a confirmed delete drops the prompt and its pack count, keeping the sync time", async () => {
+  const filed = { ...snapshotAt(NOW_SECONDS).prompts[0]!, category: { id: "c1", name: "Pack" } };
+  const store = memoryStore({ ...snapshotAt(NOW_SECONDS), prompts: [filed] });
+  assert.equal(await removeCachedPrompt(createLibraryCache(store), "p1"), true);
+  const after = store.current as LibrarySnapshot;
+  assert.deepEqual(after.prompts, []);
+  assert.deepEqual(after.packs, [{ id: "c1", name: "Pack", promptCount: 0 }]);
+  assert.equal(after.fetchedAt, NOW_SECONDS);
+});
+
+test("a confirmed delete never recreates a wiped cache", async () => {
+  const wiped = memoryStore(undefined);
+  assert.equal(await removeCachedPrompt(createLibraryCache(wiped), "p1"), false);
+  assert.equal(wiped.current, undefined);
 });

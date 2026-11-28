@@ -1,7 +1,9 @@
 import type { PackSummary, Prompt } from "@promptizer/shared";
-import { createLibraryCache } from "../library/library-cache";
+import { createLibraryCache, withoutPrompt } from "../library/library-cache";
 import { createBrowserSnapshotStore } from "../library/snapshot-store";
+import type { PromptDeleteResponse, PromptEdit, PromptWriteResponse } from "../prompts/save-prompt-message";
 import { PICKER_HEIGHT } from "./anchor";
+import { OFFLINE_SAVE_MESSAGE } from "./present-result";
 import { button } from "./result-window";
 
 export interface PickerLibrary {
@@ -13,15 +15,26 @@ export interface PromptPickerCallbacks {
   onPick: (prompt: Prompt) => void;
   onOpenDashboard: () => void;
   onClose: () => void;
+  onSaveEdit: (id: string, changes: PromptEdit) => Promise<PromptWriteResponse>;
+  onDelete: (id: string) => Promise<PromptDeleteResponse>;
 }
 
 type PickerRow = { kind: "pack"; pack: PackSummary } | { kind: "prompt"; prompt: Prompt };
+
+type PickerMode =
+  | { kind: "browsing" }
+  | { kind: "editing"; prompt: Prompt; isSaving: boolean }
+  | { kind: "confirming-delete"; prompt: Prompt; isDeleting: boolean };
 
 const LIST_ID = "pz-picker-list";
 const ROW_ID_PREFIX = "pz-picker-row-";
 const PICKER_TITLE = "My Prompts";
 const OFFLINE_MESSAGE = "You're offline. Showing your last synced library.";
 const EMPTY_LIBRARY_MESSAGE = "No saved prompts yet. Add some on the dashboard, then sync from the Promptizer popup.";
+const TITLE_ERROR_ID = "pz-picker-title-error";
+const TEXT_ERROR_ID = "pz-picker-text-error";
+const DELETE_QUESTION_ID = "pz-picker-delete-question";
+const DELETE_WARNING = "This permanently deletes the prompt and its text. This can't be undone.";
 
 export const PICKER_STYLE = `
   .pz-picker {
@@ -105,9 +118,72 @@ export const PICKER_STYLE = `
   .pz-picker__note button {
     margin-top: 8px;
   }
+  .pz-picker__row button.pz-picker__row-action {
+    display: none;
+    flex: none;
+  }
+  .pz-picker__row[aria-selected="true"] button.pz-picker__row-action {
+    display: flex;
+  }
+  .pz-picker__panel {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 6px 8px;
+  }
+  .pz-picker__panel[hidden] {
+    display: none;
+  }
+  textarea.pz-picker__text {
+    flex: 1;
+    min-height: 0;
+    height: auto;
+    padding: 6px 8px;
+    border-radius: 7px;
+    border: 1px solid var(--pz-color-border-base-muted);
+    font-size: 12px;
+  }
+  textarea.pz-picker__text:focus-visible {
+    border-color: var(--pz-color-fill-brand-default);
+  }
+  .pz-picker__panel [aria-invalid="true"] {
+    border-color: var(--pz-color-text-critical-default);
+  }
+  .pz-picker__message {
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--pz-color-text-base-subdued);
+    overflow-wrap: anywhere;
+  }
+  .pz-picker__message:empty,
+  .pz-picker__message[hidden] {
+    display: none;
+  }
+  .pz-picker__message--error {
+    color: var(--pz-color-text-critical-default);
+  }
+  .pz-picker__question {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+  .pz-picker button.pz-win__btn--critical {
+    background: var(--pz-color-text-critical-default);
+  }
   @media (hover: hover) and (pointer: fine) {
     .pz-picker__row:hover {
       background: var(--pz-color-fill-hover-default);
+    }
+    .pz-picker__row:hover button.pz-picker__row-action {
+      display: flex;
+    }
+    .pz-picker button.pz-win__btn--critical:hover {
+      background: var(--pz-color-text-critical-default);
+      opacity: 0.9;
     }
   }
 `;
@@ -125,18 +201,57 @@ function matchesQuery(prompt: Prompt, query: string): boolean {
   return prompt.title.toLocaleLowerCase().includes(query);
 }
 
+function changedFields(prompt: Prompt, title: string, text: string): PromptEdit {
+  return {
+    ...(title !== prompt.title ? { title } : {}),
+    ...(text !== prompt.text ? { text } : {}),
+  };
+}
+
+function panelMessage(id: string | null, isError: boolean): HTMLParagraphElement {
+  const message = document.createElement("p");
+  message.className = `pz-picker__message${isError ? " pz-picker__message--error" : ""}`;
+  if (id !== null) {
+    message.id = id;
+  }
+  return message;
+}
+
+function offlineWriteNote(): HTMLParagraphElement {
+  const note = panelMessage(null, false);
+  note.setAttribute("role", "status");
+  note.textContent = OFFLINE_SAVE_MESSAGE;
+  return note;
+}
+
+function showFieldError(field: HTMLInputElement | HTMLTextAreaElement, errorLine: HTMLElement, message?: string): void {
+  errorLine.textContent = message ?? "";
+  if (message === undefined) {
+    field.removeAttribute("aria-invalid");
+    field.removeAttribute("aria-describedby");
+    return;
+  }
+  field.setAttribute("aria-invalid", "true");
+  field.setAttribute("aria-describedby", errorLine.id);
+}
+
 export class PromptPicker {
   private readonly element: HTMLDivElement;
   private readonly topBar: HTMLDivElement;
+  private readonly search: HTMLDivElement;
   private readonly input: HTMLInputElement;
   private readonly list: HTMLDivElement;
   private readonly offlineNote: HTMLParagraphElement;
+  private readonly panel: HTMLDivElement;
+  private readonly bottomBar: HTMLDivElement;
   private library: PickerLibrary = { prompts: [], packs: [] };
   private openPack: PackSummary | null = null;
+  private mode: PickerMode = { kind: "browsing" };
   private rows: PickerRow[] = [];
   private activeIndex = 0;
   private isOpen = false;
   private openCount = 0;
+  private applyPanelAvailability: ((online: boolean) => void) | null = null;
 
   constructor(
     private readonly callbacks: PromptPickerCallbacks,
@@ -151,8 +266,8 @@ export class PromptPicker {
     this.topBar = document.createElement("div");
     this.topBar.className = "pz-win__bar pz-win__bar--top";
 
-    const search = document.createElement("div");
-    search.className = "pz-picker__search";
+    this.search = document.createElement("div");
+    this.search.className = "pz-picker__search";
     this.input = document.createElement("input");
     this.input.type = "search";
     this.input.className = "pz-picker__input";
@@ -168,7 +283,7 @@ export class PromptPicker {
       this.renderContent();
     });
     this.input.addEventListener("keydown", (event) => this.handleKey(event));
-    search.append(this.input);
+    this.search.append(this.input);
 
     this.list = document.createElement("div");
     this.list.className = "pz-picker__list";
@@ -180,15 +295,28 @@ export class PromptPicker {
     this.offlineNote.className = "pz-picker__offline";
     this.offlineNote.setAttribute("role", "status");
     this.offlineNote.textContent = OFFLINE_MESSAGE;
-    this.syncOfflineNote();
-    window.addEventListener("online", () => this.syncOfflineNote());
-    window.addEventListener("offline", () => this.syncOfflineNote());
 
-    this.element.append(this.topBar, search, this.offlineNote, this.list);
+    this.panel = document.createElement("div");
+    this.panel.className = "pz-picker__panel";
+    this.panel.hidden = true;
+
+    this.bottomBar = document.createElement("div");
+    this.bottomBar.className = "pz-win__bar pz-win__bar--bottom";
+
+    this.syncConnectivity();
+    window.addEventListener("online", () => this.syncConnectivity());
+    window.addEventListener("offline", () => this.syncConnectivity());
+
+    this.element.append(this.topBar, this.search, this.offlineNote, this.list, this.panel, this.bottomBar);
   }
 
-  private syncOfflineNote(): void {
-    this.offlineNote.hidden = navigator.onLine;
+  private syncConnectivity(): void {
+    this.offlineNote.hidden = navigator.onLine || this.mode.kind !== "browsing";
+    if (this.mode.kind === "browsing") {
+      this.syncRowActions();
+      return;
+    }
+    this.applyPanelAvailability?.(navigator.onLine);
   }
 
   node(): HTMLDivElement {
@@ -204,8 +332,8 @@ export class PromptPicker {
     if (!open) {
       return;
     }
-    this.syncOfflineNote();
     const thisOpening = ++this.openCount;
+    this.mode = { kind: "browsing" };
     this.openPack = null;
     this.input.value = "";
     this.activeIndex = 0;
@@ -216,7 +344,9 @@ export class PromptPicker {
         return;
       }
       this.library = library;
-      this.renderContent();
+      if (this.mode.kind === "browsing") {
+        this.renderContent();
+      }
     });
   }
 
@@ -225,6 +355,13 @@ export class PromptPicker {
   }
 
   handleEscape(): boolean {
+    if (this.mode.kind === "editing" || this.mode.kind === "confirming-delete") {
+      const isBusy = this.mode.kind === "editing" ? this.mode.isSaving : this.mode.isDeleting;
+      if (!isBusy) {
+        this.returnToList(this.mode.prompt.id);
+      }
+      return true;
+    }
     if (this.openPack === null) {
       return false;
     }
@@ -265,37 +402,80 @@ export class PromptPicker {
     return [...packs, ...prompts];
   }
 
+  private showBrowsing(isBrowsing: boolean): void {
+    this.search.hidden = !isBrowsing;
+    this.list.hidden = !isBrowsing;
+    this.panel.hidden = isBrowsing;
+    this.offlineNote.hidden = navigator.onLine || !isBrowsing;
+  }
+
   private renderContent(): void {
-    this.renderTopBar();
+    this.applyPanelAvailability = null;
+    this.showBrowsing(true);
+    this.panel.replaceChildren();
+    this.renderTopBar(this.openPack?.name ?? PICKER_TITLE, this.openPack !== null);
+    this.renderRowActionBar();
     this.rows = this.visibleRows();
     this.activeIndex = Math.min(this.activeIndex, Math.max(this.rows.length - 1, 0));
     this.list.replaceChildren();
     if (this.library.prompts.length === 0 && this.library.packs.length === 0) {
       this.renderNote(EMPTY_LIBRARY_MESSAGE, true);
+      this.syncRowActions();
       return;
     }
     if (this.rows.length === 0) {
       const query = this.input.value.trim();
       this.renderNote(query.length > 0 ? `No prompts match "${query}".` : "This pack has no prompts yet.", false);
+      this.syncRowActions();
       return;
     }
     this.rows.forEach((row, index) => this.list.append(this.createRow(row, index)));
     this.syncActiveRow();
   }
 
-  private renderTopBar(): void {
+  private renderTopBar(titleText: string, withBack: boolean): void {
     const leading = document.createElement("span");
     leading.className = "pz-win__leading";
-    if (this.openPack !== null) {
+    if (withBack) {
       leading.append(button("back", null, "All packs", () => this.leavePack(), "nav"));
     }
     const title = document.createElement("span");
     title.className = "pz-win__title";
-    title.textContent = this.openPack?.name ?? PICKER_TITLE;
+    title.textContent = titleText;
     const trailing = document.createElement("span");
     trailing.className = "pz-win__trailing";
     trailing.append(button("close", null, "Close", this.callbacks.onClose, "muted"));
     this.topBar.replaceChildren(leading, title, trailing);
+  }
+
+  private renderRowActionBar(): void {
+    this.bottomBar.replaceChildren(
+      button("edit", null, "Edit selected prompt", () => this.startEditing(this.activePrompt())),
+      button("trash", null, "Delete selected prompt", () => this.confirmDelete(this.activePrompt())),
+    );
+  }
+
+  private activePrompt(): Prompt | null {
+    const row = this.rows[this.activeIndex];
+    return row?.kind === "prompt" ? row.prompt : null;
+  }
+
+  private syncRowActions(): void {
+    const online = navigator.onLine;
+    const hasActivePrompt = this.activePrompt() !== null;
+    const actionButtons = [
+      ...this.bottomBar.querySelectorAll<HTMLButtonElement>("button"),
+      ...this.list.querySelectorAll<HTMLButtonElement>("button.pz-picker__row-action"),
+    ];
+    actionButtons.forEach((actionButton) => {
+      const isRowButton = actionButton.classList.contains("pz-picker__row-action");
+      actionButton.disabled = !online || (!isRowButton && !hasActivePrompt);
+      if (online) {
+        actionButton.removeAttribute("title");
+      } else {
+        actionButton.title = OFFLINE_SAVE_MESSAGE;
+      }
+    });
   }
 
   private renderNote(message: string, withDashboardLink: boolean): void {
@@ -323,6 +503,7 @@ export class PromptPicker {
     label.className = "pz-picker__label";
     const meta = document.createElement("span");
     meta.className = "pz-picker__meta";
+    element.append(label, meta);
     if (row.kind === "pack") {
       label.textContent = row.pack.name;
       meta.textContent = String(row.pack.promptCount);
@@ -331,11 +512,20 @@ export class PromptPicker {
         `${row.pack.name} pack, ${row.pack.promptCount} ${row.pack.promptCount === 1 ? "prompt" : "prompts"}`,
       );
     } else {
-      label.textContent = row.prompt.title;
-      meta.textContent = this.openPack === null ? (row.prompt.category?.name ?? "") : "";
-      element.setAttribute("aria-label", row.prompt.title);
+      const prompt = row.prompt;
+      label.textContent = prompt.title;
+      meta.textContent = this.openPack === null ? (prompt.category?.name ?? "") : "";
+      element.setAttribute("aria-label", prompt.title);
+      const rowActions = [
+        button("edit", null, `Edit ${prompt.title}`, () => this.startEditing(prompt)),
+        button("trash", null, `Delete ${prompt.title}`, () => this.confirmDelete(prompt)),
+      ];
+      rowActions.forEach((rowAction) => {
+        rowAction.classList.add("pz-picker__row-action");
+        rowAction.tabIndex = -1;
+      });
+      element.append(...rowActions);
     }
-    element.append(label, meta);
     element.addEventListener("mousedown", (event) => event.preventDefault());
     element.addEventListener("click", (event) => {
       event.stopPropagation();
@@ -352,9 +542,192 @@ export class PromptPicker {
     this.callbacks.onPick(row.prompt);
   }
 
+  private returnToList(focusPromptId: string | null): void {
+    this.mode = { kind: "browsing" };
+    this.renderContent();
+    const focusIndex = this.rows.findIndex((row) => row.kind === "prompt" && row.prompt.id === focusPromptId);
+    if (focusIndex >= 0) {
+      this.activeIndex = focusIndex;
+      this.syncActiveRow();
+    }
+    this.input.focus();
+  }
+
+  private openPanel(titleText: string): void {
+    this.showBrowsing(false);
+    this.input.removeAttribute("aria-activedescendant");
+    this.renderTopBar(titleText, false);
+    this.panel.removeAttribute("aria-labelledby");
+    this.panel.replaceChildren();
+    this.bottomBar.replaceChildren();
+  }
+
+  private startEditing(prompt: Prompt | null): void {
+    if (prompt === null || !navigator.onLine) {
+      return;
+    }
+    const thisOpening = this.openCount;
+    const editing: Extract<PickerMode, { kind: "editing" }> = { kind: "editing", prompt, isSaving: false };
+    this.mode = editing;
+    this.openPanel("Edit prompt");
+
+    const titleInput = document.createElement("input");
+    titleInput.type = "text";
+    titleInput.className = "pz-picker__input";
+    titleInput.setAttribute("aria-label", "Prompt title");
+    titleInput.value = prompt.title;
+    const titleError = panelMessage(TITLE_ERROR_ID, true);
+    const textArea = document.createElement("textarea");
+    textArea.className = "pz-win__body pz-picker__text";
+    textArea.setAttribute("aria-label", "Prompt text");
+    textArea.spellcheck = false;
+    textArea.value = prompt.text;
+    const textError = panelMessage(TEXT_ERROR_ID, true);
+    const formError = panelMessage(null, true);
+    formError.setAttribute("role", "alert");
+    const offlineNote = offlineWriteNote();
+    this.panel.append(titleInput, titleError, textArea, textError, formError, offlineNote);
+
+    const cancelButton = button("close", null, "Cancel edit", () => this.returnToList(prompt.id));
+    const saveButton = button("check", null, "Save changes", () => void save(), "primary");
+    this.bottomBar.append(cancelButton, saveButton);
+
+    let isDeletedElsewhere = false;
+    this.applyPanelAvailability = (online) => {
+      offlineNote.hidden = online;
+      if (!editing.isSaving) {
+        saveButton.disabled = !online || isDeletedElsewhere;
+      }
+    };
+    this.applyPanelAvailability(navigator.onLine);
+
+    const save = async (): Promise<void> => {
+      if (editing.isSaving || isDeletedElsewhere || !navigator.onLine) {
+        return;
+      }
+      const changes = changedFields(prompt, titleInput.value.trim(), textArea.value);
+      if (changes.title === undefined && changes.text === undefined) {
+        this.returnToList(prompt.id);
+        return;
+      }
+      showFieldError(titleInput, titleError);
+      showFieldError(textArea, textError);
+      formError.textContent = "";
+      editing.isSaving = true;
+      saveButton.disabled = true;
+      cancelButton.disabled = true;
+      const response = await this.callbacks.onSaveEdit(prompt.id, changes);
+      if (thisOpening !== this.openCount || !this.isOpen) {
+        return;
+      }
+      editing.isSaving = false;
+      if (response.ok) {
+        this.library = {
+          prompts: this.library.prompts.map((cached) => (cached.id === response.prompt.id ? response.prompt : cached)),
+          packs: this.library.packs,
+        };
+        this.returnToList(response.prompt.id);
+        return;
+      }
+      cancelButton.disabled = false;
+      if (response.kind === "not_found") {
+        isDeletedElsewhere = true;
+        saveButton.disabled = true;
+        this.library = withoutPrompt(this.library, prompt.id);
+        formError.textContent = response.message;
+        cancelButton.focus();
+        return;
+      }
+      saveButton.disabled = !navigator.onLine;
+      const fieldErrors = response.kind === "validation" ? response.fields : {};
+      showFieldError(titleInput, titleError, fieldErrors.title);
+      showFieldError(textArea, textError, fieldErrors.text);
+      if (fieldErrors.title === undefined && fieldErrors.text === undefined) {
+        formError.textContent = response.message;
+      }
+      (fieldErrors.title !== undefined ? titleInput : fieldErrors.text !== undefined ? textArea : saveButton).focus();
+    };
+
+    titleInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.isComposing) {
+        event.preventDefault();
+        void save();
+      }
+    });
+    titleInput.focus();
+  }
+
+  private confirmDelete(prompt: Prompt | null): void {
+    if (prompt === null || !navigator.onLine) {
+      return;
+    }
+    const thisOpening = this.openCount;
+    const confirming: Extract<PickerMode, { kind: "confirming-delete" }> = {
+      kind: "confirming-delete",
+      prompt,
+      isDeleting: false,
+    };
+    this.mode = confirming;
+    this.openPanel("Delete prompt");
+
+    const question = document.createElement("p");
+    question.className = "pz-picker__question";
+    question.id = DELETE_QUESTION_ID;
+    question.textContent = `Delete “${prompt.title}”?`;
+    const warning = panelMessage(null, false);
+    warning.textContent = DELETE_WARNING;
+    const failure = panelMessage(null, true);
+    failure.setAttribute("role", "alert");
+    const offlineNote = offlineWriteNote();
+    this.panel.setAttribute("aria-labelledby", DELETE_QUESTION_ID);
+    this.panel.append(question, warning, failure, offlineNote);
+
+    const cancelButton = button("close", null, "Cancel", () => this.returnToList(prompt.id));
+    const deleteButton = button("trash", null, "Delete prompt", () => void remove(), "primary");
+    deleteButton.classList.add("pz-win__btn--critical");
+    this.bottomBar.append(cancelButton, deleteButton);
+
+    this.applyPanelAvailability = (online) => {
+      offlineNote.hidden = online;
+      if (!confirming.isDeleting) {
+        deleteButton.disabled = !online;
+      }
+    };
+    this.applyPanelAvailability(navigator.onLine);
+
+    const remove = async (): Promise<void> => {
+      if (confirming.isDeleting || !navigator.onLine) {
+        return;
+      }
+      failure.textContent = "";
+      confirming.isDeleting = true;
+      deleteButton.disabled = true;
+      cancelButton.disabled = true;
+      setButtonLabel(deleteButton, "Deleting…");
+      const response = await this.callbacks.onDelete(prompt.id);
+      if (thisOpening !== this.openCount || !this.isOpen) {
+        return;
+      }
+      confirming.isDeleting = false;
+      if (response.ok) {
+        this.library = withoutPrompt(this.library, prompt.id);
+        this.returnToList(null);
+        return;
+      }
+      setButtonLabel(deleteButton, "Delete prompt");
+      deleteButton.disabled = !navigator.onLine;
+      cancelButton.disabled = false;
+      failure.textContent = response.message;
+      cancelButton.focus();
+    };
+
+    cancelButton.focus();
+  }
+
   private syncActiveRow(): void {
     const rowElements = this.list.querySelectorAll<HTMLElement>('[role="option"]');
     rowElements.forEach((element, index) => element.setAttribute("aria-selected", String(index === this.activeIndex)));
+    this.syncRowActions();
     const active = rowElements[this.activeIndex];
     if (active === undefined) {
       this.input.removeAttribute("aria-activedescendant");
@@ -392,4 +765,9 @@ export class PromptPicker {
     this.activeIndex = target;
     this.syncActiveRow();
   }
+}
+
+function setButtonLabel(target: HTMLButtonElement, label: string): void {
+  target.setAttribute("aria-label", label);
+  target.dataset.tip = label;
 }
