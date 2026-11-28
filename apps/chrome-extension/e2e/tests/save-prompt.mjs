@@ -44,7 +44,7 @@ async function mockSavePromptApi(browser, respond) {
   const requests = [];
   await client.send("Fetch.enable", { patterns: [{ urlPattern: "*/api/prompts*", requestStage: "Request" }] });
   client.on("Fetch.requestPaused", async (event) => {
-    requests.push(event.request.url);
+    requests.push({ url: event.request.url, body: event.request.postData });
     const outcome = respond();
     await client.send("Fetch.fulfillRequest", {
       requestId: event.requestId,
@@ -166,5 +166,60 @@ await runCase("save-prompt", async (page, check, browser) => {
   await new Promise((r) => setTimeout(r, 300));
   const closedAfterDone = await firstSaveConfirm.evaluate((btn) => !btn.isConnected || btn.offsetParent === null);
   check("dismissing the first-save notice closes the step", closedAfterDone);
+  await client.detach();
+
+  await rail.click();
+  await new Promise((r) => setTimeout(r, 200));
+  await (await page.waitForSelector("aria/Save prompt", { timeout: 5000 })).click();
+  await page.waitForSelector('aria/Prompt title[role="textbox"]', { timeout: 5000 });
+
+  await page.evaluate(() => {
+    document.querySelector("#composer").textContent += " edited after the save step opened";
+  });
+
+  ({ client, requests } = await mockSavePromptApi(browser, () => ({
+    status: 201,
+    body: {
+      id: "p4",
+      title: ORIGINAL_PROMPT,
+      text: ORIGINAL_PROMPT,
+      model: null,
+      category: null,
+      tags: [],
+      createdAt: "",
+      updatedAt: "",
+    },
+  })));
+  await (await page.waitForSelector('aria/Save prompt[role="button"]', { timeout: 5000 })).click();
+  await new Promise((r) => setTimeout(r, 300));
+  const sentBody = requests[0] ? JSON.parse(requests[0].body) : undefined;
+  check(
+    "editing the field after the save step opened does not change what gets sent",
+    sentBody?.text === ORIGINAL_PROMPT,
+    sentBody?.text,
+  );
+  await client.detach();
+  await new Promise((r) => setTimeout(r, 1200));
+
+  await rail.click();
+  await new Promise((r) => setTimeout(r, 200));
+  await (await page.waitForSelector("aria/Save prompt", { timeout: 5000 })).click();
+  await page.waitForSelector('aria/Prompt title[role="textbox"]', { timeout: 5000 });
+
+  ({ client, requests } = await mockSavePromptApi(browser, () => ({
+    status: 502,
+    body: { code: "service_unavailable", message: "The service is unreachable. Please try again." },
+  })));
+  const retryConfirm = await page.waitForSelector('aria/Save prompt[role="button"]', { timeout: 5000 });
+  await retryConfirm.click();
+  await page.waitForFunction(
+    (btn) =>
+      btn.closest(".pz-win")?.querySelector('[role="alert"]')?.textContent?.includes("Couldn't reach Promptizer"),
+    { timeout: 5000 },
+    retryConfirm,
+  );
+  check("a failed save surfaces the server's error message", true);
+  const stillOpenAfterFailure = await retryConfirm.evaluate((btn) => btn.isConnected && btn.offsetParent !== null);
+  check("a failed save leaves the step open so the user can retry", stillOpenAfterFailure);
   await client.detach();
 });
