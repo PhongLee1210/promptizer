@@ -269,3 +269,61 @@ test("a renewal for the previous account does not overwrite a newer sign-in", as
   assert.equal(store.current?.user.email, "grace@example.com");
   assert.equal(store.current?.accessToken, "access-b");
 });
+
+function queuedStore(initial: AuthSession): SessionStore & { current: AuthSession | undefined } {
+  const STORAGE_ROUND_TRIP_MS = 5;
+  let queue: Promise<unknown> = Promise.resolve();
+  function enqueue<T>(operation: () => T): Promise<T> {
+    const next = queue.then(
+      () => new Promise<T>((resolve) => setTimeout(() => resolve(operation()), STORAGE_ROUND_TRIP_MS)),
+    );
+    queue = next;
+    return next;
+  }
+  const store = {
+    current: initial as AuthSession | undefined,
+    load: () => enqueue(() => store.current),
+    save: (session: AuthSession) =>
+      enqueue(() => {
+        store.current = session;
+      }),
+    clear: () =>
+      enqueue(() => {
+        store.current = undefined;
+      }),
+  };
+  return store;
+}
+
+test("a token request issued right after sign-out starts cannot renew the old session back", async () => {
+  const store = queuedStore(sessionExpiringAt(NOW_SECONDS + 10));
+  const { client, releaseRefresh } = heldRefreshClient(
+    sessionExpiringAt(NOW_SECONDS + 3600, "access-2"),
+    sessionExpiringAt(NOW_SECONDS + 3600),
+  );
+  const manager = createSessionManager(client, store, () => NOW_SECONDS * 1000);
+  const signOut = manager.signOut();
+  const tokenRequest = manager.getAccessToken();
+  await signOut;
+  releaseRefresh();
+  await tokenRequest;
+  assert.equal(store.current, undefined);
+});
+
+test("a token request issued during a sign-in cannot renew the previous account over the new one", async () => {
+  const store = queuedStore(sessionExpiringAt(NOW_SECONDS + 10));
+  const otherAccount: AuthSession = {
+    accessToken: "access-b",
+    refreshToken: "refresh-b",
+    expiresAt: NOW_SECONDS + 3600,
+    user: { id: "user-2", email: "grace@example.com", name: "Grace" },
+  };
+  const { client, releaseRefresh } = heldRefreshClient(sessionExpiringAt(NOW_SECONDS + 3600, "access-2"), otherAccount);
+  const manager = createSessionManager(client, store, () => NOW_SECONDS * 1000);
+  const signIn = manager.signIn("grace@example.com", "pw");
+  const tokenRequest = manager.getAccessToken();
+  await signIn;
+  releaseRefresh();
+  await tokenRequest;
+  assert.equal(store.current?.accessToken, "access-b");
+});
