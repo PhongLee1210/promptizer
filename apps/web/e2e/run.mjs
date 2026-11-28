@@ -1163,6 +1163,8 @@ async function packJourney(browser, session) {
     await waitForPath(page, `/packs/${packId}`);
     const packViewText = await visibleText(page);
     check("pack view shows the pack name and its prompt", packViewText.includes("Filed under research"));
+    await page.reload();
+    check("deep link into a pack works after refresh", (await visibleText(page)).includes("Filed under research"));
     await page.click(`a[href="/prompts/${inPack.id}"][data-testid="prompt-card"]`);
     await waitForPath(page, `/prompts/${inPack.id}`);
     await page.goBack();
