@@ -14,7 +14,7 @@ Cloud E2E recipe (extension): run per app, not through turbo (turbo strips env):
 ## Open findings
 
 - **F-1 · high · blocker (owner)** — Loop 2: Supabase env vars are now set, but the cloud network policy blocks the Supabase host (egress proxy 403, `curl` → 000), so auth/prompts suites fail with 502 / cancelled. Fix: allow `*.supabase.co` in the cloud environment network policy. Originally: no Supabase env vars, so `apps/web` Supabase node suites (prompts API, ownership, accounts) and `e2e/run.mjs` never run. Epic 3 endpoint/page tasks cannot reach VERIFIED. Fix: add the `apps/web/.env.example` vars as cloud environment secrets, or run both suites locally and record the result here.
-- **F-2 · medium · T-3.2.4** — No `error.tsx`; failed list/prompt loads hit Next's default error page (dead end). Fix PR #10 (static PASS loop 2). Remaining: no `global-error.tsx` / root `error.tsx`, so `/`, `/m`, `/account/password`, `/sign-in`, `/sign-up` still hit Next's default error page.
+- **F-2 · medium · T-3.2.4** — No `error.tsx`; failed list/prompt loads hit Next's default error page (dead end). Fix PR #10 VERIFIED by owner 2026-11-28 (local `make verify` green, web tests 76/76); awaiting merge. Remaining: no `global-error.tsx` / root `error.tsx`, so `/`, `/m`, `/account/password`, `/sign-in`, `/sign-up` still hit Next's default error page.
 - **F-3 · low · T-3.4.3** — Delete e2e did not check category list removal or that Cancel keeps the prompt. Fix PR #9 (static PASS loop 2, e2e not executed). Nit: `check("cancel returns to the prompt", true)` at run.mjs:1110 is vacuous; fold into the new check.
 - **F-4 · low · T-3.3.2 · product** — Browser back/forward from the editor is not warned, only flushed via keepalive. Decide whether that meets "warns once".
 - **F-5 · low · T-3.2.2 · product** — Cards show `updated` time; created date only as a tooltip. Decide if "timestamps" needs both visible.
@@ -69,7 +69,7 @@ Proposed Serena memory edit (apply to `web_prompts` once PR #10 merges): "Load f
 | T-3.2.1 | List endpoint | feat |  | NEEDS-SUPABASE | main |  |  |
 | T-3.2.2 | Prompt list page | feat | ⇉ | NEEDS-SUPABASE | main |  |  |
 | T-3.2.3 | Search & pack filter controls | feat |  | BLOCKED-DECISION | main |  | pack filter = category; re-check after T-3.0.1 |
-| T-3.2.4 | Empty & no-result states | feat | ⇉ | NEEDS-SUPABASE | mvp/T-3.2.4-error-boundary | main | #10 |
+| T-3.2.4 | Empty & no-result states | feat | ⇉ | VERIFIED | mvp/T-3.2.4-error-boundary | main | #10 |
 | T-3.2.5 | List tests | test | ⇉ | NEEDS-SUPABASE | main |  |  |
 | T-3.3.1 | Update endpoint | feat |  | NEEDS-SUPABASE | main |  |  |
 | T-3.3.2 | Editor page with live preview | feat |  | NEEDS-SUPABASE | main |  |  |
