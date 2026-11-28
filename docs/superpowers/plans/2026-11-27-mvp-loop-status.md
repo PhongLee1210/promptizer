@@ -129,7 +129,7 @@ Proposed Serena memory edit (apply to `web_prompts` once PR #10 merges): "Load f
 | T-6.2.3 | Edit sync tests | test | ⇉ | PENDING | | | |
 | T-6.3.1 | Conflict detection decision | decision |  | BLOCKED-DECISION | | | decisions/T-6.3.1.md |
 | T-6.3.2 | Conflict refusal & "updated elsewhere" UI | feat |  | PENDING | | | |
-| T-6.3.3 | Network error retry states | feat |  | NEEDS-REVIEW | mvp/T-6.3.3-retry-states | mvp/T-6.2.2-picker-edit | #44 (e750703: unit 52/52, E2E 126/126, CI green); loop 16 verifier: 1 medium (unmapped 4xx such as 409 shows "couldn't reach" + Retry loop) + 4 low; fix agent running |
+| T-6.3.3 | Network error retry states | feat |  | NEEDS-REVIEW | mvp/T-6.3.3-retry-states | mvp/T-6.2.2-picker-edit | #44. Loop 16: verifier 1 at e750703 → 1 medium (unmapped 4xx such as 409 showed "couldn't reach" + Retry loop) + 4 low, fixed in abe34a0 (new `rejected` kind). Verifier 2 at abe34a0: product fixes PASS; flaky 409/held-DELETE E2E checks, unreadable 2xx save reply offered Retry (duplicate risk), 429/408 blocked; fixed in 09a7884 (unit 53/53, E2E 129/129 twice). 09a7884 needs a fresh look |
 | T-6.3.4 | Offline save disabled state | feat | ⇉ | VERIFIED | mvp/T-6.3.4-offline-save | mvp/T-6.1.2-save-race | #41 (loop 15 fresh verifier PASS incl. keyboard/toggle probes; also T-5.2.4 box 2) |
 | T-6.3.5 | Conflict & error tests | test | ⇉ | PENDING | | | |
 | T-7.1.1 | Journey A regression pass | qa |  | PENDING | mvp/T-7.1.1-release-anchor-editor | main | F-10 fix #27 VERIFIED loop 9 (5715553); the pass itself waits for all epics |
