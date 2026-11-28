@@ -107,7 +107,7 @@ test("a network failure while saving is reported as retryable, distinct from una
   assert.ok(!result.ok && result.kind === "retryable");
 });
 
-test("an API 401 on save, edit or delete is unauthenticated while a 5xx stays retryable", async () => {
+test("an API 401 on save, edit or delete is unauthenticated, a 409 is rejected and a 5xx stays retryable", async () => {
   const writesAgainst = (fetchImplementation: typeof fetch) => {
     const client = createPromptClient("https://api.test", fetchImplementation);
     return [
@@ -128,6 +128,12 @@ test("an API 401 on save, edit or delete is unauthenticated while a 5xx stays re
     unavailable.map((result) => !result.ok && result.kind),
     ["retryable", "retryable", "retryable"],
   );
+  const conflicting = await Promise.all(writesAgainst(respondWith(409, { code: "conflict", message: "" })));
+  assert.deepEqual(
+    conflicting.map((result) => !result.ok && result.kind),
+    ["rejected", "rejected", "rejected"],
+  );
+  assert.ok(conflicting.every((result) => !result.ok && result.message.includes("couldn't accept this change")));
 });
 
 test("the save request identifies itself as the extension", async () => {
@@ -213,13 +219,13 @@ test("editing a prompt deleted elsewhere is reported as not found, distinct from
   assert.ok(!result.ok && result.kind === "not_found");
 });
 
-test("a 404 on save stays the retryable message, not the deleted-prompt one", async () => {
+test("a 404 on save is rejected with the server's message, not the deleted-prompt one", async () => {
   const handler = createSavePromptHandler(
     tokenOk("access-token"),
     createPromptClient("https://api.test", respondWith(404, { code: "not_found", message: "Not found." })),
   );
   const result = await handler(DRAFT);
-  assert.ok(!result.ok && result.kind === "retryable");
+  assert.ok(!result.ok && result.kind === "rejected" && result.message === "Not found.");
 });
 
 test("update messages with an unsafe id or malformed changes are ignored by the worker", () => {

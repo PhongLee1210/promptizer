@@ -11,7 +11,13 @@ import {
   createSlowHint,
   updateProgressBar,
 } from "./loading-ui";
-import { ACTION_COPY, OFFLINE_SAVE_MESSAGE, PREPARING_CAPTION, PREPARING_TITLE } from "./present-result";
+import {
+  ACTION_COPY,
+  OFFLINE_SAVE_MESSAGE,
+  PREPARING_CAPTION,
+  PREPARING_TITLE,
+  UNREACHABLE_WRITE_MESSAGE,
+} from "./present-result";
 import type { WriteFailureNotice, WriteFailureRecovery } from "./present-result";
 
 export type SaveOutcome = { ok: true; showFirstSaveNotice: boolean } | ({ ok: false } & WriteFailureNotice);
@@ -262,6 +268,28 @@ export function relabelButton(target: HTMLButtonElement, iconName: IconName, lab
   target.innerHTML = icon(iconName, 14);
 }
 
+export interface FailedWriteButtons {
+  action: HTMLButtonElement;
+  cancel: HTMLButtonElement;
+  idleIcon: IconName;
+  idleLabel: string;
+  retryLabel: string;
+}
+
+export function settleButtonsAfterFailedWrite(
+  recovery: WriteFailureRecovery,
+  { action, cancel, idleIcon, idleLabel, retryLabel }: FailedWriteButtons,
+): HTMLButtonElement {
+  action.disabled = recovery === "blocked" || !navigator.onLine;
+  cancel.disabled = false;
+  if (recovery === "retry") {
+    relabelButton(action, "retry", retryLabel);
+  } else {
+    relabelButton(action, idleIcon, idleLabel);
+  }
+  return recovery === "retry" && !action.disabled ? action : cancel;
+}
+
 export class ResultWindow {
   private readonly element: HTMLDivElement;
   private readonly topBar: HTMLDivElement;
@@ -483,6 +511,9 @@ export class ResultWindow {
       if (!saveInFlight && !saveSettled && !saveBlocked) {
         saveButton.disabled = !online;
       }
+      if (online && errorLine.textContent === OFFLINE_SAVE_MESSAGE) {
+        errorLine.textContent = UNREACHABLE_WRITE_MESSAGE;
+      }
     };
     this.applySaveAvailability = applyAvailability;
     applyAvailability(navigator.onLine);
@@ -516,20 +547,15 @@ export class ResultWindow {
         return;
       }
       saveBlocked = outcome.recovery === "blocked";
-      saveButton.disabled = saveBlocked || !navigator.onLine;
-      cancelButton.disabled = false;
       errorLine.textContent = outcome.message;
-      if (outcome.recovery === "retry") {
-        relabelButton(saveButton, "retry", "Retry save");
-      } else {
-        relabelButton(saveButton, "check", "Save prompt");
-      }
-      const focusAfterFailure: Record<WriteFailureRecovery, HTMLElement> = {
-        retry: saveButton,
-        "fix-input": titleInput,
-        blocked: cancelButton,
-      };
-      focusAfterFailure[outcome.recovery].focus();
+      const buttonToFocus = settleButtonsAfterFailedWrite(outcome.recovery, {
+        action: saveButton,
+        cancel: cancelButton,
+        idleIcon: "check",
+        idleLabel: "Save prompt",
+        retryLabel: "Retry save",
+      });
+      (outcome.recovery === "fix-input" ? titleInput : buttonToFocus).focus();
     };
 
     window.setTimeout(() => titleInput.focus(), 0);

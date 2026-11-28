@@ -2,7 +2,7 @@ import { CLIENT_KIND_HEADER, EXTENSION_CLIENT_KIND } from "@promptizer/shared";
 import type { ApiErrorBody, Prompt, PromptChanges, PromptDraft, PromptFieldErrors } from "@promptizer/shared";
 
 export type PromptClientError =
-  | { kind: "unauthenticated" | "retryable" | "not_found"; message: string }
+  | { kind: "unauthenticated" | "retryable" | "not_found" | "rejected"; message: string }
   | { kind: "validation"; message: string; fields: PromptFieldErrors };
 
 export type PromptClientResult<Value> = { ok: true; value: Value } | { ok: false; error: PromptClientError };
@@ -17,6 +17,9 @@ const RETRYABLE_ERROR: PromptClientError = {
   kind: "retryable",
   message: "Couldn't reach Promptizer. Check your connection and try again.",
 };
+
+const REJECTED_MESSAGE =
+  "Promptizer couldn't accept this change. Your text is still here; check the prompt on the dashboard.";
 
 const NOT_FOUND_MESSAGE =
   "This prompt was deleted elsewhere, so it can't be saved. Copy your text if you still need it.";
@@ -34,6 +37,9 @@ function mapFailure(status: number, body: ApiErrorBody | undefined, targetsExist
   }
   if (targetsExistingPrompt && (status === 404 || body?.code === "not_found")) {
     return { kind: "not_found", message: NOT_FOUND_MESSAGE };
+  }
+  if (status >= 400 && status < 500) {
+    return { kind: "rejected", message: body?.message || REJECTED_MESSAGE };
   }
   return RETRYABLE_ERROR;
 }

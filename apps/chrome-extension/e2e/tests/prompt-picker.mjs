@@ -118,7 +118,7 @@ async function mockPromptApi(browser, respond) {
   await client.send("Fetch.enable", { patterns: [{ urlPattern: "*/api/prompts*", requestStage: "Request" }] });
   client.on("Fetch.requestPaused", async (event) => {
     requests.push({ url: event.request.url, method: event.request.method, body: event.request.postData });
-    const outcome = respond(event.request);
+    const outcome = await respond(event.request);
     await client.send("Fetch.fulfillRequest", {
       requestId: event.requestId,
       responseCode: outcome.status,
@@ -469,6 +469,9 @@ await runCase("prompt-picker", async (page, check, browser) => {
 
   const UNREACHABLE_WRITE_MESSAGE = "Couldn't reach Promptizer, so nothing changed. Check your connection and retry.";
   const SIGNED_OUT_WRITE_MESSAGE = "Your Promptizer session ended. Sign in again from the Promptizer popup.";
+  const REJECTED_WRITE_MESSAGE =
+    "Promptizer couldn't accept this change. Your text is still here; check the prompt on the dashboard.";
+  let releaseHeldDelete = () => {};
   const serverRenamed = {
     ...promptFixture("prompt-2", "Standup agenda (server)", WORK_PACK),
     text: "Standup notes text",
@@ -480,6 +483,14 @@ await runCase("prompt-picker", async (page, check, browser) => {
     }
     if (promptServerMode === "signed-out") {
       return { status: 401, body: { code: "unauthenticated", message: "Unauthorized" } };
+    }
+    if (promptServerMode === "conflict" && request.method === "DELETE") {
+      return new Promise((resolve) => {
+        releaseHeldDelete = () => resolve({ status: 409, body: { code: "conflict" } });
+      });
+    }
+    if (promptServerMode === "conflict") {
+      return { status: 409, body: { code: "conflict" } };
     }
     return request.method === "DELETE" ? { status: 204, body: null } : { status: 200, body: serverRenamed };
   });
@@ -579,6 +590,60 @@ await runCase("prompt-picker", async (page, check, browser) => {
     cacheAfterDeleteRetry?.prompts?.every((prompt) => prompt.id !== "prompt-2") &&
       flakyApi.requests.filter((request) => request.method === "DELETE").length === 3,
   );
+
+  promptServerMode = "conflict";
+  await page.keyboard.press("Escape");
+  pickerSearch = await openPicker(page);
+  await page.keyboard.type("bug");
+  await (await page.waitForSelector('aria/Edit selected prompt[role="button"]')).click();
+  titleField = await page.waitForSelector('aria/Prompt title[role="textbox"]', { timeout: 5000 });
+  await titleField.evaluate((input) => input.select());
+  await page.keyboard.type("Bug triage v2");
+  const conflictingSave = await page.waitForSelector('aria/Save changes[role="button"]');
+  await conflictingSave.click();
+  await page.waitForFunction((saveButton) => saveButton.disabled, { timeout: 5000 }, conflictingSave);
+  check(
+    "a 409 on edit says Promptizer couldn't accept the change, keeps the typed title and offers no Retry",
+    (await previewShows(page, REJECTED_WRITE_MESSAGE)) &&
+      !(await previewShows(page, UNREACHABLE_WRITE_MESSAGE)) &&
+      !(await isShown(page, "Retry save", 300)) &&
+      (await titleField.evaluate((input) => input.value)) === "Bug triage v2" &&
+      (await focusedLabel(titleField)) === "Cancel edit",
+  );
+  await (await page.waitForSelector('aria/Cancel edit[role="button"]')).click();
+
+  await (await page.waitForSelector('aria/Delete selected prompt[role="button"]')).click();
+  const conflictingDelete = await page.waitForSelector('aria/Delete prompt[role="button"]', { timeout: 5000 });
+  await conflictingDelete.click();
+  const isDeletingVisibly = await page
+    .waitForFunction(
+      (input) => {
+        const panel = input.getRootNode().querySelector(".pz-picker__panel");
+        return panel?.getAttribute("aria-busy") === "true" && panel.innerText.includes("Deleting…");
+      },
+      { timeout: 5000 },
+      pickerSearch,
+    )
+    .then(() => true)
+    .catch(() => false);
+  check("while a delete is in flight the confirm panel shows Deleting… and is marked busy", isDeletingVisibly);
+  releaseHeldDelete();
+  await page.waitForFunction(
+    (button) => button.getAttribute("aria-label") === "Delete prompt" && button.disabled,
+    { timeout: 5000 },
+    conflictingDelete,
+  );
+  const { [LIBRARY_STORAGE_KEY]: cacheAfterRejectedDelete } = await readStorage(browser, [LIBRARY_STORAGE_KEY]);
+  check(
+    "a 409 on delete shows the rejected message with no Retry and keeps the prompt in the cache",
+    (await previewShows(page, REJECTED_WRITE_MESSAGE)) &&
+      !(await isShown(page, "Retry delete", 300)) &&
+      (await pickerSearch.evaluate(
+        (input) => input.getRootNode().querySelector(".pz-picker__panel")?.hasAttribute("aria-busy") === false,
+      )) &&
+      cacheAfterRejectedDelete?.prompts?.some((prompt) => prompt.id === "prompt-3"),
+  );
+  await (await page.waitForSelector('aria/Cancel[role="button"]')).click();
   await page.keyboard.press("Escape");
   await flakyApi.client.detach();
 

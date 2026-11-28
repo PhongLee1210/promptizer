@@ -44,6 +44,7 @@ export function describeWriteFailure(failure: PromptWriteFailure, online: boolea
     case "unauthenticated":
       return { message: SIGNED_OUT_WRITE_MESSAGE, recovery: "blocked" };
     case "not_found":
+    case "rejected":
       return { message: failure.message, recovery: "blocked" };
     case "validation":
       return { message: failure.message, recovery: "fix-input" };

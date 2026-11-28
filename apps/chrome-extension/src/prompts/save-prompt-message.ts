@@ -26,7 +26,7 @@ export interface DeletePromptMessage {
 }
 
 export type PromptWriteFailure =
-  | { ok: false; kind: "unauthenticated" | "retryable" | "not_found"; message: string }
+  | { ok: false; kind: "unauthenticated" | "retryable" | "not_found" | "rejected"; message: string }
   | { ok: false; kind: "validation"; message: string; fields: PromptFieldErrors };
 
 export type PromptWriteResponse = { ok: true; prompt: Prompt } | PromptWriteFailure;
