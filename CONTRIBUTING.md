@@ -108,7 +108,8 @@ workflow does the rest. The tag must match `apps/chrome-extension/package.json` 
 
 ## Privacy is a constraint, not a feature
 
-Promptizer makes no network requests, declares no `host_permissions`, and refuses to read password,
+Rewrites never leave the machine, the extension makes no network requests unless the user signs in
+from the popup, declares no `host_permissions`, and refuses to read password,
 one-time-code and payment fields. Any change that weakens one of those needs to be argued for in an
 issue before it is written. `apps/chrome-extension/scripts/assert-manifest.sh` enforces the manifest half of that
 contract on every build.

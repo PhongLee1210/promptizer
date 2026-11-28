@@ -34,13 +34,13 @@ after:   Make the contact button sticky on scroll while preserving the
 
 ## Why it is different
 
-|                               |                                                                                               |
-| ----------------------------- | --------------------------------------------------------------------------------------------- |
-| **On-device only**            | Chrome's built-in Gemini Nano runs the rewrite locally. The extension makes no network calls. |
-| **Preview, never submit**     | The rewrite lands in an editable preview. Promptizer never presses send for you.              |
-| **Intent preserved**          | Constraints, tone, and task stay. It cleans the wording, it does not invent requirements.     |
-| **No telemetry**              | No prompt logging, no page scraping, no analytics.                                            |
-| **Zero runtime dependencies** | No UI framework, no third-party runtime JavaScript.                                           |
+|                               |                                                                                           |
+| ----------------------------- | ----------------------------------------------------------------------------------------- |
+| **On-device rewrites**        | Gemini Nano runs every rewrite locally. Signed out, the extension makes no network calls. |
+| **Preview, never submit**     | The rewrite lands in an editable preview. Promptizer never presses send for you.          |
+| **Intent preserved**          | Constraints, tone, and task stay. It cleans the wording, it does not invent requirements. |
+| **No telemetry**              | No prompt logging, no page scraping, no analytics.                                        |
+| **Zero runtime dependencies** | No UI framework, no third-party runtime JavaScript.                                       |
 
 ## How it works
 
@@ -132,8 +132,11 @@ Build the zip locally with `pnpm -C apps/chrome-extension run zip`.
 
 ## Privacy
 
-Only the text you run an action on is processed, and Gemini Nano keeps it on-device — this build makes
-no network requests at all. Permissions are `storage` and `activeTab` only, with no host permissions,
+Only the text you run an action on is processed, and Gemini Nano keeps it on-device. Rewrites never
+leave the machine. Signed out, the extension makes no network requests at all. If you choose to sign in
+from the popup's Account screen, the popup talks to your Promptizer account service (`apps/web`) to sign
+in, check and renew the session and sign out, and the session is kept in the extension's local storage until you
+sign out. Permissions are `storage` and `activeTab` only, with no host permissions,
 asserted on every build. Password, one-time-code and payment fields never get a chip, so their
 contents are never read. No prompt logging, no page scraping, no automatic submission.
 
